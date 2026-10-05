@@ -30,15 +30,6 @@ jobs:
       SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
       SALEOR_API_URL: http://localhost:8000/graphql/
       NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
-      NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3000
-      NEXT_PUBLIC_DEFAULT_CHANNEL: us
-      STOREFRONT_CHANNELS: us
-      NEXT_PUBLIC_DEFAULT_LOCALE: en
-      NEXT_PUBLIC_STOREFRONT_LOCALES: en
-      NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
-      CONTENT_PROVIDER: saleor
-      ALLOW_DUMMY_PAYMENT: "true"
-      NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
       HUSKY: "0"
 
     steps:
@@ -126,6 +117,16 @@ jobs:
         run: pnpm --dir storefront test:run
 
       - name: Build US storefront
+        env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3000
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: pnpm --dir storefront build
 
       - name: Saleor logs on failure
