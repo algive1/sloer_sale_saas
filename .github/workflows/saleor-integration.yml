@@ -80,14 +80,27 @@ jobs:
       - name: Wait for Saleor GraphQL
         run: bash scripts/wait-for-saleor.sh "$SALEOR_API_URL"
 
-      - name: Verify US channel
+      - name: Verify US channel configuration
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -X POST             -H 'content-type: application/json'             --data '{"query":"{ channel(slug: \"us\") { slug currencyCode isActive } }"}'             "$SALEOR_API_URL" | tee /tmp/us-channel.json
-          grep -q '"slug":"us"' /tmp/us-channel.json
-          grep -q '"currencyCode":"USD"' /tmp/us-channel.json
-          grep -q '"isActive":true' /tmp/us-channel.json
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            exec -T api python3 manage.py shell -c \
+            'from saleor.channel.models import Channel; c=Channel.objects.get(slug="us"); assert c.currency_code == "USD"; assert c.is_active; assert str(c.default_country) == "US"; print({"slug": c.slug, "currency": c.currency_code, "active": c.is_active, "country": str(c.default_country)})'
+
+      - name: Verify anonymous US catalog GraphQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST \
+            -H 'content-type: application/json' \
+            --data '{"query":"{ products(first: 1, channel: \"us\") { totalCount edges { node { id slug } } } }"}' \
+            "$SALEOR_API_URL" | tee /tmp/us-catalog.json
+          ! grep -q '"errors"' /tmp/us-catalog.json
+          grep -q '"totalCount":' /tmp/us-catalog.json
 
       - uses: pnpm/action-setup@v4
         with:
