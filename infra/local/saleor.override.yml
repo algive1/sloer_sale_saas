@@ -1,5 +1,13 @@
 services:
   api:
     image: ghcr.io/saleor/saleor:3.23.38
+    environment:
+      HTTP_IP_FILTER_ENABLED: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   worker:
     image: ghcr.io/saleor/saleor:3.23.38
+    environment:
+      HTTP_IP_FILTER_ENABLED: "false"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
