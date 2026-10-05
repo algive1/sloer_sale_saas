@@ -47,6 +47,9 @@ jobs:
         run: pnpm --dir storefront lint:graphql-variants
 
       - name: ESLint source check
+        env:
+          # Same public Saleor schema endpoint used by upstream Paper lint CI.
+          NEXT_PUBLIC_SALEOR_API_URL: https://storefront1.saleor.cloud/graphql/
         run: pnpm --dir storefront exec eslint .
 
       # Full typecheck intentionally belongs to integration CI.
