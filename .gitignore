@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# env / secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Next.js
+.next/
+out/
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# local Saleor runtime
+.vendor/
+.local/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
