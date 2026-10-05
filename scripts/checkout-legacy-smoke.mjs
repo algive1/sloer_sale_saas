@@ -1,3 +1,4 @@
+// Phase 1 backend transaction smoke. Paper's Transactions API is validated separately with the payment app.
 const endpoint = process.env.SALEOR_API_URL ?? "http://localhost:8000/graphql/";
 
 async function gql(query, variables = {}) {
