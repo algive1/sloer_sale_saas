@@ -165,13 +165,11 @@ console.log("Using payment gateway", gateway);
 const initialized = await gql(`
   mutation TransactionsInitialize(
     $checkoutId: ID!
-    $action: TransactionFlowStrategyEnum
     $paymentGateway: PaymentGatewayToInitialize!
     $amount: PositiveDecimal
   ) {
     transactionInitialize(
       id: $checkoutId
-      action: $action
       paymentGateway: $paymentGateway
       amount: $amount
     ) {
@@ -191,7 +189,6 @@ const initialized = await gql(`
   }
 `, {
   checkoutId: checkout.id,
-  action: "CHARGE",
   amount: total.amount,
   paymentGateway: {
     id: gatewayId,
