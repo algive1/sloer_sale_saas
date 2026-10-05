@@ -13,7 +13,7 @@
     "test:storefront": "pnpm --dir storefront test:run",
     "verify:paper-pin": "bash scripts/verify-paper-pin.sh",
     "config:validate": "pnpm dlx @saleor/configurator@3.23.2 validate --config config/saleor/us-baseline.yml",
-    "config:diff": "pnpm dlx @saleor/configurator@3.23.2 diff --url \"$SALEOR_URL\" --token \"$SALEOR_TOKEN\" --config config/saleor/us-baseline.yml",
-    "config:deploy": "pnpm dlx @saleor/configurator@3.23.2 deploy --url \"$SALEOR_URL\" --token \"$SALEOR_TOKEN\" --config config/saleor/us-baseline.yml"
+    "config:diff": "pnpm dlx @saleor/configurator@3.23.2 diff --url \"$SALEOR_API_URL\" --token \"$SALEOR_TOKEN\" --config config/saleor/us-baseline.yml",
+    "config:deploy": "pnpm dlx @saleor/configurator@3.23.2 deploy --url \"$SALEOR_API_URL\" --token \"$SALEOR_TOKEN\" --config config/saleor/us-baseline.yml"
   }
 }
