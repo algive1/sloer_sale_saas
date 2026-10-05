@@ -1,0 +1,164 @@
+# Development/staging baseline for the first B2C market.
+# Production launch must replace the placeholder warehouse address and configure US tax correctly.
+
+shop:
+  defaultMailSenderName: "Cross-border Store"
+  displayGrossPrices: false
+  trackInventoryByDefault: true
+  defaultWeightUnit: LB
+  reserveStockDurationAnonymousUser: 30
+  reserveStockDurationAuthenticatedUser: 60
+
+channels:
+  - name: "United States"
+    slug: us
+    currencyCode: USD
+    defaultCountry: US
+    isActive: true
+    settings:
+      allocationStrategy: PRIORITIZE_HIGH_STOCK
+      automaticallyConfirmAllNewOrders: true
+      markAsPaidStrategy: TRANSACTION_FLOW
+      defaultTransactionFlowStrategy: AUTHORIZATION
+      automaticallyCompleteFullyPaidCheckouts: true
+    taxConfiguration:
+      taxCalculationStrategy: FLAT_RATES
+      chargeTaxes: false
+      displayGrossPrices: false
+      pricesEnteredWithTax: false
+
+productTypes:
+  - name: "Physical Product"
+    isShippingRequired: true
+    productAttributes:
+      - name: "Brand"
+        inputType: PLAIN_TEXT
+      - name: "Material"
+        inputType: PLAIN_TEXT
+      - name: "Google Product Category"
+        inputType: PLAIN_TEXT
+      - name: "Gender"
+        inputType: DROPDOWN
+        values:
+          - name: "Unisex"
+          - name: "Male"
+          - name: "Female"
+      - name: "Age Group"
+        inputType: DROPDOWN
+        values:
+          - name: "Adult"
+          - name: "Kids"
+    variantAttributes:
+      - name: "Color"
+        inputType: DROPDOWN
+        values:
+          - name: "Black"
+          - name: "White"
+      - name: "Size"
+        inputType: DROPDOWN
+        values:
+          - name: "8"
+          - name: "9"
+          - name: "10"
+      - name: "GTIN"
+        inputType: PLAIN_TEXT
+      - name: "MPN"
+        inputType: PLAIN_TEXT
+
+categories:
+  - name: "Catalog"
+    slug: catalog
+
+warehouses:
+  - name: "US Baseline Warehouse"
+    slug: us-baseline-warehouse
+    email: "ops@example.com"
+    address:
+      streetAddress1: "123 Test Street"
+      city: "Austin"
+      postalCode: "78701"
+      country: US
+      countryArea: "TX"
+
+shippingZones:
+  - name: "US Domestic"
+    countries:
+      - US
+    warehouses:
+      - us-baseline-warehouse
+    channels:
+      - us
+    shippingMethods:
+      - name: "Standard Shipping"
+        description: "Baseline domestic shipping for development and staging."
+        type: PRICE
+        minimumDeliveryDays: 3
+        maximumDeliveryDays: 7
+        channelListings:
+          - channel: us
+            price: 5.99
+      - name: "Free Shipping"
+        description: "Free standard shipping on orders of $75 or more."
+        type: PRICE
+        minimumDeliveryDays: 3
+        maximumDeliveryDays: 7
+        channelListings:
+          - channel: us
+            price: 0
+            minimumOrderPrice: 75
+      - name: "Express Shipping"
+        description: "Baseline express option for development and staging."
+        type: PRICE
+        minimumDeliveryDays: 1
+        maximumDeliveryDays: 2
+        channelListings:
+          - channel: us
+            price: 14.99
+
+products:
+  - name: "Baseline Everyday Sneaker"
+    slug: baseline-everyday-sneaker
+    productType: "Physical Product"
+    category: catalog
+    description: |
+      Development product used to verify variants, SKU pricing, inventory,
+      cart behavior, shipping, and checkout. Do not publish this demo item
+      to a production Google Merchant Center feed.
+    attributes:
+      Brand: "Demo Brand"
+      Material: "Canvas"
+      Google Product Category: "Apparel & Accessories > Shoes"
+      Gender: "Unisex"
+      Age Group: "Adult"
+    channelListings:
+      - channel: us
+        isPublished: true
+        isAvailableForPurchase: true
+        visibleInListings: true
+    variants:
+      - name: "Black / 9"
+        sku: "DEMO-SNEAKER-BLK-9"
+        attributes:
+          Color: "Black"
+          Size: "9"
+          MPN: "DEMO-SNEAKER-BLK-9"
+        channelListings:
+          - channel: us
+            price: 79
+            costPrice: 30
+        stocks:
+          - warehouse: us-baseline-warehouse
+            quantity: 25
+      - name: "White / 9"
+        sku: "DEMO-SNEAKER-WHT-9"
+        attributes:
+          Color: "White"
+          Size: "9"
+          MPN: "DEMO-SNEAKER-WHT-9"
+        channelListings:
+          - channel: us
+            price: 79
+            costPrice: 30
+        stocks:
+          - warehouse: us-baseline-warehouse
+            quantity: 25
