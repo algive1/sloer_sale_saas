@@ -1,0 +1,24 @@
+blockExoticSubdeps: true
+minimumReleaseAge: 1440 # 24h
+minimumReleaseAgeExclude:
+  - "next@16.3.8"
+  - "@next/env@16.3.8"
+  - "@next/playwright@16.3.8"
+  - "@next/swc-darwin-arm64@16.3.8"
+  - "@next/swc-darwin-x64@16.3.8"
+  - "@next/swc-linux-arm64-gnu@16.3.8"
+  - "@next/swc-linux-arm64-musl@16.3.8"
+  - "@next/swc-linux-x64-gnu@16.3.8"
+  - "@next/swc-linux-x64-musl@16.3.8"
+  - "@next/swc-win32-arm64-msvc@16.3.8"
+  - "@next/swc-win32-x64-msvc@16.3.8"
+trustPolicy: no-downgrade
+trustPolicyExclude:
+  - "semver@6.3.1"
+overrides:
+  graphql: 16.8.1
+  dset: ">=3.1.4"
+  micromatch: ">=4.0.8"
+  "@babel/runtime": ">=7.26.10"
+  "@babel/helpers": ">=7.26.10"
+  "brace-expansion@>=2": ">=2.0.2"
