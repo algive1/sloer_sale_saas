@@ -1,0 +1,45 @@
+name: Paper source
+
+on:
+  pull_request:
+    paths:
+      - "storefront/**"
+      - "scripts/verify-paper-pin.sh"
+      - ".github/workflows/paper-source.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "storefront/**"
+      - "scripts/verify-paper-pin.sh"
+      - ".github/workflows/paper-source.yml"
+
+jobs:
+  source-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: storefront/.nvmrc
+          cache: pnpm
+          cache-dependency-path: storefront/pnpm-lock.yaml
+
+      - name: Verify Paper pin
+        run: bash scripts/verify-paper-pin.sh
+      - name: Install dependencies
+        run: pnpm --dir storefront install --frozen-lockfile
+      - name: Check Paper docs
+        run: pnpm --dir storefront docs:check
+      - name: Check design tokens
+        run: pnpm --dir storefront lint:design-tokens
+      - name: Check Variant GraphQL rules
+        run: pnpm --dir storefront lint:graphql-variants
+      - name: TypeScript source check
+        run: pnpm --dir storefront exec tsc --noEmit
+      - name: ESLint source check
+        run: pnpm --dir storefront exec eslint .
