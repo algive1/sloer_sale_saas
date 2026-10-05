@@ -4,18 +4,24 @@ on:
   pull_request:
     paths:
       - "storefront/**"
+      - "config/saleor/**"
       - "infra/local/**"
+      - "package.json"
       - "scripts/bootstrap-local.sh"
       - "scripts/wait-for-saleor.sh"
+      - "scripts/verify-us-commerce.sh"
       - ".github/workflows/saleor-integration.yml"
   push:
     branches:
       - main
     paths:
       - "storefront/**"
+      - "config/saleor/**"
       - "infra/local/**"
+      - "package.json"
       - "scripts/bootstrap-local.sh"
       - "scripts/wait-for-saleor.sh"
+      - "scripts/verify-us-commerce.sh"
       - ".github/workflows/saleor-integration.yml"
 
 concurrency:
@@ -25,11 +31,16 @@ concurrency:
 jobs:
   paper-against-pinned-saleor:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
       SALEOR_API_URL: http://localhost:8000/graphql/
       NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
+      NEXT_PUBLIC_DEFAULT_CHANNEL: us
+      STOREFRONT_CHANNELS: us
+      NEXT_PUBLIC_DEFAULT_LOCALE: en
+      NEXT_PUBLIC_STOREFRONT_LOCALES: en
+      NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
       HUSKY: "0"
 
     steps:
@@ -48,13 +59,31 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             run --rm api python3 manage.py migrate --noinput
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            run --rm api python3 manage.py migrate --noinput
+
+      - name: Seed Saleor test administrator
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            run --rm api python3 manage.py populatedb --createsuperuser
 
       - name: Start Saleor API
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             up -d db cache jaeger api
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            up -d db cache jaeger api
 
       - name: Wait for Saleor GraphQL
         run: bash scripts/wait-for-saleor.sh "$SALEOR_API_URL"
@@ -73,6 +102,30 @@ jobs:
       - name: Install Paper dependencies
         run: pnpm --dir storefront install --frozen-lockfile
 
+      - name: Create ephemeral Saleor administrator token
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error \
+            --header 'Content-Type: application/json' \
+            --data '{"query":"mutation Login { tokenCreate(email: \"admin@example.com\", password: \"admin\") { token errors { field message code } } }"}' \
+            "$SALEOR_API_URL")"
+
+          token="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["data"]["tokenCreate"]["token"] or "")' <<<"$response")"
+          if [ -z "$token" ]; then
+            echo "$response"
+            exit 1
+          fi
+
+          echo "::add-mask::$token"
+          echo "SALEOR_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Deploy US commerce baseline
+        run: pnpm config:deploy
+
+      - name: Verify deployed US channel and SKUs
+        run: bash scripts/verify-us-commerce.sh
+
       - name: Generate GraphQL types from Saleor 3.23.38
         run: pnpm --dir storefront generate:all
 
@@ -86,11 +139,23 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             ps || true
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             logs --tail=200 api db cache || true
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            ps || true
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            logs --tail=200 api db cache || true
 
       - name: Stop Saleor
         if: always()
         shell: bash
         run: |
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             down -v || true
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            down -v || true
