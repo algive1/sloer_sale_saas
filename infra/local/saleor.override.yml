@@ -1,5 +1,9 @@
 services:
   api:
     image: ghcr.io/saleor/saleor:3.23.38
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   worker:
     image: ghcr.io/saleor/saleor:3.23.38
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
