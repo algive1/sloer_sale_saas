@@ -1,8 +1,16 @@
+from decimal import Decimal
+
 from saleor.channel.models import Channel
 from saleor.product.models import (
     CollectionChannelListing,
     ProductChannelListing,
     ProductVariantChannelListing,
+)
+from saleor.shipping import ShippingMethodType
+from saleor.shipping.models import (
+    ShippingMethod,
+    ShippingMethodChannelListing,
+    ShippingZone,
 )
 from saleor.tax.models import TaxConfiguration
 
@@ -37,9 +45,43 @@ channel.save()
 
 TaxConfiguration.objects.get_or_create(channel=channel)
 
-# Channel relations created by populatedb are suitable for the integration fixture.
-channel.warehouses.set(source.warehouses.all())
+# Reuse populatedb warehouses/stocks, but make shipping deterministic for US/USD.
+# The source shipping-method listings are channel/currency scoped, so merely copying
+# the source zones would leave the US checkout without an applicable delivery method.
+source_warehouses = source.warehouses.all()
+channel.warehouses.set(source_warehouses)
 channel.shipping_zones.set(source.shipping_zones.all())
+
+shipping_zone, _ = ShippingZone.objects.update_or_create(
+    name="US Integration",
+    defaults={
+        "countries": ["US"],
+        "default": False,
+        "description": "Deterministic US shipping zone for local and CI integration tests.",
+    },
+)
+shipping_zone.channels.add(channel)
+shipping_zone.warehouses.set(source_warehouses)
+
+shipping_method, _ = ShippingMethod.objects.update_or_create(
+    shipping_zone=shipping_zone,
+    name="US Standard Shipping",
+    defaults={
+        "type": ShippingMethodType.PRICE_BASED,
+        "minimum_delivery_days": 3,
+        "maximum_delivery_days": 7,
+    },
+)
+ShippingMethodChannelListing.objects.update_or_create(
+    shipping_method=shipping_method,
+    channel=channel,
+    defaults={
+        "currency": "USD",
+        "price_amount": Decimal("5.99"),
+        "minimum_order_price_amount": Decimal("0.00"),
+        "maximum_order_price_amount": None,
+    },
+)
 
 for listing in ProductChannelListing.objects.filter(channel=source):
     ProductChannelListing.objects.update_or_create(
@@ -89,5 +131,6 @@ print(
         "collections": CollectionChannelListing.objects.filter(channel=channel).count(),
         "warehouses": channel.warehouses.count(),
         "shipping_zones": channel.shipping_zones.count(),
+        "shipping_methods": ShippingMethod.objects.for_channel(channel.slug).count(),
     }
 )
