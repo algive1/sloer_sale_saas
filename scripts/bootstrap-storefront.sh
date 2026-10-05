@@ -16,5 +16,5 @@ if command -v corepack >/dev/null 2>&1; then
   corepack prepare pnpm@10.28.1 --activate
 fi
 
-pnpm --dir "$STOREFRONT_DIR" install --frozen-lockfile
+HUSKY=0 pnpm --dir "$STOREFRONT_DIR" install --frozen-lockfile
 echo "Storefront dependencies are installed. Start Saleor, then run: pnpm dev:storefront"
