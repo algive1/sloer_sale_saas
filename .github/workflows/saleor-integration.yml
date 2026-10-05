@@ -93,6 +93,9 @@ jobs:
           ! grep -q '"errors"' /tmp/us-catalog.json
           grep -q '"totalCount":' /tmp/us-catalog.json
 
+      - name: Create paid US order with legacy dummy gateway
+        run: node scripts/checkout-legacy-smoke.mjs
+
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.1
