@@ -1,0 +1,89 @@
+name: Import pinned Paper storefront
+
+on:
+  push:
+    branches:
+      - bootstrap/paper-import
+    paths:
+      - .github/workflows/import-paper.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-import-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  import-paper:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    env:
+      PAPER_REPOSITORY: saleor/storefront
+      PAPER_SHA: b73bdce3269cceb08feff856af5067d117c79cb6
+
+    steps:
+      - name: Checkout project repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch pinned Paper source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/saleor-paper
+          git init /tmp/saleor-paper
+          git -C /tmp/saleor-paper remote add origin "https://github.com/${PAPER_REPOSITORY}.git"
+          git -C /tmp/saleor-paper fetch --depth 1 origin "${PAPER_SHA}"
+          git -C /tmp/saleor-paper checkout --detach FETCH_HEAD
+
+          test "$(git -C /tmp/saleor-paper rev-parse HEAD)" = "${PAPER_SHA}"
+
+      - name: Vendor Paper into storefront
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf storefront
+          mkdir -p storefront
+          rsync -a --delete --exclude='.git' /tmp/saleor-paper/ storefront/
+          printf '%s\n' "${PAPER_SHA}" > storefront/.paper-upstream-sha
+
+          cat > storefront/.env.project.example <<'EOF'
+          NEXT_PUBLIC_SALEOR_API_URL=http://localhost:8000/graphql/
+          NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3000
+
+          NEXT_PUBLIC_DEFAULT_CHANNEL=us
+          STOREFRONT_CHANNELS=us
+
+          NEXT_PUBLIC_DEFAULT_LOCALE=en
+          NEXT_PUBLIC_STOREFRONT_LOCALES=en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS=en:us
+
+          CONTENT_PROVIDER=saleor
+
+          ALLOW_DUMMY_PAYMENT=true
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT=true
+
+          # Enable after Stripe is configured in Saleor Dashboard:
+          # ENABLE_STRIPE_PAYMENTS=true
+          # NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS=true
+          # NEXT_PUBLIC_ENABLE_STRIPE_EXPRESS_CHECKOUT=true
+          EOF
+
+      - name: Commit imported storefront
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add storefront
+
+          if git diff --cached --quiet; then
+            echo "Paper storefront is already at the pinned revision."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: vendor Paper storefront @ ${PAPER_SHA} [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

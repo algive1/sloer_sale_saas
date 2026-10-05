@@ -15,15 +15,22 @@ jobs:
       - name: Reject committed environment secrets
         shell: bash
         run: |
-          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$'; then
-            echo "Tracked environment files detected. Commit only .env.example."
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.example$'; then
+            echo "Tracked environment files detected. Commit only documented *.example templates."
             exit 1
           fi
 
-      - name: Verify project baseline files
+      - name: Verify project baseline
         shell: bash
         run: |
           test -f docs/architecture.md
           test -f docs/product-model.md
           test -f docs/phase-1.md
-          test -f .env.example
+          test -f docs/upstream.md
+          test -f storefront/package.json
+          test -f storefront/.paper-upstream-sha
+          test -f storefront/.env.project.example
+          test -f infra/local/saleor.override.yml
+
+      - name: Verify pinned Paper source
+        run: bash scripts/verify-paper-pin.sh

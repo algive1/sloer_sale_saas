@@ -1,0 +1,97 @@
+import type { ProductShell, PdpVariant } from "@/lib/catalog/get-product-data";
+import { buildSaleorSrcSet } from "@/lib/images";
+
+/**
+ * PDP product shape: shell fields from ProductDetails, plus variants merged by
+ * dynamic islands via {@link getProductVariantsForPdp}.
+ *
+ * The static shell never awaits variants — islands attach them so the prerender
+ * payload stays lean (PPR).
+ */
+export type Product = ProductShell & {
+	variants?: PdpVariant[] | null;
+	/** Saleor total when known (from shell probe or variants fetch). */
+	variantTotalCount?: number | null;
+	/** True when buy-box strategy is not `matrix` — attribute matrix must not hydrate. */
+	overVariantBudget?: boolean;
+};
+export type Variant = PdpVariant;
+
+export interface GalleryImage {
+	url: string;
+	alt: string | null | undefined;
+	/** Saleor rung `srcset`; absent means the surface falls back to `next/image`. */
+	srcSet?: string;
+	/** 256 (or 512) CDN URL for the 80px thumb strip — never the 2048 gallery URL. */
+	thumbSrc?: string;
+	thumbSrcSet?: string;
+}
+
+/**
+ * Aliased rungs from the ProductDetails / VariantDetailsFragment media selections.
+ * Required, not optional: if a fragment loses an alias this must fail typecheck rather
+ * than quietly fall back to `/_next/image` and start billing transformations again.
+ */
+type GalleryMedia = {
+	url: string;
+	url256: string;
+	url512: string;
+	url1024: string;
+	alt?: string | null;
+};
+
+function toGalleryImage(media: GalleryMedia): GalleryImage {
+	return {
+		url: media.url,
+		alt: media.alt,
+		srcSet: buildSaleorSrcSet([
+			{ width: 512, url: media.url512 },
+			{ width: 1024, url: media.url1024 },
+			{ width: 2048, url: media.url },
+		]),
+		thumbSrc: media.url256 || media.url512,
+		thumbSrcSet: buildSaleorSrcSet([
+			{ width: 256, url: media.url256 },
+			{ width: 512, url: media.url512 },
+		]),
+	};
+}
+
+export function getGalleryImages(
+	product: Product,
+	selectedVariant: Variant | null | undefined,
+): GalleryImage[] {
+	if (selectedVariant?.media && selectedVariant.media.length > 0) {
+		const variantImages = selectedVariant.media.filter((m) => m.type === "IMAGE").map(toGalleryImage);
+		if (variantImages.length > 0) {
+			return variantImages;
+		}
+	}
+
+	if (product.media && product.media.length > 0) {
+		return product.media.filter((m) => m.type === "IMAGE").map(toGalleryImage);
+	}
+
+	if (product.thumbnail) {
+		return [{ url: product.thumbnail.url, alt: product.thumbnail.alt }];
+	}
+
+	return [];
+}
+
+/** Default gallery images for the static shell (no searchParams, no variant payloads). */
+export function getDefaultGalleryImages(product: Product): ReturnType<typeof getGalleryImages> {
+	return getGalleryImages(product, null);
+}
+
+export function resolveSelectedVariantId(
+	product: Product,
+	variantParam: string | undefined,
+): string | undefined {
+	const variants = product.variants ?? [];
+	if (variantParam) return variantParam;
+	if (variants.length === 1) return variants[0]?.id;
+	const total = product.variantTotalCount ?? product.productVariants?.totalCount ?? null;
+	if (total === 1 && variants[0]?.id) return variants[0].id;
+	return undefined;
+}

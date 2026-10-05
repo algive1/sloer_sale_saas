@@ -1,34 +1,20 @@
 # Upstream strategy
 
-## Saleor Core
+## Locked baseline
 
-Use an official stable Saleor 3.23.x release in phase 1. Do not vendor or fork the Saleor Core source until a concrete extension requirement justifies it.
+- Saleor Core image: `ghcr.io/saleor/saleor:3.23.38`
+- Saleor local platform commit: `ab6315bd59c58b4815175df4c679107ff9695be4`
+- Paper upstream commit: `b73bdce3269cceb08feff856af5067d117c79cb6`
+- Paper Next.js: `16.3.8`
+- Paper Node.js: `24.x`
+- Paper pnpm: `10.28.1`
 
-## Saleor Dashboard
+## Core policy
 
-Keep the Dashboard in the same Saleor generation as the backend.
+Do not vendor or fork Saleor Core in phase 1. Prefer GraphQL, Saleor Apps and webhooks. A Core fork requires a concrete requirement that cannot be implemented through supported extension points.
 
-## Paper storefront
+## Paper policy
 
-Paper is the storefront source we intend to customize and own in this repository.
+The complete upstream Paper source is vendored under `storefront/`. Preserve `paper-version.json`, `AGENTS.md`, the Paper skill rules, the lockfile and source structure. The imported SHA is recorded in `storefront/.paper-upstream-sha`.
 
-When importing Paper:
-
-1. Record the exact upstream commit SHA.
-2. Preserve `paper-version.json`.
-3. Preserve `AGENTS.md` and the Paper skill/rule files.
-4. Keep the upstream remote available for future migration comparison.
-5. Avoid rewriting checkout, cache/revalidation, i18n/channel routing or generated GraphQL layers during the first visual pass.
-
-## Update policy
-
-Never track an unpinned development branch in production.
-
-Before an upstream Paper update:
-
-1. Review upstream migrations.
-2. Apply to staging.
-3. Run typecheck, lint, unit tests and checkout E2E.
-4. Verify US channel routing and pricing.
-5. Verify Stripe test checkout.
-6. Merge only after the baseline remains green.
+To update Paper, change the pinned SHA in the import workflow, import the full source, review upstream migrations, run CI, then verify US pricing and checkout in staging before merging.
