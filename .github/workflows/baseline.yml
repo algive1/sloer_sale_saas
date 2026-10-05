@@ -1,0 +1,29 @@
+name: Baseline
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  repository-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reject committed environment secrets
+        shell: bash
+        run: |
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$'; then
+            echo "Tracked environment files detected. Commit only .env.example."
+            exit 1
+          fi
+
+      - name: Verify project baseline files
+        shell: bash
+        run: |
+          test -f docs/architecture.md
+          test -f docs/product-model.md
+          test -f docs/phase-1.md
+          test -f .env.example
