@@ -31,15 +31,23 @@ jobs:
 
       - name: Verify Paper pin
         run: bash scripts/verify-paper-pin.sh
+
       - name: Install dependencies
+        env:
+          HUSKY: "0"
         run: pnpm --dir storefront install --frozen-lockfile
+
       - name: Check Paper docs
         run: pnpm --dir storefront docs:check
+
       - name: Check design tokens
         run: pnpm --dir storefront lint:design-tokens
+
       - name: Check Variant GraphQL rules
         run: pnpm --dir storefront lint:graphql-variants
+
       - name: TypeScript source check
         run: pnpm --dir storefront exec tsc --noEmit
+
       - name: ESLint source check
         run: pnpm --dir storefront exec eslint .
