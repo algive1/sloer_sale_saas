@@ -1,0 +1,96 @@
+name: Saleor 3.23.38 integration
+
+on:
+  pull_request:
+    paths:
+      - "storefront/**"
+      - "infra/local/**"
+      - "scripts/bootstrap-local.sh"
+      - "scripts/wait-for-saleor.sh"
+      - ".github/workflows/saleor-integration.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "storefront/**"
+      - "infra/local/**"
+      - "scripts/bootstrap-local.sh"
+      - "scripts/wait-for-saleor.sh"
+      - ".github/workflows/saleor-integration.yml"
+
+concurrency:
+  group: saleor-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paper-against-pinned-saleor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
+      SALEOR_API_URL: http://localhost:8000/graphql/
+      NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
+      HUSKY: "0"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout pinned Saleor platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/saleor/saleor-platform.git /tmp/saleor-platform
+          git -C /tmp/saleor-platform fetch --depth 1 origin "$SALEOR_PLATFORM_SHA"
+          git -C /tmp/saleor-platform checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/saleor-platform rev-parse HEAD)" = "$SALEOR_PLATFORM_SHA"
+
+      - name: Migrate Saleor 3.23.38 database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             run --rm api python3 manage.py migrate --noinput
+
+      - name: Start Saleor API
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             up -d db cache jaeger api
+
+      - name: Wait for Saleor GraphQL
+        run: bash scripts/wait-for-saleor.sh "$SALEOR_API_URL"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: storefront/.nvmrc
+          cache: pnpm
+          cache-dependency-path: storefront/pnpm-lock.yaml
+
+      - name: Install Paper dependencies
+        run: pnpm --dir storefront install --frozen-lockfile
+
+      - name: Generate GraphQL types from Saleor 3.23.38
+        run: pnpm --dir storefront generate:all
+
+      - name: TypeScript check
+        run: pnpm --dir storefront exec tsc --noEmit
+
+      - name: Unit tests
+        run: pnpm --dir storefront test:run
+
+      - name: Saleor logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             ps || true
+          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             logs --tail=200 api db cache || true
+
+      - name: Stop Saleor
+        if: always()
+        shell: bash
+        run: |
+          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             down -v || true
