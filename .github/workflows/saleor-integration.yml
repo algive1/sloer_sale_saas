@@ -209,7 +209,7 @@ jobs:
 
       - name: Build US storefront
         env:
-          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3000
+          NEXT_PUBLIC_STOREFRONT_URL: http://127.0.0.1:3020
           NEXT_PUBLIC_DEFAULT_CHANNEL: us
           STOREFRONT_CHANNELS: us
           NEXT_PUBLIC_DEFAULT_LOCALE: en
@@ -220,10 +220,53 @@ jobs:
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: pnpm --dir storefront build
 
+      - name: Install Chromium for checkout E2E
+        run: pnpm --dir storefront exec playwright install --with-deps chromium
+
+      - name: Start US storefront
+        shell: bash
+        env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://127.0.0.1:3020
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          set -euo pipefail
+          nohup pnpm --dir storefront exec next start -H 127.0.0.1 -p 3020 \
+            > /tmp/storefront.log 2>&1 &
+          echo "$!" > /tmp/storefront.pid
+
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3020/en/us > /dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/storefront.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Browser checkout E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3020
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+        run: pnpm --dir storefront exec playwright test e2e/checkout-live.spec.ts --workers=1
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
         run: |
+          if [ -f /tmp/storefront.log ]; then
+            echo "===== Paper Storefront ====="
+            tail -n 300 /tmp/storefront.log || true
+          fi
           if [ -f /tmp/dummy-payment.log ]; then
             echo "===== Dummy Payment App ====="
             tail -n 300 /tmp/dummy-payment.log || true
@@ -243,6 +286,9 @@ jobs:
         if: always()
         shell: bash
         run: |
+          if [ -f /tmp/storefront.pid ]; then
+            kill "$(cat /tmp/storefront.pid)" || true
+          fi
           if [ -f /tmp/dummy-payment.pid ]; then
             kill "$(cat /tmp/dummy-payment.pid)" || true
           fi
