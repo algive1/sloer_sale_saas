@@ -1,0 +1,5 @@
+services:
+  api:
+    image: ghcr.io/saleor/saleor:3.23.38
+  worker:
+    image: ghcr.io/saleor/saleor:3.23.38
