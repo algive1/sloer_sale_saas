@@ -25,15 +25,27 @@ concurrency:
 jobs:
   paper-against-pinned-saleor:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
+      SALEOR_APPS_SHA: 3601e299162023d151f8087d2334f7da1f420955
       SALEOR_API_URL: http://localhost:8000/graphql/
       NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
       HUSKY: "0"
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: storefront/pnpm-lock.yaml
 
       - name: Checkout pinned Saleor platform
         shell: bash
@@ -44,32 +56,119 @@ jobs:
           git -C /tmp/saleor-platform checkout --detach FETCH_HEAD
           test "$(git -C /tmp/saleor-platform rev-parse HEAD)" = "$SALEOR_PLATFORM_SHA"
 
+      - name: Checkout pinned official Saleor apps
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none https://github.com/saleor/apps.git /tmp/saleor-apps
+          git -C /tmp/saleor-apps fetch --depth 1 origin "$SALEOR_APPS_SHA"
+          git -C /tmp/saleor-apps checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/saleor-apps rev-parse HEAD)" = "$SALEOR_APPS_SHA"
+
       - name: Migrate Saleor 3.23.38 database
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             run --rm api python3 manage.py migrate --noinput
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            run --rm api python3 manage.py migrate --noinput
 
       - name: Seed integration catalog
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             run --rm api python3 manage.py populatedb --createsuperuser
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            run --rm api python3 manage.py populatedb --createsuperuser
 
       - name: Bootstrap US / USD channel
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             run --rm api python3 manage.py shell < "$GITHUB_WORKSPACE/infra/saleor/bootstrap_us.py"
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            run --rm api python3 manage.py shell < "$GITHUB_WORKSPACE/infra/saleor/bootstrap_us.py"
 
       - name: Start Saleor API
         shell: bash
         run: |
           set -euo pipefail
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             up -d db cache jaeger api worker
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            up -d db cache jaeger api worker
 
       - name: Wait for Saleor GraphQL
         run: bash scripts/wait-for-saleor.sh "$SALEOR_API_URL"
+
+      - name: Install official Dummy Payment App dependencies
+        run: pnpm --dir /tmp/saleor-apps install --frozen-lockfile --filter saleor-app-payment-dummy...
+
+      - name: Start official Dummy Payment App
+        shell: bash
+        env:
+          APL: file
+          FILE_APL_PATH: /tmp/dummy-payment-auth.json
+          APP_API_BASE_URL: http://host.docker.internal:3000
+          APP_IFRAME_BASE_URL: http://localhost:3000
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          set -euo pipefail
+          nohup pnpm --dir /tmp/saleor-apps --filter saleor-app-payment-dummy exec next dev \
+            -H 0.0.0.0 -p 3000 > /tmp/dummy-payment.log 2>&1 &
+          echo "$!" > /tmp/dummy-payment.pid
+
+          for attempt in $(seq 1 90); do
+            if curl -fsS \
+              -H 'Saleor-Schema-Version: 3.23' \
+              http://localhost:3000/api/manifest > /tmp/dummy-payment-manifest.json; then
+              break
+            fi
+            if [ "$attempt" -eq 90 ]; then
+              cat /tmp/dummy-payment.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("/tmp/dummy-payment-manifest.json").read_text())
+          assert manifest["id"] == "saleor.io.dummy-payment-app", manifest
+          print({"app": manifest["name"], "id": manifest["id"], "version": manifest["version"]})
+          PY
+
+      - name: Install Dummy Payment App into Saleor
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            exec -T api python3 manage.py install_app \
+            http://host.docker.internal:3000/api/manifest \
+            --activate --quiet
+
+      - name: Verify official payment app installation
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            exec -T api python3 manage.py shell -c \
+            'from saleor.app.models import App; a=App.objects.get(identifier="saleor.io.dummy-payment-app"); assert a.is_active; assert a.is_installed; assert a.webhooks.filter(is_active=True).count() >= 3; print({"identifier": a.identifier, "active": a.is_active, "installed": a.is_installed, "webhooks": a.webhooks.filter(is_active=True).count()})'
 
       - name: Verify US channel configuration
         shell: bash
@@ -93,19 +192,8 @@ jobs:
           ! grep -q '"errors"' /tmp/us-catalog.json
           grep -q '"totalCount":' /tmp/us-catalog.json
 
-      - name: Create paid US order with legacy dummy gateway
-        run: node scripts/checkout-legacy-smoke.mjs
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.1
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: storefront/.nvmrc
-          cache: pnpm
-          cache-dependency-path: storefront/pnpm-lock.yaml
+      - name: Create paid US order through Transactions API
+        run: node scripts/checkout-transactions-smoke.mjs
 
       - name: Install Paper dependencies
         run: pnpm --dir storefront install --frozen-lockfile
@@ -132,15 +220,34 @@ jobs:
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: pnpm --dir storefront build
 
-      - name: Saleor logs on failure
+      - name: Integration logs on failure
         if: failure()
         shell: bash
         run: |
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             ps || true
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             logs --tail=250 api worker db cache || true
+          if [ -f /tmp/dummy-payment.log ]; then
+            echo "===== Dummy Payment App ====="
+            tail -n 300 /tmp/dummy-payment.log || true
+          fi
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            ps || true
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            logs --tail=300 api worker db cache || true
 
-      - name: Stop Saleor
+      - name: Stop integration services
         if: always()
         shell: bash
         run: |
-          docker compose             --project-directory /tmp/saleor-platform             -f /tmp/saleor-platform/docker-compose.yml             -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml"             down -v || true
+          if [ -f /tmp/dummy-payment.pid ]; then
+            kill "$(cat /tmp/dummy-payment.pid)" || true
+          fi
+          docker compose \
+            --project-directory /tmp/saleor-platform \
+            -f /tmp/saleor-platform/docker-compose.yml \
+            -f "$GITHUB_WORKSPACE/infra/local/saleor.override.yml" \
+            down -v || true
