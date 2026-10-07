@@ -12,6 +12,9 @@ export type VercelCustomEvent = {
  */
 export function projectVercel(event: PaperCommerceEvent): VercelCustomEvent | null {
 	switch (event.name) {
+		case "product_viewed":
+			if (!event.channel) return null;
+			return { name: "view_item", props: { channel: event.channel, value: event.value } };
 		case "product_added_to_cart":
 			if (!event.channel) return null;
 			return { name: "add_to_cart", props: { channel: event.channel, value: event.value } };

@@ -1,5 +1,10 @@
 import { claimOnce } from "@/lib/analytics/claim";
-import { analyticsStorageAllowed, type AnalyticsConsentChoice } from "@/lib/analytics/consent";
+import {
+	ANALYTICS_CONSENT_EVENT,
+	adsStorageAllowed,
+	analyticsStorageAllowed,
+	type AnalyticsConsentChoice,
+} from "@/lib/analytics/consent";
 import {
 	ANALYTICS_CONSENT_COOKIE,
 	ANALYTICS_CONSENT_MAX_AGE_SECONDS,
@@ -58,6 +63,7 @@ export function setAnalyticsConsent(choice: AnalyticsConsentChoice): void {
 		persistFirstTouch();
 	}
 	applyConsentToGtag();
+	window.dispatchEvent(new CustomEvent(ANALYTICS_CONSENT_EVENT, { detail: { choice } }));
 	if (choice === "granted") {
 		applyCampaignFromSnapshot();
 		sendRedactedPageView();
@@ -102,12 +108,14 @@ export function sendGa4Event(event: Ga4Event): void {
 
 export function applyConsentToGtag(): void {
 	if (!ga4Enabled()) return;
-	const allowed = analyticsStorageAllowed(readConsentChoice());
+	const choice = readConsentChoice();
+	const analyticsAllowed = analyticsStorageAllowed(choice);
+	const adsAllowed = adsStorageAllowed(choice);
 	gtag("consent", "update", {
-		analytics_storage: allowed ? "granted" : "denied",
-		ad_storage: "denied",
-		ad_user_data: "denied",
-		ad_personalization: "denied",
+		analytics_storage: analyticsAllowed ? "granted" : "denied",
+		ad_storage: adsAllowed ? "granted" : "denied",
+		ad_user_data: adsAllowed ? "granted" : "denied",
+		ad_personalization: adsAllowed ? "granted" : "denied",
 	});
 }
 

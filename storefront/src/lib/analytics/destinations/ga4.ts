@@ -1,27 +1,45 @@
-import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
+import type { CommerceItem, PaperCommerceEvent } from "@/lib/analytics/catalog";
 
-/** Recommended tag event + params. `items[]` waits on richer catalog fields. */
 export type Ga4Event = {
 	name: string;
-	params: Record<string, string | number | boolean>;
+	params: Record<string, unknown>;
 };
 
-/**
- * Project a Paper event onto recommended tag names. Search text is never a
- * param. Contact is not a checkout-step event — skip it. Server delivery
- * is not shipped; this function is payload-only.
- */
+function gaItems(items: readonly CommerceItem[] | undefined): Array<Record<string, unknown>> | undefined {
+	if (!items?.length) return undefined;
+	return items.map((item) => ({
+		item_id: item.itemId,
+		...(item.itemName ? { item_name: item.itemName } : {}),
+		...(item.variantId ? { item_variant: item.variantId } : {}),
+		...(item.sku ? { item_category: item.sku } : {}),
+		...(typeof item.price === "number" ? { price: item.price } : {}),
+		quantity: item.quantity,
+	}));
+}
+
+function commerceParams(event: PaperCommerceEvent): Record<string, unknown> {
+	const params: Record<string, unknown> = {};
+	if ("currency" in event && event.currency) params.currency = event.currency;
+	if ("value" in event && typeof event.value === "number") params.value = event.value;
+	const items = gaItems(event.items);
+	if (items) params.items = items;
+	return params;
+}
+
 export function projectGa4(event: PaperCommerceEvent): Ga4Event | null {
 	switch (event.name) {
+		case "product_viewed":
+			if (!event.currency) return null;
+			return { name: "view_item", params: commerceParams(event) };
 		case "product_added_to_cart":
 			if (!event.currency) return null;
-			return { name: "add_to_cart", params: { currency: event.currency, value: event.value } };
+			return { name: "add_to_cart", params: commerceParams(event) };
 		case "checkout_started":
 			if (!event.currency) return null;
-			return { name: "begin_checkout", params: { currency: event.currency, value: event.value } };
+			return { name: "begin_checkout", params: commerceParams(event) };
 		case "checkout_step_viewed":
-			if (event.step === "shipping") return { name: "add_shipping_info", params: {} };
-			if (event.step === "payment") return { name: "add_payment_info", params: {} };
+			if (event.step === "shipping") return { name: "add_shipping_info", params: commerceParams(event) };
+			if (event.step === "payment") return { name: "add_payment_info", params: commerceParams(event) };
 			return null;
 		case "checkout_completed":
 			if (!event.currency || !event.transactionId) return null;
@@ -29,8 +47,7 @@ export function projectGa4(event: PaperCommerceEvent): Ga4Event | null {
 				name: "purchase",
 				params: {
 					transaction_id: event.transactionId,
-					currency: event.currency,
-					value: event.value,
+					...commerceParams(event),
 				},
 			};
 		case "search_submitted":
