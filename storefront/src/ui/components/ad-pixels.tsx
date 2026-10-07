@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import Script from "next/script";
 import { browserAdsConfigured, googleAdsId, metaPixelId, tiktokPixelId } from "@/lib/analytics/ad-platforms";
-import {
-	ANALYTICS_CONSENT_EVENT,
-	adsStorageAllowed,
-	type AnalyticsConsentChoice,
-} from "@/lib/analytics/consent";
+import { ANALYTICS_CONSENT_EVENT, adsStorageAllowed } from "@/lib/analytics/consent";
 import { readConsentChoice } from "@/lib/analytics/browser";
 import { sendAdPageView } from "@/lib/analytics/browser-ads";
 import { ga4Enabled } from "@/lib/analytics/ga4";
@@ -25,20 +21,17 @@ type AdWindow = Window & {
  * analytics consent. Purchase events are also delivered server-side where
  * configured; event ids deduplicate the browser/server copies.
  */
+function subscribeToConsent(onStoreChange: () => void): () => void {
+	window.addEventListener(ANALYTICS_CONSENT_EVENT, onStoreChange);
+	return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, onStoreChange);
+}
+
+function readAdsAllowed(): boolean {
+	return adsStorageAllowed(readConsentChoice());
+}
+
 export function AdPixels() {
-	const [allowed, setAllowed] = useState(false);
-
-	useEffect(() => {
-		const sync = () => setAllowed(adsStorageAllowed(readConsentChoice()));
-		sync();
-
-		const onConsent = (event: Event) => {
-			const choice = (event as CustomEvent<{ choice?: AnalyticsConsentChoice }>).detail?.choice;
-			setAllowed(adsStorageAllowed(choice ?? readConsentChoice()));
-		};
-		window.addEventListener(ANALYTICS_CONSENT_EVENT, onConsent);
-		return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, onConsent);
-	}, []);
+	const allowed = useSyncExternalStore(subscribeToConsent, readAdsAllowed, () => false);
 
 	useEffect(() => {
 		const adWindow = window as AdWindow;
