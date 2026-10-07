@@ -21,6 +21,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_SALEOR_API_URL
 ENV NEXT_PUBLIC_SALEOR_API_URL=${NEXT_PUBLIC_SALEOR_API_URL}
 
+# Server-side data fetching during next build must use an API address reachable
+# from the build network. This is intentionally separate from the public URL
+# baked into browser bundles.
+ARG SALEOR_INTERNAL_API_URL
+ENV SALEOR_INTERNAL_API_URL=${SALEOR_INTERNAL_API_URL}
+
 ARG NEXT_PUBLIC_STOREFRONT_URL
 ENV NEXT_PUBLIC_STOREFRONT_URL=${NEXT_PUBLIC_STOREFRONT_URL}
 
