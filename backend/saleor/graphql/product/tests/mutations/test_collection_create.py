@@ -1,0 +1,421 @@
+import os
+from unittest.mock import patch
+
+import graphene
+import pytest
+
+from .....product.error_codes import CollectionErrorCode
+from .....product.models import Collection
+from .....product.tests.utils import create_image
+from .....tests.utils import dummy_editorjs
+from ....tests.utils import (
+    assert_no_permission,
+    get_graphql_content,
+    get_graphql_content_from_response,
+    get_multipart_request_body,
+)
+
+CREATE_COLLECTION_MUTATION = """
+    mutation createCollection(
+            $name: String!, $slug: String,
+            $description: JSONString, $products: [ID!],
+            $backgroundImage: Upload, $backgroundImageAlt: String
+            $metadata: [MetadataInput!], $privateMetadata: [MetadataInput!]) {
+        collectionCreate(
+            input: {
+                name: $name,
+                slug: $slug,
+                description: $description,
+                products: $products,
+                backgroundImage: $backgroundImage,
+                backgroundImageAlt: $backgroundImageAlt
+                metadata: $metadata
+                privateMetadata: $privateMetadata
+                }) {
+            collection {
+                name
+                slug
+                description
+                products {
+                    totalCount
+                }
+                backgroundImage{
+                    alt
+                }
+                metadata {
+                    key
+                    value
+                }
+                privateMetadata {
+                    key
+                    value
+                }
+            }
+            errors {
+                field
+                message
+                code
+            }
+        }
+    }
+"""
+
+
+CREATE_COLLECTION_WITH_EXTERNAL_REFERENCE_MUTATION = """
+    mutation createCollection($name: String!, $externalReference: String) {
+        collectionCreate(
+            input: {name: $name, externalReference: $externalReference}
+        ) {
+            collection {
+                name
+                externalReference
+            }
+            errors {
+                field
+                message
+                code
+            }
+        }
+    }
+"""
+
+
+def test_create_collection_with_external_reference(
+    staff_api_client, permission_manage_products
+):
+    # given
+    name = "test-collection"
+    external_reference = "test-ext-ref"
+    variables = {"name": name, "externalReference": external_reference}
+
+    # when
+    response = staff_api_client.post_graphql(
+        CREATE_COLLECTION_WITH_EXTERNAL_REFERENCE_MUTATION,
+        variables,
+        permissions=[permission_manage_products],
+    )
+    content = get_graphql_content(response)
+
+    # then
+    data = content["data"]["collectionCreate"]
+    assert data["errors"] == []
+    assert data["collection"]["externalReference"] == external_reference
+    collection = Collection.objects.get(name=name)
+    assert collection.external_reference == external_reference
+
+
+def test_create_collection_with_non_unique_external_reference(
+    staff_api_client, collection, permission_manage_products
+):
+    # given
+    external_reference = "test-ext-ref"
+    collection.external_reference = external_reference
+    collection.save(update_fields=["external_reference"])
+
+    name = "new-collection"
+    variables = {"name": name, "externalReference": external_reference}
+
+    # when
+    response = staff_api_client.post_graphql(
+        CREATE_COLLECTION_WITH_EXTERNAL_REFERENCE_MUTATION,
+        variables,
+        permissions=[permission_manage_products],
+    )
+    content = get_graphql_content(response)
+
+    # then
+    data = content["data"]["collectionCreate"]
+    assert data["collection"] is None
+    assert Collection.objects.filter(name=name).exists() is False
+    errors = data["errors"]
+    assert len(errors) == 1
+    assert (
+        errors[0]["message"]
+        == "Collection with this External reference already exists."
+    )
+    assert errors[0]["field"] == "externalReference"
+    assert errors[0]["code"] == CollectionErrorCode.UNIQUE.name
+
+
+@patch("saleor.plugins.manager.PluginsManager.collection_updated")
+@patch("saleor.plugins.manager.PluginsManager.collection_created")
+def test_create_collection(
+    created_webhook_mock,
+    updated_webhook_mock,
+    monkeypatch,
+    staff_api_client,
+    product_list,
+    media_root,
+    permission_manage_products,
+):
+    # given
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+
+    product_ids = [
+        graphene.Node.to_global_id("Product", product.pk) for product in product_list
+    ]
+    image_file, image_name = create_image()
+    image_alt = "Alt text for an image."
+    name = "test-name"
+    slug = "test-slug"
+    description = dummy_editorjs("description", True)
+    metadata_key = "md key"
+    metadata_value = "md value"
+
+    variables = {
+        "name": name,
+        "slug": slug,
+        "description": description,
+        "products": product_ids,
+        "backgroundImage": image_name,
+        "backgroundImageAlt": image_alt,
+        "metadata": [{"key": metadata_key, "value": metadata_value}],
+        "privateMetadata": [{"key": metadata_key, "value": metadata_value}],
+    }
+    body = get_multipart_request_body(
+        CREATE_COLLECTION_MUTATION, variables, image_file, image_name
+    )
+
+    # when
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)
+    data = content["data"]["collectionCreate"]["collection"]
+
+    # then
+    assert data["name"] == name
+    assert data["slug"] == slug
+    assert data["description"] == description
+    assert data["products"]["totalCount"] == len(product_ids)
+    collection = Collection.objects.get(slug=slug)
+    assert collection.background_image.file
+    img_name, format = os.path.splitext(image_file._name)
+    file_name = collection.background_image.name
+    assert file_name != image_file._name
+    assert file_name.startswith(f"collection-backgrounds/{img_name}")
+    assert file_name.endswith(format)
+    assert data["backgroundImage"]["alt"] == image_alt
+    assert collection.metadata == {metadata_key: metadata_value}
+    assert collection.private_metadata == {metadata_key: metadata_value}
+
+    created_webhook_mock.assert_called_once()
+    updated_webhook_mock.assert_not_called()
+
+
+@patch("saleor.plugins.manager.PluginsManager.product_updated")
+def test_create_collection_trigger_product_update_webhook(
+    product_updated_mock,
+    staff_api_client,
+    product_list,
+    media_root,
+    permission_manage_products,
+):
+    query = CREATE_COLLECTION_MUTATION
+
+    product_ids = [
+        graphene.Node.to_global_id("Product", product.pk) for product in product_list
+    ]
+    name = "test-name"
+    slug = "test-slug"
+    description = dummy_editorjs("description", True)
+    variables = {
+        "name": name,
+        "slug": slug,
+        "description": description,
+        "products": product_ids,
+    }
+
+    response = staff_api_client.post_graphql(
+        query, variables, permissions=[permission_manage_products]
+    )
+    content = get_graphql_content(response)
+    data = content["data"]["collectionCreate"]["collection"]
+
+    assert data["name"] == name
+    assert data["slug"] == slug
+    assert data["description"] == description
+    assert data["products"]["totalCount"] == len(product_ids)
+    assert len(product_ids) == product_updated_mock.call_count
+
+
+def test_create_collection_without_background_image(
+    monkeypatch, staff_api_client, product_list, permission_manage_products
+):
+    query = CREATE_COLLECTION_MUTATION
+    slug = "test-slug"
+
+    variables = {"name": "test-name", "slug": slug}
+    response = staff_api_client.post_graphql(
+        query, variables, permissions=[permission_manage_products]
+    )
+    content = get_graphql_content(response)
+    data = content["data"]["collectionCreate"]
+    assert not data["errors"]
+    assert data["collection"]["slug"] == slug
+
+
+@pytest.mark.parametrize(
+    ("input_slug", "expected_slug"),
+    [
+        ("test-slug", "test-slug"),
+        (None, "test-collection"),
+        ("", "test-collection"),
+        ("わたし-わ-にっぽん-です", "わたし-わ-にっぽん-です"),
+    ],
+)
+def test_create_collection_with_given_slug(
+    staff_api_client, permission_manage_products, input_slug, expected_slug, channel_USD
+):
+    query = CREATE_COLLECTION_MUTATION
+    name = "Test collection"
+    variables = {"name": name, "slug": input_slug}
+    response = staff_api_client.post_graphql(
+        query, variables, permissions=[permission_manage_products]
+    )
+    content = get_graphql_content(response)
+    data = content["data"]["collectionCreate"]
+    assert not data["errors"]
+    assert data["collection"]["slug"] == expected_slug
+
+
+def test_create_collection_name_with_unicode(
+    staff_api_client, permission_manage_products, channel_USD
+):
+    query = CREATE_COLLECTION_MUTATION
+    name = "わたし わ にっぽん です"
+    variables = {"name": name}
+    response = staff_api_client.post_graphql(
+        query, variables, permissions=[permission_manage_products]
+    )
+    content = get_graphql_content(response)
+    data = content["data"]["collectionCreate"]
+    assert not data["errors"]
+    assert data["collection"]["name"] == name
+    assert data["collection"]["slug"] == "watasi-wa-nitupon-desu"
+
+
+def test_create_collection_file_size_exceeds_limit(
+    staff_api_client, permission_manage_products, media_root, settings
+):
+    # given
+    settings.MAX_IMAGE_FILE_SIZE = 1
+    staff_api_client.user.user_permissions.add(permission_manage_products)
+    collection_name = "Test collection"
+    image_file, image_name = create_image()
+    variables = {
+        "name": collection_name,
+        "backgroundImage": image_name,
+        "backgroundImageAlt": "Alt text",
+    }
+    body = get_multipart_request_body(
+        CREATE_COLLECTION_MUTATION, variables, image_file, image_name
+    )
+
+    # when
+    response = staff_api_client.post_multipart(body)
+    content = get_graphql_content(response)
+
+    # then
+    errors = content["data"]["collectionCreate"]["errors"]
+    assert len(errors) == 1
+    assert errors[0]["field"] == "backgroundImage"
+    assert errors[0]["code"] == CollectionErrorCode.FILE_SIZE_LIMIT_EXCEEDED.name
+    assert "File size exceeds the maximum allowed size" in errors[0]["message"]
+    assert not Collection.objects.filter(name=collection_name).exists()
+
+
+@pytest.mark.parametrize(
+    ("_case", "client_fixture", "is_allowed"),
+    [
+        ("anonymous", "api_client", False),
+        ("customer", "user_api_client", False),
+        ("staff_without_permission", "staff_api_client", False),
+        ("staff_with_permission", "staff_api_client", True),
+        ("app_without_permission", "app_api_client", False),
+        ("app_with_permission", "app_api_client", True),
+    ],
+)
+def test_external_reference_authorization(
+    _case,
+    client_fixture,
+    is_allowed,
+    request,
+    collection,
+    permission_manage_products,
+    mocker,
+):
+    # given
+    client = request.getfixturevalue(client_fixture)
+    collection.external_reference = "existing-reference"
+    collection.save(update_fields=("external_reference",))
+    original_name = collection.name
+    original_reference = collection.external_reference
+    name = "Changed collection"
+    webhook = mocker.patch("saleor.plugins.manager.PluginsManager.collection_created")
+    task = mocker.patch("saleor.product.tasks.collection_product_updated_task.delay")
+    variables = {"name": name, "externalReference": "new-reference"}
+
+    # when
+    response = client.post_graphql(
+        CREATE_COLLECTION_WITH_EXTERNAL_REFERENCE_MUTATION,
+        variables,
+        permissions=[permission_manage_products] if is_allowed else [],
+        check_no_permissions=False,
+    )
+
+    # then
+    if is_allowed:
+        data = get_graphql_content(response)["data"]["collectionCreate"]
+        assert data["errors"] == []
+        created = Collection.objects.get(external_reference="new-reference")
+        assert created.name == name
+        assert data["collection"] == {
+            "name": name,
+            "externalReference": created.external_reference,
+        }
+        webhook.assert_called_once()
+    else:
+        assert_no_permission(response)
+        content = get_graphql_content_from_response(response)
+        assert content["data"] == {"collectionCreate": None}
+        assert len(content["errors"]) == 1
+        assert content["errors"][0]["path"] == ["collectionCreate"]
+        assert content["errors"][0]["message"] == (
+            "To access this path, you need one of the following permissions: MANAGE_PRODUCTS"
+        )
+        collection.refresh_from_db(fields=("name", "external_reference"))
+        assert collection.name == original_name
+        assert collection.external_reference == original_reference
+        assert Collection.objects.filter(name=name).exists() is False
+        webhook.assert_not_called()
+        task.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("_case", "reference_input"),
+    [("omitted", {}), ("null", {"externalReference": None})],
+)
+def test_without_external_reference(
+    _case,
+    reference_input,
+    staff_api_client,
+    collection,
+    permission_manage_products,
+):
+    # given
+    assert collection.external_reference is None
+    name = "Collection without reference"
+    variables = {"name": name, **reference_input}
+
+    # when
+    response = staff_api_client.post_graphql(
+        CREATE_COLLECTION_WITH_EXTERNAL_REFERENCE_MUTATION,
+        variables,
+        permissions=[permission_manage_products],
+    )
+
+    # then
+    data = get_graphql_content(response)["data"]["collectionCreate"]
+    assert data["errors"] == []
+    assert data["collection"] == {"name": name, "externalReference": None}
+    created = Collection.objects.get(name=name)
+    assert created.external_reference is None

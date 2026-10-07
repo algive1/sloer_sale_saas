@@ -6,8 +6,8 @@ import { invariant } from "ts-invariant";
 import { ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE } from "./constants";
 import { createCookieTokenStorage } from "./cookie-token-storage";
 
-const saleorApiUrl = process.env.NEXT_PUBLIC_SALEOR_API_URL;
-invariant(saleorApiUrl, "Missing NEXT_PUBLIC_SALEOR_API_URL env variable");
+const saleorApiUrl = process.env.SALEOR_INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_SALEOR_API_URL;
+invariant(saleorApiUrl, "Missing SALEOR_INTERNAL_API_URL / NEXT_PUBLIC_SALEOR_API_URL env variable");
 
 /**
  * Server-side cookie storage for auth tokens, with an in-memory cache layer so

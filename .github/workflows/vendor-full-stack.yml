@@ -1,0 +1,44 @@
+name: Vendor full-stack sources
+
+on:
+  push:
+    branches:
+      - chore/full-stack-selfhost
+    paths:
+      - ".github/workflows/vendor-full-stack.yml"
+      - "scripts/vendor-upstreams.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vendor-full-stack-sources
+  cancel-in-progress: true
+
+jobs:
+  vendor:
+    if: "!contains(github.event.head_commit.message, '[vendor-skip]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/full-stack-selfhost
+          fetch-depth: 0
+
+      - name: Vendor pinned Saleor sources
+        run: bash scripts/vendor-upstreams.sh
+
+      - name: Commit vendored source
+        run: |
+          git add backend dashboard
+          if git diff --cached --quiet; then
+            echo "No vendor changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "vendor: update Saleor Core 3.23.40 and Dashboard 3.23.39 [vendor-skip]"
+          git fetch origin chore/full-stack-selfhost
+          git rebase origin/chore/full-stack-selfhost
+          git push origin HEAD:chore/full-stack-selfhost

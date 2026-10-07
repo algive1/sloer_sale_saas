@@ -15,8 +15,8 @@ jobs:
       - name: Reject committed environment secrets
         shell: bash
         run: |
-          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.example$'; then
-            echo "Tracked environment files detected. Commit only documented *.example templates."
+          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(\.example|\.template)$'; then
+            echo "Tracked environment files detected. Commit only documented *.example / *.template environment templates."
             exit 1
           fi
 

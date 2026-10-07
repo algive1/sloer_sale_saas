@@ -1,0 +1,41 @@
+x-saleor-production-environment: &saleor-production-environment
+  DEBUG: "False"
+  ALLOWED_HOSTS: ${SALEOR_ALLOWED_HOSTS:?set SALEOR_ALLOWED_HOSTS in .env}
+  ALLOWED_CLIENT_HOSTS: ${SALEOR_ALLOWED_CLIENT_HOSTS:?set SALEOR_ALLOWED_CLIENT_HOSTS in .env}
+  PUBLIC_URL: ${SALEOR_PUBLIC_URL:?set SALEOR_PUBLIC_URL in .env}
+  RSA_PRIVATE_KEY: ${SALEOR_RSA_PRIVATE_KEY:?set SALEOR_RSA_PRIVATE_KEY or SALEOR_RSA_PRIVATE_KEY_FILE}
+  EMAIL_URL: ${SALEOR_EMAIL_URL:?set a production SALEOR_EMAIL_URL in .env}
+  HTTP_IP_FILTER_ENABLED: "True"
+
+services:
+  db:
+    ports: []
+
+  cache:
+    ports: []
+
+  mailpit:
+    profiles: ["local-only"]
+
+  migrate:
+    environment: *saleor-production-environment
+
+  api:
+    restart: always
+    environment: *saleor-production-environment
+
+  worker:
+    restart: always
+    environment: *saleor-production-environment
+
+  dashboard:
+    restart: always
+
+  storefront:
+    restart: always
+    build:
+      args:
+        NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "false"
+    environment:
+      ALLOW_DUMMY_PAYMENT: "false"
+      NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "false"
