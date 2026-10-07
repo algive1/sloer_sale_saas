@@ -3,7 +3,6 @@ import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { storeFirstPartyCommerceEvent } from "@/lib/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 
-export const runtime = "nodejs";
 
 const ALLOWED_EVENTS = new Set([
 	"page_viewed",
