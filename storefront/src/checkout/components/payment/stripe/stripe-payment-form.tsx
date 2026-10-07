@@ -22,6 +22,9 @@ import { PaymentTrustSignals } from "@/checkout/components/payment/payment-trust
 import { type StripeBillingContext } from "./stripe-billing-context";
 import { useCheckoutPaymentMessages } from "@/checkout/hooks/use-checkout-payment-messages";
 import { useCheckoutAvailability } from "@/checkout/providers/checkout-availability";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 
 export type { StripeBillingContext } from "./stripe-billing-context";
 
@@ -71,6 +74,15 @@ export const StripePaymentForm: FC<StripePaymentFormProps> = ({
 			return;
 		}
 
+		emitCommerceEvent({
+			name: "payment_method_selected",
+			eventId: createCommerceEventId("payment_method", `${checkout.id}:${paymentElementChangeTypeRef.current ?? "stripe"}`),
+			channel: checkout.channel.slug,
+			method: paymentElementChangeTypeRef.current ?? "stripe",
+			value: checkout.totalPrice?.gross?.amount ?? 0,
+			currency: checkout.totalPrice?.gross?.currency ?? "",
+			items: commerceItemsFromLines(checkout.lines),
+		});
 		setIsLoading(true);
 		onPaymentActivityChange?.(true);
 		let orderPlaced = false;
@@ -90,6 +102,16 @@ export const StripePaymentForm: FC<StripePaymentFormProps> = ({
 		});
 
 		if (!result.ok) {
+			emitCommerceEvent({
+				name: "payment_failed",
+				eventId: createCommerceEventId("payment_failed"),
+				channel: checkout.channel.slug,
+				provider: "stripe",
+				code: result.kind,
+				value: checkout.totalPrice?.gross?.amount ?? 0,
+				currency: checkout.totalPrice?.gross?.currency ?? "",
+				items: commerceItemsFromLines(checkout.lines),
+			});
 			if (result.kind === "billing") {
 				onBillingErrors(result.errors, result.focusField);
 			} else if (result.kind === "price_change") {

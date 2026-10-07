@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,6 +19,8 @@ import { CART_THUMBNAIL_IMAGE_SIZES, PRODUCT_IMAGE_QUALITY } from "@/lib/images"
 import { buildCheckoutPath } from "@paper/session-bridge";
 import type { CartContent, StorefrontPolicies } from "@/lib/content";
 import { formatContentLabel } from "@/lib/content/format-label";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
 
 interface CartLine {
 	id: string;
@@ -107,6 +109,7 @@ function getVariantDetails(variant: CartLine["variant"]): VariantAttribute[] {
 }
 
 interface CartDrawerProps {
+	channel: string;
 	checkoutId: string | null;
 	lines: CartLine[];
 	totalPrice: {
@@ -123,6 +126,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({
+	channel,
 	checkoutId,
 	lines,
 	totalPrice,
@@ -134,6 +138,7 @@ export function CartDrawer({
 }: CartDrawerProps) {
 	const { isOpen, closeCart } = useCart();
 	const [isCartBusy, setIsCartBusy] = useState(false);
+	const wasOpen = useRef(false);
 	// Functional drawer chrome (totals, buttons, a11y labels) — code-owned i18n (ADR 0002).
 	const t = useTranslations("cart.drawer");
 
@@ -142,9 +147,29 @@ export function CartDrawer({
 	const currency = totalPrice?.gross.currency ?? localeConfig.fallbackCurrency;
 	const intlLocale = resolveLocaleFromSlug(localeSlug).bcp47;
 
-	const runCartMutation = (mutation: () => Promise<void>) => {
+	useEffect(() => {
+		if (isOpen && !wasOpen.current && lines.length > 0) {
+			emitCommerceEvent({
+				name: "cart_viewed",
+				eventId: createCommerceEventId("cart_view"),
+				channel,
+				value: subtotal,
+				currency,
+				items: lines.map((line) => ({
+					itemId: line.variant.id,
+					variantId: line.variant.id,
+					itemName: line.variant.product.name,
+					price: line.totalPrice.gross.amount / Math.max(1, line.quantity),
+					quantity: line.quantity,
+				})),
+			});
+		}
+		wasOpen.current = isOpen;
+	}, [channel, currency, isOpen, lines, subtotal]);
+
+	const runCartMutation = (mutation: () => Promise<void>, onSuccess?: () => void) => {
 		setIsCartBusy(true);
-		void mutation().finally(() => {
+		void mutation().then(() => onSuccess?.()).finally(() => {
 			// This tab re-renders via `refresh()` inside the action; other tabs
 			// sync their cart chrome on next focus.
 			bumpChromeVersion();
@@ -154,12 +179,36 @@ export function CartDrawer({
 
 	const handleRemove = (lineId: string) => {
 		if (!checkoutId) return;
-		runCartMutation(() => deleteCartLine(checkoutId, lineId));
+		const line = lines.find((item) => item.id === lineId);
+		runCartMutation(() => deleteCartLine(checkoutId, lineId), () => {
+			if (!line) return;
+			emitCommerceEvent({
+				name: "cart_item_removed",
+				eventId: createCommerceEventId("cart_remove"),
+				channel,
+				value: line.totalPrice.gross.amount,
+				currency: line.totalPrice.gross.currency,
+				items: [{ itemId: line.variant.id, variantId: line.variant.id, itemName: line.variant.product.name, price: line.totalPrice.gross.amount / Math.max(1, line.quantity), quantity: line.quantity }],
+			});
+		});
 	};
 
 	const handleUpdateQuantity = (lineId: string, newQuantity: number) => {
 		if (!checkoutId || newQuantity < 1) return;
-		runCartMutation(() => updateCartLineQuantity(checkoutId, lineId, newQuantity));
+		const line = lines.find((item) => item.id === lineId);
+		runCartMutation(() => updateCartLineQuantity(checkoutId, lineId, newQuantity), () => {
+			if (!line) return;
+			emitCommerceEvent({
+				name: "cart_quantity_changed",
+				eventId: createCommerceEventId("cart_quantity"),
+				channel,
+				value: (line.totalPrice.gross.amount / Math.max(1, line.quantity)) * newQuantity,
+				currency: line.totalPrice.gross.currency,
+				previousQuantity: line.quantity,
+				newQuantity,
+				items: [{ itemId: line.variant.id, variantId: line.variant.id, itemName: line.variant.product.name, price: line.totalPrice.gross.amount / Math.max(1, line.quantity), quantity: newQuantity }],
+			});
+		});
 	};
 
 	const checkoutHref = checkoutId

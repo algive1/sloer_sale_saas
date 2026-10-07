@@ -16,6 +16,9 @@ import { executeStripeCheckoutPayment } from "./execute-stripe-checkout-payment"
 import { type StripeBillingContext } from "./stripe-billing-context";
 import { useCheckoutPaymentMessages } from "@/checkout/hooks/use-checkout-payment-messages";
 import { useCheckoutAvailability } from "@/checkout/providers/checkout-availability";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 
 const expressCheckoutOptions: StripeExpressCheckoutElementOptions = {
 	buttonType: {
@@ -66,6 +69,16 @@ export const StripeExpressCheckout: FC<StripeExpressCheckoutProps> = ({
 	const handleConfirm = useCallback(
 		async (event: StripeExpressCheckoutElementConfirmEvent) => {
 			onError("");
+			emitCommerceEvent({
+				name: "payment_method_selected",
+				eventId: createCommerceEventId("payment_method", `${checkout.id}:${event.expressPaymentType}`),
+				channel: checkout.channel.slug,
+				method: "stripe",
+				wallet: event.expressPaymentType,
+				value: checkout.totalPrice?.gross?.amount ?? 0,
+				currency: checkout.totalPrice?.gross?.currency ?? "",
+				items: commerceItemsFromLines(checkout.lines),
+			});
 			onPaymentActivityChange?.(true);
 
 			if (!stripe || !elements) {
@@ -89,6 +102,16 @@ export const StripeExpressCheckout: FC<StripeExpressCheckoutProps> = ({
 			});
 
 			if (!result.ok) {
+				emitCommerceEvent({
+					name: "payment_failed",
+					eventId: createCommerceEventId("payment_failed"),
+					channel: checkout.channel.slug,
+					provider: "stripe",
+					code: result.kind,
+					value: checkout.totalPrice?.gross?.amount ?? 0,
+					currency: checkout.totalPrice?.gross?.currency ?? "",
+					items: commerceItemsFromLines(checkout.lines),
+				});
 				clearPaymentCompleting();
 				onPaymentActivityChange?.(false);
 
