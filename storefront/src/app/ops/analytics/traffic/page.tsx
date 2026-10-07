@@ -95,6 +95,7 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 					</p>
 				</div>
 				<CountryTrendChart
+					key={`${range.from.toISOString()}:${range.to.toISOString()}:${topCountries.join(",")}`}
 					buckets={report.trend.map((point) => point.bucket)}
 					rows={report.countryTrend}
 					countries={topCountries}
