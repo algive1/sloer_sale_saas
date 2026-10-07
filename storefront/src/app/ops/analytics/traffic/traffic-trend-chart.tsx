@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 export type TrafficTrendPoint = {
 	bucket: string;
@@ -91,12 +91,12 @@ export function TrafficTrendChart({
 		return Math.round(ratio * (points.length - 1));
 	}
 
-	function handlePointerMove(event: React.PointerEvent<HTMLDivElement>) {
+	function handlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
 		if (pinnedIndex !== null) return;
 		setHoverIndex(nearestIndex(event.clientX));
 	}
 
-	function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
+	function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
 		const index = nearestIndex(event.clientX);
 		if (index === null) return;
 		setPinnedIndex((current) => (current === index ? null : index));
