@@ -2,6 +2,7 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 import { readTrafficReport, type TrafficBucket } from "@/lib/analytics/traffic-report";
+import { CountryTrendChart } from "./country-trend-chart";
 import { TrafficTrendChart } from "./traffic-trend-chart";
 
 type SearchParams = Promise<{
@@ -28,6 +29,10 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 	const range = resolveRange(query);
 	const report = await readTrafficReport(range);
 	const types = new Map(report.byType.map((row) => [row.trafficType, row.sessions]));
+	const topCountries = report.countries
+		.filter((row) => row.countryCode !== "UNKNOWN")
+		.slice(0, 5)
+		.map((row) => row.countryCode);
 
 	return (
 		<main className="mx-auto max-w-7xl px-6 py-10">
@@ -80,6 +85,21 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 					</p>
 				</div>
 				<TrafficTrendChart points={report.trend} bucket={range.bucket} />
+			</section>
+
+			<section className="mt-8 rounded-xl border border-border bg-card p-6">
+				<div>
+					<h2 className="text-lg font-semibold">Country traffic trend</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						Compare the highest-traffic countries over the selected period.
+					</p>
+				</div>
+				<CountryTrendChart
+					buckets={report.trend.map((point) => point.bucket)}
+					rows={report.countryTrend}
+					countries={topCountries}
+					bucket={range.bucket}
+				/>
 			</section>
 
 			<section className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -160,8 +180,11 @@ function resolveRange(query: { range?: string; from?: string; to?: string }): { 
 		const inclusiveTo = parseDate(query.to);
 		if (from && inclusiveTo && from <= inclusiveTo) {
 			const to = new Date(inclusiveTo.getTime() + 86_400_000);
-			const bucket: TrafficBucket = to.getTime() - from.getTime() <= 2 * 86_400_000 ? "hour" : "day";
-			return { range: "custom", from, to, bucket };
+			const duration = to.getTime() - from.getTime();
+			if (duration <= 366 * 86_400_000) {
+				const bucket: TrafficBucket = duration <= 2 * 86_400_000 ? "hour" : "day";
+				return { range: "custom", from, to, bucket };
+			}
 		}
 	}
 	const days = query.range === "7d" ? 7 : 30;
