@@ -30,12 +30,6 @@ export const LOCALE_DEFINITIONS = {
 		htmlLang: "en",
 		ogLocale: "en_US",
 	},
-	pl: {
-		bcp47: "pl-PL",
-		graphqlLanguageCode: "PL",
-		htmlLang: "pl",
-		ogLocale: "pl_PL",
-	},
 	de: {
 		bcp47: "de-DE",
 		graphqlLanguageCode: "DE",
@@ -47,6 +41,60 @@ export const LOCALE_DEFINITIONS = {
 		graphqlLanguageCode: "FR",
 		htmlLang: "fr",
 		ogLocale: "fr_FR",
+	},
+	nl: {
+		bcp47: "nl-NL",
+		graphqlLanguageCode: "NL",
+		htmlLang: "nl",
+		ogLocale: "nl_NL",
+	},
+	da: {
+		bcp47: "da-DK",
+		graphqlLanguageCode: "DA",
+		htmlLang: "da",
+		ogLocale: "da_DK",
+	},
+	sv: {
+		bcp47: "sv-SE",
+		graphqlLanguageCode: "SV",
+		htmlLang: "sv",
+		ogLocale: "sv_SE",
+	},
+	es: {
+		bcp47: "es-ES",
+		graphqlLanguageCode: "ES",
+		htmlLang: "es",
+		ogLocale: "es_ES",
+	},
+	it: {
+		bcp47: "it-IT",
+		graphqlLanguageCode: "IT",
+		htmlLang: "it",
+		ogLocale: "it_IT",
+	},
+	pl: {
+		bcp47: "pl-PL",
+		graphqlLanguageCode: "PL",
+		htmlLang: "pl",
+		ogLocale: "pl_PL",
+	},
+	pt: {
+		bcp47: "pt-PT",
+		graphqlLanguageCode: "PT",
+		htmlLang: "pt",
+		ogLocale: "pt_PT",
+	},
+	cs: {
+		bcp47: "cs-CZ",
+		graphqlLanguageCode: "CS",
+		htmlLang: "cs",
+		ogLocale: "cs_CZ",
+	},
+	ja: {
+		bcp47: "ja-JP",
+		graphqlLanguageCode: "JA",
+		htmlLang: "ja",
+		ogLocale: "ja_JP",
 	},
 	fi: {
 		bcp47: "fi-FI",
@@ -61,12 +109,6 @@ export const LOCALE_DEFINITIONS = {
 		graphqlLanguageCode: "NB",
 		htmlLang: "nb",
 		ogLocale: "nb_NO",
-	},
-	ja: {
-		bcp47: "ja-JP",
-		graphqlLanguageCode: "JA",
-		htmlLang: "ja",
-		ogLocale: "ja_JP",
 	},
 	ko: {
 		bcp47: "ko-KR",
