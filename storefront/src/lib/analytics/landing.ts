@@ -87,14 +87,13 @@ export function parseLandingSnapshot(raw: string): LandingSnapshot | null {
 		landingPath: record.landingPath,
 	};
 	for (const [, field] of UTM_FIELDS) {
-		const value = sanitizeToken(typeof record[field] === "string" ? record[field] : null, MAX_UTM_CHARS);
+		const rawValue = record[field];
+		const value = sanitizeToken(typeof rawValue === "string" ? rawValue : null, MAX_UTM_CHARS);
 		if (value) snapshot[field] = value;
 	}
 	for (const [, field] of CLICK_FIELDS) {
-		const value = sanitizeToken(
-			typeof record[field] === "string" ? record[field] : null,
-			MAX_CLICK_ID_CHARS,
-		);
+		const rawValue = record[field];
+		const value = sanitizeToken(typeof rawValue === "string" ? rawValue : null, MAX_CLICK_ID_CHARS);
 		if (value) snapshot[field] = value;
 	}
 	return snapshot;
