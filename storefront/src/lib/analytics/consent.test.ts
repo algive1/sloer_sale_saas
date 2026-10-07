@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { analyticsConsentMode, analyticsStorageAllowed, resolveOriginConsent } from "./consent";
+import { adsStorageAllowed, analyticsConsentMode, analyticsStorageAllowed, resolveOriginConsent } from "./consent";
 
 const ENV_KEY = "NEXT_PUBLIC_ANALYTICS_CONSENT_MODE";
 let saved: string | undefined;
@@ -42,6 +42,14 @@ describe("analyticsStorageAllowed", () => {
 		expect(analyticsStorageAllowed(null, "implied")).toBe(true);
 		expect(analyticsStorageAllowed("granted", "implied")).toBe(true);
 		expect(analyticsStorageAllowed("denied", "implied")).toBe(false);
+	});
+});
+
+describe("adsStorageAllowed", () => {
+	it("requires an explicit grant even when analytics consent is implied", () => {
+		expect(adsStorageAllowed(null)).toBe(false);
+		expect(adsStorageAllowed("denied")).toBe(false);
+		expect(adsStorageAllowed("granted")).toBe(true);
 	});
 });
 
