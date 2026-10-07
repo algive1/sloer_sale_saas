@@ -1,4 +1,4 @@
-import { getDefaultLocaleSlug, getStorefrontLocaleSlugs } from "@/config/locale";
+import { getDefaultLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { fetchGoogleMerchantProducts } from "@/lib/merchant/google-feed-source";
@@ -44,7 +44,7 @@ export async function GET(request: Request): Promise<Response> {
 	const fallbackLocale = pairedLocales?.[0] || getDefaultLocaleSlug();
 	const locale = requestedLocale || fallbackLocale;
 
-	if (!allowedLocales.includes(locale as never) || !isAllowedLocaleChannelPair(locale, channel)) {
+	if (!isStorefrontLocaleSlug(locale) || !isAllowedLocaleChannelPair(locale, channel)) {
 		return textResponse("Locale is not enabled for this storefront channel.", 400);
 	}
 
