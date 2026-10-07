@@ -50,7 +50,7 @@ export function AnalyticsConsentBanner() {
 					ads. You can accept them or continue with essential cookies only.
 				</p>
 				<div className="flex shrink-0 gap-2">
-					<Button type="button" variant="outline" onClick={() => choose("denied")}>
+					<Button type="button" variant="outline-solid" onClick={() => choose("denied")}>
 						Essential only
 					</Button>
 					<Button type="button" onClick={() => choose("granted")}>
