@@ -5,7 +5,6 @@ import { Heart } from "lucide-react";
 import { emitCommerceEvent } from "@/lib/analytics/emit.client";
 import { createCommerceEventId } from "@/lib/analytics/event-id";
 import {
-	readWishlist,
 	setWishlistItem,
 	subscribeWishlist,
 	syncWishlistFromServer,
