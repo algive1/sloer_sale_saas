@@ -19,9 +19,10 @@ let schemaPromise: Promise<void> | null = null;
 export type AnalyticsSummary = {
 	totalEvents: number;
 	sessions: number;
-	revenue: number;
+	purchases: number;
+	revenueByCurrency: Array<{ currency: string; value: number }>;
 	funnel: Array<{ name: string; count: number }>;
-	sources: Array<{ source: string; count: number; revenue: number }>;
+	sources: Array<{ source: string; currency: string; sessions: number; purchases: number; revenue: number }>;
 	recent: Array<{
 		occurredAt: string;
 		name: string;
@@ -89,17 +90,28 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 	const safeDays = Math.max(1, Math.min(days, 365));
 	const since = new Date(Date.now() - safeDays * 86_400_000).toISOString();
 
-	const [totals, funnel, sources, recent] = await libsqlPipeline([
+	const [totals, revenue, funnel, sources, recent] = await libsqlPipeline([
 		{
 			sql: `SELECT COUNT(*) AS total_events,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
-				COALESCE(SUM(CASE WHEN event_name = 'checkout_completed' THEN value ELSE 0 END), 0) AS revenue
+				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases
 				FROM analytics_events WHERE occurred_at >= ?`,
 			args: [since],
 			wantRows: true,
 		},
 		{
-			sql: `SELECT event_name AS name, COUNT(*) AS count
+			sql: `SELECT COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
+				COALESCE(SUM(value), 0) AS value
+				FROM analytics_events
+				WHERE occurred_at >= ? AND event_name = 'checkout_completed'
+				GROUP BY COALESCE(NULLIF(currency, ''), 'UNKNOWN')
+				ORDER BY value DESC`,
+			args: [since],
+			wantRows: true,
+		},
+		{
+			sql: `SELECT event_name AS name,
+				COUNT(DISTINCT COALESCE(session_id, event_id)) AS count
 				FROM analytics_events
 				WHERE occurred_at >= ? AND event_name IN
 				('product_viewed','wishlist_added','product_added_to_cart','cart_viewed','checkout_started','payment_method_selected','checkout_completed')
@@ -108,11 +120,14 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 			wantRows: true,
 		},
 		{
-			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source, COUNT(*) AS count,
+			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source,
+				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
+				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
+				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases,
 				COALESCE(SUM(CASE WHEN event_name = 'checkout_completed' THEN value ELSE 0 END), 0) AS revenue
 				FROM analytics_events WHERE occurred_at >= ?
-				GROUP BY COALESCE(NULLIF(source, ''), 'direct')
-				ORDER BY revenue DESC, count DESC LIMIT 12`,
+				GROUP BY COALESCE(NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')
+				ORDER BY revenue DESC, sessions DESC LIMIT 20`,
 			args: [since],
 			wantRows: true,
 		},
@@ -127,17 +142,24 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 	]);
 
 	const totalRow = hranaRowsToObjects(totals)[0] ?? {};
+	const revenueRows = hranaRowsToObjects(revenue);
 	const funnelRows = hranaRowsToObjects(funnel);
 	const sourceRows = hranaRowsToObjects(sources);
 	const recentRows = hranaRowsToObjects(recent);
 	return {
 		totalEvents: Number(totalRow.total_events ?? 0),
 		sessions: Number(totalRow.sessions ?? 0),
-		revenue: Number(totalRow.revenue ?? 0),
+		purchases: Number(totalRow.purchases ?? 0),
+		revenueByCurrency: revenueRows.map((row) => ({
+			currency: String(row.currency ?? "UNKNOWN"),
+			value: Number(row.value ?? 0),
+		})),
 		funnel: funnelRows.map((row) => ({ name: String(row.name ?? ""), count: Number(row.count ?? 0) })),
 		sources: sourceRows.map((row) => ({
 			source: String(row.source ?? "direct"),
-			count: Number(row.count ?? 0),
+			currency: String(row.currency ?? "UNKNOWN"),
+			sessions: Number(row.sessions ?? 0),
+			purchases: Number(row.purchases ?? 0),
 			revenue: Number(row.revenue ?? 0),
 		})),
 		recent: recentRows.map((row) => ({
