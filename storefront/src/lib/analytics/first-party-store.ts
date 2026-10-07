@@ -20,9 +20,16 @@ export type AnalyticsSummary = {
 	totalEvents: number;
 	sessions: number;
 	purchases: number;
+	paymentFailures: number;
+	abandonedCheckouts: number;
 	revenueByCurrency: Array<{ currency: string; value: number }>;
 	funnel: Array<{ name: string; count: number }>;
-	sources: Array<{ source: string; currency: string; sessions: number; purchases: number; revenue: number }>;
+	sources: Array<{
+		source: string;
+		sessions: number;
+		purchases: number;
+		revenueByCurrency: Array<{ currency: string; value: number }>;
+	}>;
 	recent: Array<{
 		occurredAt: string;
 		name: string;
@@ -120,12 +127,14 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 	await ensureSchema();
 	const safeDays = Math.max(1, Math.min(days, 365));
 	const since = new Date(Date.now() - safeDays * 86_400_000).toISOString();
+	const abandonmentCutoff = new Date(Date.now() - 60 * 60 * 1_000).toISOString();
 
-	const [totals, revenue, funnel, sources, recent] = await libsqlPipeline([
+	const [totals, revenue, funnel, sourceStats, sourceRevenue, abandoned, recent] = await libsqlPipeline([
 		{
 			sql: `SELECT COUNT(*) AS total_events,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
-				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases
+				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases,
+				SUM(CASE WHEN event_name = 'payment_failed' THEN 1 ELSE 0 END) AS payment_failures
 				FROM analytics_events WHERE occurred_at >= ?`,
 			args: [since],
 			wantRows: true,
@@ -148,24 +157,44 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS count
 				FROM analytics_events
 				WHERE occurred_at >= ? AND event_name IN
-				('product_viewed','wishlist_added','product_added_to_cart','cart_viewed','checkout_started','payment_method_selected','checkout_completed')
+				('page_viewed','product_viewed','wishlist_added','product_added_to_cart','cart_viewed','checkout_started','payment_method_selected','checkout_completed')
 				GROUP BY event_name`,
 			args: [since],
 			wantRows: true,
 		},
 		{
 			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source,
-				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
-				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases,
+				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases
+				FROM analytics_events WHERE occurred_at >= ?
+				GROUP BY COALESCE(NULLIF(source, ''), 'direct')
+				ORDER BY sessions DESC LIMIT 20`,
+			args: [since],
+			wantRows: true,
+		},
+		{
+			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source,
+				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
 				COALESCE(SUM(CASE
 					WHEN event_name = 'checkout_completed' THEN value
 					WHEN event_name = 'refund_completed' THEN -value
 					ELSE 0 END), 0) AS revenue
-				FROM analytics_events WHERE occurred_at >= ?
-				GROUP BY COALESCE(NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')
-				ORDER BY revenue DESC, sessions DESC LIMIT 20`,
+				FROM analytics_events
+				WHERE occurred_at >= ? AND event_name IN ('checkout_completed', 'refund_completed')
+				GROUP BY COALESCE(NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')`,
 			args: [since],
+			wantRows: true,
+		},
+		{
+			sql: `SELECT COUNT(*) AS abandoned FROM (
+				SELECT session_id FROM analytics_events
+				WHERE occurred_at >= ? AND session_id IS NOT NULL
+				GROUP BY session_id
+				HAVING MAX(CASE WHEN event_name = 'checkout_started' THEN occurred_at ELSE NULL END) IS NOT NULL
+					AND MAX(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) = 0
+					AND MAX(CASE WHEN event_name = 'checkout_started' THEN occurred_at ELSE '' END) < ?
+			)`,
+			args: [since, abandonmentCutoff],
 			wantRows: true,
 		},
 		{
@@ -181,24 +210,39 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 	const totalRow = hranaRowsToObjects(totals)[0] ?? {};
 	const revenueRows = hranaRowsToObjects(revenue);
 	const funnelRows = hranaRowsToObjects(funnel);
-	const sourceRows = hranaRowsToObjects(sources);
+	const sourceStatRows = hranaRowsToObjects(sourceStats);
+	const sourceRevenueRows = hranaRowsToObjects(sourceRevenue);
+	const abandonedRow = hranaRowsToObjects(abandoned)[0] ?? {};
 	const recentRows = hranaRowsToObjects(recent);
+
+	const revenueBySource = new Map<string, Array<{ currency: string; value: number }>>();
+	for (const row of sourceRevenueRows) {
+		const source = String(row.source ?? "direct");
+		const list = revenueBySource.get(source) ?? [];
+		list.push({ currency: String(row.currency ?? "UNKNOWN"), value: Number(row.revenue ?? 0) });
+		revenueBySource.set(source, list);
+	}
+
 	return {
 		totalEvents: Number(totalRow.total_events ?? 0),
 		sessions: Number(totalRow.sessions ?? 0),
 		purchases: Number(totalRow.purchases ?? 0),
+		paymentFailures: Number(totalRow.payment_failures ?? 0),
+		abandonedCheckouts: Number(abandonedRow.abandoned ?? 0),
 		revenueByCurrency: revenueRows.map((row) => ({
 			currency: String(row.currency ?? "UNKNOWN"),
 			value: Number(row.value ?? 0),
 		})),
 		funnel: funnelRows.map((row) => ({ name: String(row.name ?? ""), count: Number(row.count ?? 0) })),
-		sources: sourceRows.map((row) => ({
-			source: String(row.source ?? "direct"),
-			currency: String(row.currency ?? "UNKNOWN"),
-			sessions: Number(row.sessions ?? 0),
-			purchases: Number(row.purchases ?? 0),
-			revenue: Number(row.revenue ?? 0),
-		})),
+		sources: sourceStatRows.map((row) => {
+			const source = String(row.source ?? "direct");
+			return {
+				source,
+				sessions: Number(row.sessions ?? 0),
+				purchases: Number(row.purchases ?? 0),
+				revenueByCurrency: revenueBySource.get(source) ?? [],
+			};
+		}),
 		recent: recentRows.map((row) => ({
 			occurredAt: String(row.occurred_at ?? ""),
 			name: String(row.event_name ?? ""),
