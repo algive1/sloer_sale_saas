@@ -16,7 +16,7 @@ jobs:
         shell: bash
         run: |
           if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.example$'; then
-            echo "Tracked environment files detected. Commit only documented *.example templates."
+            echo "Tracked environment files detected. Commit only documented *.example / *.template environment templates."
             exit 1
           fi
 
