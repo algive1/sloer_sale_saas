@@ -15,6 +15,51 @@ type CapturedCommerceEvent = {
 	[key: string]: unknown;
 };
 
+async function expectOfficialDummyGateway(checkoutId: string) {
+	const response = await fetch(saleorApiUrl, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({
+			query: `
+				query BrowserCheckoutPaymentGateways($id: ID!) {
+					checkout(id: $id) {
+						availablePaymentGateways {
+							id
+							name
+						}
+					}
+			`,
+			variables: { id: checkoutId },
+		}),
+	});
+
+	if (!response.ok) {
+		throw new Error(`Saleor payment-gateway request failed: ${response.status} ${await response.text()}`);
+	}
+
+	const payload = (await response.json()) as {
+		errors?: Array<{ message?: string }>;
+		data?: {
+			checkout?: {
+				availablePaymentGateways?: Array<{ id?: string | null; name?: string | null }> | null;
+			} | null;
+		};
+	};
+
+	if (payload.errors?.length) {
+		throw new Error(`Saleor payment-gateway GraphQL errors: ${JSON.stringify(payload.errors)}`);
+	}
+
+	const gateways = payload.data?.checkout?.availablePaymentGateways ?? [];
+	expect(gateways).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				id: "saleor.io.dummy-payment-app",
+			}),
+		]),
+	);
+}
+
 async function discoverInStockUsVariant(): Promise<CatalogCandidate> {
 	const response = await fetch(saleorApiUrl, {
 		method: "POST",
@@ -262,6 +307,14 @@ test.describe("live US browser commerce flow", () => {
 			)
 			.toBe(true);
 
+		const checkoutCookies = await page.context().cookies();
+		const checkoutId = checkoutCookies.find(
+			(cookie) => cookie.name === "checkoutId-us" && Boolean(cookie.value),
+		)?.value;
+		if (!checkoutId) {
+			throw new Error("checkoutId-us cookie missing after add-to-cart");
+		}
+
 		await cartButton.click();
 		const checkoutLink = page.getByRole("link", { name: /^checkout$/i });
 		await expect(checkoutLink).toBeVisible({ timeout: 30_000 });
@@ -299,9 +352,10 @@ test.describe("live US browser commerce flow", () => {
 		await expectMetaTrack(page, "AddPaymentInfo");
 		await expectTikTokTrack(page, "AddPaymentInfo");
 
-		await expect(page.getByText("Dummy Payment App", { exact: false }).first()).toBeVisible({
-			timeout: 30_000,
-		});
+		// Verify the current checkout is backed by Saleor's official Dummy Payment App.
+		// This validates the gateway contract directly instead of coupling the E2E to
+		// an implementation-specific display label.
+		await expectOfficialDummyGateway(checkoutId);
 
 		await clickVisibleCheckoutSubmit(page);
 		await expectCommerceEvent(events, "payment_method_selected");
