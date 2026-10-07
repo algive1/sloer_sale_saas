@@ -1,6 +1,8 @@
 import "server-only";
 
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
+import { readAnalyticsRequestContext } from "@/lib/analytics/request-context";
+import { normalizeTrafficAttribution, type TrafficType } from "@/lib/analytics/traffic-source";
 import {
 	ANALYTICS_LANDING_COOKIE,
 	ANALYTICS_SESSION_COOKIE,
@@ -19,6 +21,9 @@ type StoredAttribution = {
 	medium: string | null;
 	campaign: string | null;
 	landingPath: string | null;
+	trafficType: TrafficType;
+	sourceGroup: string;
+	referrerHost: string | null;
 	clickIds: Record<string, unknown>;
 };
 
@@ -56,6 +61,8 @@ export async function storeFirstPartyCommerceEvent(
 	await ensureSchema();
 
 	const landing = parseLandingCookie(readCookie(headers, ANALYTICS_LANDING_COOKIE));
+	const normalizedTraffic = normalizeTrafficAttribution(landing);
+	let requestContext = readAnalyticsRequestContext(headers);
 	let sessionId = readCookie(headers, ANALYTICS_SESSION_COOKIE);
 	let attribution: StoredAttribution | null = landing
 		? {
@@ -63,6 +70,9 @@ export async function storeFirstPartyCommerceEvent(
 				medium: landing.medium ?? null,
 				campaign: landing.campaign ?? null,
 				landingPath: landing.landingPath ?? null,
+				trafficType: normalizedTraffic.trafficType,
+				sourceGroup: normalizedTraffic.sourceGroup,
+				referrerHost: normalizedTraffic.referrerHost,
 				clickIds: {
 					gclid: landing.gclid,
 					gbraid: landing.gbraid,
@@ -82,7 +92,8 @@ export async function storeFirstPartyCommerceEvent(
 
 	if (event.name === "refund_completed" && event.transactionId && !attribution) {
 		const [purchaseResult] = await libsqlPipeline([{
-			sql: `SELECT session_id, source, medium, campaign, landing_path, click_ids_json
+			sql: `SELECT session_id, source, medium, campaign, landing_path, traffic_type, source_group, referrer_host,
+				country_code, region_code, device_type, click_ids_json
 				FROM analytics_events
 				WHERE event_name = 'checkout_completed' AND transaction_id = ?
 				ORDER BY occurred_at ASC LIMIT 1`,
@@ -97,17 +108,37 @@ export async function storeFirstPartyCommerceEvent(
 				medium: typeof purchase.medium === "string" ? purchase.medium : null,
 				campaign: typeof purchase.campaign === "string" ? purchase.campaign : null,
 				landingPath: typeof purchase.landing_path === "string" ? purchase.landing_path : null,
+				trafficType: isTrafficType(purchase.traffic_type) ? purchase.traffic_type : "direct",
+				sourceGroup: typeof purchase.source_group === "string" ? purchase.source_group : "direct",
+				referrerHost: typeof purchase.referrer_host === "string" ? purchase.referrer_host : null,
 				clickIds: parseJsonRecord(purchase.click_ids_json),
+			};
+			requestContext = {
+				countryCode: typeof purchase.country_code === "string" ? purchase.country_code : null,
+				regionCode: typeof purchase.region_code === "string" ? purchase.region_code : null,
+				deviceType: isDeviceType(purchase.device_type) ? purchase.device_type : "desktop",
 			};
 		}
 	}
+
+	const traffic = attribution ?? {
+		source: null,
+		medium: null,
+		campaign: null,
+		landingPath: null,
+		trafficType: normalizedTraffic.trafficType,
+		sourceGroup: normalizedTraffic.sourceGroup,
+		referrerHost: normalizedTraffic.referrerHost,
+		clickIds: {},
+	};
 
 	await libsqlPipeline([
 		{
 			sql: `INSERT OR IGNORE INTO analytics_events
 				(id, occurred_at, event_name, channel, session_id, event_id, transaction_id, value, currency,
-				 source, medium, campaign, landing_path, click_ids_json, item_ids_json, payload_json)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 source, medium, campaign, landing_path, traffic_type, source_group, referrer_host,
+				 country_code, region_code, device_type, click_ids_json, item_ids_json, payload_json)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				randomId(),
 				new Date().toISOString(),
@@ -118,11 +149,17 @@ export async function storeFirstPartyCommerceEvent(
 				transactionId,
 				value,
 				currency,
-				attribution?.source ?? null,
-				attribution?.medium ?? null,
-				attribution?.campaign ?? null,
-				attribution?.landingPath ?? null,
-				JSON.stringify(attribution?.clickIds ?? {}),
+				traffic.source,
+				traffic.medium,
+				traffic.campaign,
+				traffic.landingPath,
+				traffic.trafficType,
+				traffic.sourceGroup,
+				traffic.referrerHost,
+				requestContext.countryCode,
+				requestContext.regionCode,
+				requestContext.deviceType,
+				JSON.stringify(traffic.clickIds),
 				JSON.stringify(itemIds),
 				safePayload(event),
 			],
@@ -280,16 +317,16 @@ async function ensureSchema(): Promise<void> {
 					medium TEXT,
 					campaign TEXT,
 					landing_path TEXT,
+					traffic_type TEXT,
+					source_group TEXT,
+					referrer_host TEXT,
+					country_code TEXT,
+					region_code TEXT,
+					device_type TEXT,
 					click_ids_json TEXT NOT NULL DEFAULT '{}',
 					item_ids_json TEXT NOT NULL DEFAULT '[]',
 					payload_json TEXT NOT NULL
 				)`,
-			},
-			{
-				sql: "CREATE UNIQUE INDEX IF NOT EXISTS analytics_event_id_idx ON analytics_events(event_name, event_id)",
-			},
-			{
-				sql: "CREATE INDEX IF NOT EXISTS analytics_occurred_idx ON analytics_events(occurred_at)",
 			},
 			{
 				sql: `CREATE TABLE IF NOT EXISTS analytics_refund_totals (
@@ -298,6 +335,36 @@ async function ensureSchema(): Promise<void> {
 					currency TEXT NOT NULL,
 					updated_at TEXT NOT NULL
 				)`,
+			},
+		]);
+
+		const [columnResult] = await libsqlPipeline([{ sql: "PRAGMA table_info(analytics_events)", wantRows: true }]);
+		const columns = new Set(hranaRowsToObjects(columnResult).map((row) => String(row.name ?? "")));
+		const additions = [
+			["traffic_type", "TEXT"],
+			["source_group", "TEXT"],
+			["referrer_host", "TEXT"],
+			["country_code", "TEXT"],
+			["region_code", "TEXT"],
+			["device_type", "TEXT"],
+		] as const;
+		const migrations = additions
+			.filter(([name]) => !columns.has(name))
+			.map(([name, type]) => ({ sql: `ALTER TABLE analytics_events ADD COLUMN ${name} ${type}` }));
+		if (migrations.length > 0) await libsqlPipeline(migrations);
+
+		await libsqlPipeline([
+			{
+				sql: "CREATE UNIQUE INDEX IF NOT EXISTS analytics_event_id_idx ON analytics_events(event_name, event_id)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_occurred_idx ON analytics_events(occurred_at)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_traffic_idx ON analytics_events(traffic_type, source_group, occurred_at)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_geo_idx ON analytics_events(country_code, occurred_at)",
 			},
 		]);
 	})();
@@ -333,6 +400,14 @@ export async function recordRefundTotal(
 		args: [orderId, totalRefunded, currency, new Date().toISOString()],
 	}]);
 	return delta;
+}
+
+function isTrafficType(value: unknown): value is TrafficType {
+	return value === "paid" || value === "organic" || value === "direct" || value === "referral" || value === "other";
+}
+
+function isDeviceType(value: unknown): value is "desktop" | "mobile" | "tablet" | "bot" {
+	return value === "desktop" || value === "mobile" || value === "tablet" || value === "bot";
 }
 
 function parseJsonRecord(value: unknown): Record<string, unknown> {
