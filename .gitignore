@@ -17,9 +17,15 @@ coverage/
 playwright-report/
 test-results/
 
-# local Saleor runtime
-.vendor/
+# local runtime / backups
 .local/
+backups/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
 
 # OS / editors
 .DS_Store
