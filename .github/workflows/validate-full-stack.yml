@@ -36,9 +36,9 @@ jobs:
           test -f backend/Dockerfile
           test -f dashboard/package.json
           test -f dashboard/Dockerfile
-          test "$(cat backend/.upstream-sha)" = "82ac1d190097a1a8b373d89d3a0396339e71f336"
-          test "$(cat dashboard/.upstream-sha)" = "a8c0d4cabb92c7d6ac7cabe569ebf4ec579ec49e"
-          node -e 'const p=require("./dashboard/package.json"); if (p.version !== "3.23.38") process.exit(1)'
+          test "$(cat backend/.upstream-sha)" = "ee79049fd27d8091ab897ea3ed8145df0b3c9ae7"
+          test "$(cat dashboard/.upstream-sha)" = "bc75e988da0fa4fbc3d47378a888d859d070746f"
+          node -e 'const p=require("./dashboard/package.json"); if (p.version !== "3.23.39") process.exit(1)'
 
       - name: Validate Compose
         run: |
