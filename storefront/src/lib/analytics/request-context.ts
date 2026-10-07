@@ -1,7 +1,7 @@
 export type AnalyticsRequestContext = {
 	countryCode: string | null;
 	regionCode: string | null;
-	deviceType: "desktop" | "mobile" | "tablet" | "bot";
+	deviceType: "desktop" | "mobile" | "tablet" | "bot" | "unknown";
 };
 
 type HeaderReader = { get(name: string): string | null };
@@ -10,15 +10,11 @@ const COUNTRY_HEADERS = [
 	"x-vercel-ip-country",
 	"cf-ipcountry",
 	"cloudfront-viewer-country",
-	"x-country-code",
-	"x-geo-country",
 ] as const;
 
 const REGION_HEADERS = [
 	"x-vercel-ip-country-region",
 	"cloudfront-viewer-country-region",
-	"x-region-code",
-	"x-geo-region",
 ] as const;
 
 export function readAnalyticsRequestContext(headers: HeaderReader): AnalyticsRequestContext {
