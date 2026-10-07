@@ -11,17 +11,13 @@ import {
 import { readConsentChoice } from "@/lib/analytics/browser";
 import { ga4Enabled } from "@/lib/analytics/ga4";
 
-type TikTokQueue = {
-	grantConsent?: () => void;
-	revokeConsent?: () => void;
+type AdWindow = Window & {
+	fbq?: (...args: unknown[]) => void;
+	ttq?: {
+		grantConsent?: () => void;
+		revokeConsent?: () => void;
+	};
 };
-
-declare global {
-	interface Window {
-		fbq?: (...args: unknown[]) => void;
-		ttq?: TikTokQueue;
-	}
-}
 
 /**
  * Advertising tags are an explicit-consent lane. They do not mount for implied
@@ -44,12 +40,13 @@ export function AdPixels() {
 	}, []);
 
 	useEffect(() => {
+		const adWindow = window as AdWindow;
 		if (allowed) {
-			window.fbq?.("consent", "grant");
-			window.ttq?.grantConsent?.();
+			adWindow.fbq?.("consent", "grant");
+			adWindow.ttq?.grantConsent?.();
 		} else {
-			window.fbq?.("consent", "revoke");
-			window.ttq?.revokeConsent?.();
+			adWindow.fbq?.("consent", "revoke");
+			adWindow.ttq?.revokeConsent?.();
 		}
 	}, [allowed]);
 
