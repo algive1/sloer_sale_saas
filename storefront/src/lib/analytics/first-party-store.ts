@@ -39,6 +39,7 @@ export type AnalyticsSummary = {
 	funnel: Array<{ name: string; count: number }>;
 	sources: Array<{
 		source: string;
+		trafficType: string;
 		sessions: number;
 		purchases: number;
 		revenueByCurrency: Array<{ currency: string; value: number }>;
@@ -208,17 +209,19 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 			wantRows: true,
 		},
 		{
-			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source,
+			sql: `SELECT COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct') AS source,
+				COALESCE(NULLIF(traffic_type, ''), 'direct') AS traffic_type,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
 				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases
 				FROM analytics_events WHERE occurred_at >= ?
-				GROUP BY COALESCE(NULLIF(source, ''), 'direct')
+				GROUP BY COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct'),
+					COALESCE(NULLIF(traffic_type, ''), 'direct')
 				ORDER BY sessions DESC LIMIT 20`,
 			args: [since],
 			wantRows: true,
 		},
 		{
-			sql: `SELECT COALESCE(NULLIF(source, ''), 'direct') AS source,
+			sql: `SELECT COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct') AS source,
 				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
 				COALESCE(SUM(CASE
 					WHEN event_name = 'checkout_completed' THEN value
@@ -226,7 +229,7 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 					ELSE 0 END), 0) AS revenue
 				FROM analytics_events
 				WHERE occurred_at >= ? AND event_name IN ('checkout_completed', 'refund_completed')
-				GROUP BY COALESCE(NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')`,
+				GROUP BY COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')`,
 			args: [since],
 			wantRows: true,
 		},
@@ -283,6 +286,7 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 			const source = String(row.source ?? "direct");
 			return {
 				source,
+				trafficType: String(row.traffic_type ?? "direct"),
 				sessions: Number(row.sessions ?? 0),
 				purchases: Number(row.purchases ?? 0),
 				revenueByCurrency: revenueBySource.get(source) ?? [],
