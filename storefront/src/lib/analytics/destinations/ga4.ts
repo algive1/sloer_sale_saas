@@ -25,6 +25,8 @@ function commerceParams(event: PaperCommerceEvent): Record<string, unknown> {
 
 export function projectGa4(event: PaperCommerceEvent): Ga4Event | null {
 	switch (event.name) {
+		case "page_viewed":
+			return null;
 		case "product_list_viewed":
 			return { name: "view_item_list", params: { item_list_name: event.listName, ...commerceParams(event) } };
 		case "product_selected":
