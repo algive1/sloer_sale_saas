@@ -7,9 +7,11 @@ interface ProductCardProps {
 	product: ProductCardData;
 	priority?: boolean;
 	imageSizes?: string;
+	listName?: string;
+	position?: number;
 }
 
 /** Server-safe product grid cell. Use {@link ProductCardWithQuickAdd} when quick-add is needed. */
-export function ProductCard({ product, priority = false, imageSizes }: ProductCardProps) {
-	return <ProductCardBase product={product} priority={priority} imageSizes={imageSizes} />;
+export function ProductCard({ product, priority = false, imageSizes, listName, position }: ProductCardProps) {
+	return <ProductCardBase product={product} priority={priority} imageSizes={imageSizes} listName={listName} position={position} />;
 }

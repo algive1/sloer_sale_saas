@@ -8,6 +8,7 @@ import { PLP_IMAGE_SIZES, PRODUCT_IMAGE_QUALITY } from "@/lib/images";
 import { SaleorImage } from "@/ui/atoms/saleor-image";
 import type { ProductCardData } from "./product-card-data";
 import { ProductCardLink } from "./product-card-link";
+import { WishlistButton } from "@/ui/components/wishlist-button";
 
 export interface ProductCardBaseProps {
 	product: ProductCardData;
@@ -15,6 +16,8 @@ export interface ProductCardBaseProps {
 	imageSizes?: string;
 	/** Slot over the image (e.g. quick-add). Rendered outside the image link so clicks work. */
 	imageOverlay?: ReactNode;
+	listName?: string;
+	position?: number;
 }
 
 export function ProductCardBase({
@@ -22,11 +25,19 @@ export function ProductCardBase({
 	priority = false,
 	imageSizes = PLP_IMAGE_SIZES,
 	imageOverlay,
+	listName = "products",
+	position,
 }: ProductCardBaseProps) {
+	const analytics = product.channel ? {
+		channel: product.channel,
+		listName,
+		position,
+		item: { itemId: product.id, itemName: product.name, price: product.price, currency: product.currency },
+	} : undefined;
 	return (
 		<article className="group">
 			<div className="relative mb-4 aspect-[3/4] overflow-hidden rounded-card bg-secondary">
-				<ProductCardLink href={product.href} className="absolute inset-0 z-0 block" aria-label={product.name}>
+				<ProductCardLink href={product.href} className="absolute inset-0 z-0 block" aria-label={product.name} analytics={analytics}>
 					<SaleorImage
 						src={product.image}
 						srcSet={product.imageSrcSet}
@@ -60,9 +71,23 @@ export function ProductCardBase({
 				)}
 
 				{imageOverlay ? <div className="absolute inset-0 z-10">{imageOverlay}</div> : null}
+				{product.channel ? (
+					<WishlistButton
+						className="absolute right-3 top-3 z-20"
+						item={{
+							productId: product.id,
+							name: product.name,
+							href: product.href,
+							image: product.image,
+							price: product.price,
+							currency: product.currency,
+							channel: product.channel,
+						}}
+					/>
+				) : null}
 			</div>
 
-			<ProductCardLink href={product.href} className="block no-underline hover:no-underline">
+			<ProductCardLink href={product.href} className="block no-underline hover:no-underline" analytics={analytics}>
 				<div className="space-y-1.5">
 					{product.brand && <p className="text-eyebrow uppercase text-muted-foreground">{product.brand}</p>}
 					<h3
