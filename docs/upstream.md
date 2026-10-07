@@ -2,10 +2,10 @@
 
 ## Locked baseline
 
-- Saleor Core tag: `3.23.38`
-- Saleor Core commit: `82ac1d190097a1a8b373d89d3a0396339e71f336`
-- Saleor Dashboard tag: `3.23.38`
-- Saleor Dashboard commit: `a8c0d4cabb92c7d6ac7cabe569ebf4ec579ec49e`
+- Saleor Core tag: `3.23.40`
+- Saleor Core commit: `ee79049fd27d8091ab897ea3ed8145df0b3c9ae7`
+- Saleor Dashboard tag: `3.23.39`
+- Saleor Dashboard commit: `bc75e988da0fa4fbc3d47378a888d859d070746f`
 - Historical saleor-platform reference commit: `ab6315bd59c58b4815175df4c679107ff9695be4`
 - Paper upstream commit: `b73bdce3269cceb08feff856af5067d117c79cb6`
 - Paper Next.js: `16.3.8`
