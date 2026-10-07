@@ -29,8 +29,9 @@ jobs:
     env:
       SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
       SALEOR_APPS_SHA: 3601e299162023d151f8087d2334f7da1f420955
-      SALEOR_API_URL: http://localhost:8000/graphql/
-      NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
+      SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+      NEXT_PUBLIC_SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+      ORDER_VIEW_SECRET: ci-order-view-secret-at-least-32-characters
       HUSKY: "0"
 
     steps:
@@ -218,6 +219,11 @@ jobs:
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ANALYTICS_CONSENT_MODE: required
+          NEXT_PUBLIC_META_PIXEL_ID: "123456789012345"
+          NEXT_PUBLIC_TIKTOK_PIXEL_ID: "E2EPIXEL123"
+          NEXT_PUBLIC_GOOGLE_ADS_ID: "AW-123456789"
+          NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: "E2E_TEST"
         run: pnpm --dir storefront build
 
       - name: Verify sitemap and Google Merchant feed
@@ -231,6 +237,13 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
           CONTENT_PROVIDER: saleor
           GOOGLE_MERCHANT_FEED_ENABLED: "true"
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ANALYTICS_CONSENT_MODE: required
+          NEXT_PUBLIC_META_PIXEL_ID: "123456789012345"
+          NEXT_PUBLIC_TIKTOK_PIXEL_ID: "E2EPIXEL123"
+          NEXT_PUBLIC_GOOGLE_ADS_ID: "AW-123456789"
+          NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: "E2E_TEST"
         run: |
           set -euo pipefail
           nohup pnpm --dir storefront exec next start -p 3100 > /tmp/storefront.log 2>&1 &
@@ -257,6 +270,15 @@ jobs:
           grep -q '<g:item_group_id>' /tmp/google-merchant.xml
           grep -q '<g:price>.* USD</g:price>' /tmp/google-merchant.xml
           grep -q '<g:availability>' /tmp/google-merchant.xml
+
+      - name: Install Chromium for browser commerce E2E
+        run: pnpm --dir storefront exec playwright install --with-deps chromium
+
+      - name: Browser commerce full-flow E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3100
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+        run: pnpm --dir storefront exec playwright test e2e/checkout-live.spec.ts --workers=1
 
       - name: Integration logs on failure
         if: failure()

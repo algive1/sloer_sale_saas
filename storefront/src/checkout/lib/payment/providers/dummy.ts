@@ -13,7 +13,23 @@ export function isDummyGateway(gateway: PaymentGatewayLike): boolean {
 export function findDummyGateway(
 	gateways: ReadonlyArray<PaymentGatewayLike> | null | undefined,
 ): PaymentGatewayLike | undefined {
-	return gateways?.find(isDummyGateway);
+	if (!gateways?.length) {
+		return undefined;
+	}
+
+	// Prefer the current Saleor Dummy Payment App regardless of the order Saleor
+	// returns availablePaymentGateways. Saleor 3.23 can expose the legacy
+	// `mirumee.payments.dummy` plugin first; passing that legacy plugin id to the
+	// Transactions API makes transactionInitialize fail with
+	// "App with provided identifier not found."
+	for (const gatewayId of DUMMY_GATEWAY_IDS) {
+		const gateway = gateways.find((candidate) => candidate.id === gatewayId);
+		if (gateway) {
+			return gateway;
+		}
+	}
+
+	return undefined;
 }
 
 /**
