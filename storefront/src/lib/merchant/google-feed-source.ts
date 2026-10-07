@@ -1,5 +1,5 @@
 import { getGraphqlLanguageCode } from "@/config/locale";
-import { executeRawGraphQL } from "@/lib/graphql";
+import { executeRawGraphQL, type GraphQLResult } from "@/lib/graphql";
 import type {
 	GoogleMerchantProduct,
 	GoogleMerchantVariant,
@@ -61,6 +61,14 @@ type RawProduct = {
 type ProductConnection = {
 	pageInfo: PageInfo;
 	edges: Array<{ node: RawProduct }>;
+};
+
+type MerchantVariantPageResponse = {
+	product: { productVariants: VariantConnection } | null;
+};
+
+type MerchantProductPageResponse = {
+	products: ProductConnection | null;
 };
 
 const PRODUCT_FIELDS = `
@@ -152,9 +160,7 @@ async function fetchRemainingVariants(
 	let hasNextPage = firstPage.pageInfo.hasNextPage;
 
 	while (hasNextPage && after) {
-		const result = await executeRawGraphQL<{
-			product: { productVariants: VariantConnection } | null;
-		}>({
+		const result: GraphQLResult<MerchantVariantPageResponse> = await executeRawGraphQL<MerchantVariantPageResponse>({
 			query: `
 				query GoogleMerchantProductVariants(
 					$slug: String!
@@ -235,9 +241,7 @@ export async function fetchGoogleMerchantProducts(
 	let after: string | null = null;
 
 	for (;;) {
-		const result = await executeRawGraphQL<{
-			products: ProductConnection | null;
-		}>({
+		const result: GraphQLResult<MerchantProductPageResponse> = await executeRawGraphQL<MerchantProductPageResponse>({
 			query: `
 				query GoogleMerchantProducts(
 					$channel: String!
