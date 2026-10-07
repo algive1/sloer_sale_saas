@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getBaseUrl } from "@/lib/seo/config";
 
 /**
  * Crawl policy is cost policy.
@@ -15,6 +16,7 @@ import type { MetadataRoute } from "next";
  */
 export default function robots(): MetadataRoute.Robots {
 	return {
+		sitemap: `${getBaseUrl().replace(/\/$/, "")}/sitemap.xml`,
 		rules: [
 			{
 				userAgent: "*",

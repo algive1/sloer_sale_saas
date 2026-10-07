@@ -58,6 +58,7 @@ Project storefront defaults live in `storefront/.env.project.example`. Do not co
 - [Product / SKU model](docs/product-model.md)
 - [Phase 1 milestone](docs/phase-1.md)
 - [Upstream pins](docs/upstream.md)
+- [SEO / Google Merchant](docs/seo-google-merchant.md)
 
 ## Rules
 
