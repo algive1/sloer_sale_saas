@@ -77,6 +77,13 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 				<Metric label="Referral" value={types.get("referral") ?? 0} />
 			</section>
 
+			<section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				<RateMetric label="PDP reach" value={report.quality.productViews} total={report.sessions} />
+				<RateMetric label="Add-to-cart rate" value={report.quality.addToCarts} total={report.sessions} />
+				<RateMetric label="Checkout rate" value={report.quality.checkouts} total={report.sessions} />
+				<RateMetric label="Purchase CVR" value={report.quality.purchaseSessions} total={report.sessions} />
+			</section>
+
 			<section className="mt-8 rounded-xl border border-border bg-card p-6">
 				<div>
 					<h2 className="text-lg font-semibold">Traffic trend</h2>
@@ -203,6 +210,16 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 
 function Metric({ label, value }: { label: string; value: number }) {
 	return <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{value.toLocaleString()}</p></div>;
+}
+
+function RateMetric({ label, value, total }: { label: string; value: number; total: number }) {
+	return (
+		<div className="rounded-xl border border-border bg-card p-5">
+			<p className="text-sm text-muted-foreground">{label}</p>
+			<p className="mt-2 text-2xl font-semibold tabular-nums">{formatRate(value, total)}</p>
+			<p className="mt-1 text-xs text-muted-foreground tabular-nums">{value.toLocaleString()} sessions</p>
+		</div>
+	);
 }
 
 function RevenueCell({ values }: { values: Array<{ currency: string; value: number }> }) {
