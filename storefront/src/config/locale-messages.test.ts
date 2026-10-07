@@ -24,10 +24,10 @@ describe("locale message catalogs", () => {
 		expect(Object.keys(messageLoaders).sort()).toEqual(Object.keys(LOCALE_DEFINITIONS).sort());
 
 		for (const locale of Object.keys(LOCALE_DEFINITIONS) as LocaleSlug[]) {
-			const module = await messageLoaders[locale]();
-			expect(module.default).toBeTruthy();
-			expect(module.default.nav).toBeTruthy();
-			expect(module.default.checkout).toBeTruthy();
+			const messagesModule = await messageLoaders[locale]();
+			expect(messagesModule.default).toBeTruthy();
+			expect(messagesModule.default.nav).toBeTruthy();
+			expect(messagesModule.default.checkout).toBeTruthy();
 		}
 	});
 });
