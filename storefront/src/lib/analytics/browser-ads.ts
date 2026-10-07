@@ -28,24 +28,79 @@ export type BrowserAdContext = {
 	userEmail?: string | null;
 };
 
+const pendingMetaEvents = new Map<string, PaperCommerceEvent>();
+const pendingTikTokEvents = new Map<string, PaperCommerceEvent>();
+
+function browserAdEventKey(event: PaperCommerceEvent): string {
+	return event.eventId || JSON.stringify(event);
+}
+
+function sendMetaEvent(event: PaperCommerceEvent): boolean {
+	const meta = projectMeta(event);
+	if (!meta || !metaPixelId()) return true;
+	if (typeof window.fbq !== "function") return false;
+
+	if (event.eventId) {
+		window.fbq("track", meta.name, meta.params, { eventID: event.eventId });
+	} else {
+		window.fbq("track", meta.name, meta.params);
+	}
+	return true;
+}
+
+function sendTikTokEvent(event: PaperCommerceEvent): boolean {
+	const tiktok = projectTikTok(event);
+	if (!tiktok || !tiktokPixelId()) return true;
+	if (typeof window.ttq?.track !== "function") return false;
+
+	if (event.eventId) {
+		window.ttq.track(tiktok.name, tiktok.params, { event_id: event.eventId });
+	} else {
+		window.ttq.track(tiktok.name, tiktok.params);
+	}
+	return true;
+}
+
+/**
+ * Flushes consented events that arrived in the short window between consent
+ * being granted and a third-party browser SDK becoming ready.
+ *
+ * The queues are destination-specific: if Meta is ready before TikTok, Meta
+ * can flush without causing a duplicate Meta send when TikTok becomes ready.
+ */
+export function flushBrowserAdEvents(): void {
+	if (typeof window === "undefined") return;
+	if (!adsStorageAllowed(readConsentChoice())) {
+		pendingMetaEvents.clear();
+		pendingTikTokEvents.clear();
+		return;
+	}
+
+	for (const [key, event] of pendingMetaEvents) {
+		if (sendMetaEvent(event)) pendingMetaEvents.delete(key);
+	}
+	for (const [key, event] of pendingTikTokEvents) {
+		if (sendTikTokEvent(event)) pendingTikTokEvents.delete(key);
+	}
+}
+
 export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAdContext = {}): void {
 	if (typeof window === "undefined" || !adsStorageAllowed(readConsentChoice())) return;
 
-	const meta = projectMeta(event);
-	if (meta && metaPixelId() && typeof window.fbq === "function") {
-		if (event.eventId) {
-			window.fbq("track", meta.name, meta.params, { eventID: event.eventId });
+	const key = browserAdEventKey(event);
+	if (projectMeta(event) && metaPixelId()) {
+		if (sendMetaEvent(event)) {
+			pendingMetaEvents.delete(key);
 		} else {
-			window.fbq("track", meta.name, meta.params);
+			pendingMetaEvents.set(key, event);
 		}
 	}
 
-	const tiktok = projectTikTok(event);
-	if (tiktok && tiktokPixelId() && typeof window.ttq?.track === "function") {
-		if (event.eventId) {
-			window.ttq.track(tiktok.name, tiktok.params, { event_id: event.eventId });
+	if (projectTikTok(event) && tiktokPixelId()) {
+		if (sendTikTokEvent(event)) {
+			pendingTikTokEvents.delete(key);
 		} else {
-			window.ttq.track(tiktok.name, tiktok.params);
+			pendingTikTokEvents.set(key, event);
 		}
 	}
 
