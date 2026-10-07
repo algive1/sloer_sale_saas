@@ -4,8 +4,8 @@
 
 This repository is the deployable application source of the commerce stack:
 
-- Saleor Core 3.23.38 under `backend/`.
-- Saleor Dashboard 3.23.38 under `dashboard/`.
+- Saleor Core 3.23.40 under `backend/`.
+- Saleor Dashboard 3.23.39 under `dashboard/`.
 - Saleor Paper storefront under `storefront/`.
 - US / English / USD as the first active market.
 - Stripe as the first production payment provider.
