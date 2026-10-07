@@ -28,6 +28,7 @@ async function expectOfficialDummyGateway(checkoutId: string) {
 							name
 						}
 					}
+				}
 			`,
 			variables: { id: checkoutId },
 		}),
