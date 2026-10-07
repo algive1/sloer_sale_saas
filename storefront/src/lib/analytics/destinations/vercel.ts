@@ -8,6 +8,8 @@ export type VercelCustomEvent = {
 
 export function projectVercel(event: PaperCommerceEvent): VercelCustomEvent | null {
 	switch (event.name) {
+		case "page_viewed":
+			return null;
 		case "product_list_viewed":
 			if (!event.channel) return null;
 			return { name: "view_item_list", props: { channel: event.channel, count: event.items?.length ?? 0 } };
