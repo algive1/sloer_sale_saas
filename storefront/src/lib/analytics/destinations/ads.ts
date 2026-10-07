@@ -50,6 +50,8 @@ function tiktokCommerceParams(event: PaperCommerceEvent): Record<string, unknown
 
 export function projectMeta(event: PaperCommerceEvent): AdProjection | null {
 	switch (event.name) {
+		case "page_viewed":
+			return null;
 		case "product_viewed":
 			return { name: "ViewContent", params: metaCommerceParams(event) };
 		case "wishlist_added":
@@ -83,6 +85,8 @@ export function projectMeta(event: PaperCommerceEvent): AdProjection | null {
 
 export function projectTikTok(event: PaperCommerceEvent): AdProjection | null {
 	switch (event.name) {
+		case "page_viewed":
+			return null;
 		case "product_viewed":
 			return { name: "ViewContent", params: tiktokCommerceParams(event) };
 		case "wishlist_added":
