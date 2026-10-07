@@ -104,6 +104,14 @@ describe("findDummyGateway", () => {
 		expect(gateway?.id).toBe("saleor.io.dummy-payment-app");
 	});
 
+	it("prefers the current payment app over the legacy dummy plugin regardless of API order", () => {
+		const gateway = findDummyGateway([
+			{ id: "mirumee.payments.dummy", name: "Dummy" },
+			{ id: "saleor.io.dummy-payment-app", name: "Dummy Payment App" },
+		]);
+		expect(gateway?.id).toBe("saleor.io.dummy-payment-app");
+	});
+
 	it("ignores gift card when looking for dummy", () => {
 		const gateway = findDummyGateway([
 			{ id: "saleor.io.gift-card-payment-gateway", name: "Gift Card Payment Gateway" },
