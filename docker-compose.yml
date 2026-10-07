@@ -1,0 +1,142 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-saleor}
+      POSTGRES_USER: ${POSTGRES_USER:-saleor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - saleor-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saleor} -d ${POSTGRES_DB:-saleor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+
+  cache:
+    image: valkey/valkey:8.1-alpine
+    restart: unless-stopped
+    volumes:
+      - saleor-cache:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [backend]
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+    networks: [backend]
+
+  migrate:
+    build:
+      context: ./backend
+    command: python3 manage.py migrate --noinput
+    environment: &saleor-env
+      DATABASE_URL: postgres://${POSTGRES_USER:-saleor}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-saleor}
+      CACHE_URL: redis://cache:6379/0
+      CELERY_BROKER_URL: redis://cache:6379/1
+      SECRET_KEY: ${SALEOR_SECRET_KEY:?set SALEOR_SECRET_KEY in .env}
+      DEFAULT_CHANNEL_SLUG: ${SALEOR_DEFAULT_CHANNEL:-us}
+      DEFAULT_FROM_EMAIL: ${SALEOR_DEFAULT_FROM_EMAIL:-noreply@example.com}
+      EMAIL_URL: ${SALEOR_EMAIL_URL:-smtp://mailpit:1025}
+      DASHBOARD_URL: ${SALEOR_DASHBOARD_URL:-http://localhost:9000/}
+      ALLOWED_HOSTS: ${SALEOR_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
+      HTTP_IP_FILTER_ENABLED: ${SALEOR_HTTP_IP_FILTER_ENABLED:-False}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks: [backend]
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment: *saleor-env
+    ports:
+      - "8000:8000"
+    volumes:
+      - saleor-media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks: [backend]
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    command: celery -A saleor --app=saleor.celeryconf:app worker --loglevel=info -B
+    environment: *saleor-env
+    volumes:
+      - saleor-media:/app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    networks: [backend]
+
+  dashboard:
+    build:
+      context: ./dashboard
+      args:
+        API_URL: ${DASHBOARD_API_URL:-http://localhost:8000/graphql/}
+        APP_MOUNT_URI: ${DASHBOARD_MOUNT_URI:-/}
+        STATIC_URL: ${DASHBOARD_STATIC_URL:-/}
+        SKIP_SOURCEMAPS: "true"
+    restart: unless-stopped
+    ports:
+      - "9000:80"
+    depends_on:
+      - api
+    networks: [backend]
+
+  storefront:
+    build:
+      context: ./storefront
+      args:
+        NEXT_PUBLIC_SALEOR_API_URL: ${NEXT_PUBLIC_SALEOR_API_URL:-http://localhost:8000/graphql/}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CHECKOUT_URL: ${NEXT_PUBLIC_CHECKOUT_URL:-http://localhost:3000}
+        NEXT_PUBLIC_DEFAULT_CHANNEL: ${NEXT_PUBLIC_DEFAULT_CHANNEL:-us}
+        NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS: ${NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS:-false}
+    restart: unless-stopped
+    environment:
+      SALEOR_INTERNAL_API_URL: http://api:8000/graphql/
+      NEXT_PUBLIC_SALEOR_API_URL: ${NEXT_PUBLIC_SALEOR_API_URL:-http://localhost:8000/graphql/}
+      NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-http://localhost:3000}
+      NEXT_PUBLIC_CHECKOUT_URL: ${NEXT_PUBLIC_CHECKOUT_URL:-http://localhost:3000}
+      NEXT_PUBLIC_DEFAULT_CHANNEL: ${NEXT_PUBLIC_DEFAULT_CHANNEL:-us}
+      STOREFRONT_CHANNELS: ${STOREFRONT_CHANNELS:-us}
+      NEXT_PUBLIC_DEFAULT_LOCALE: ${NEXT_PUBLIC_DEFAULT_LOCALE:-en}
+      NEXT_PUBLIC_STOREFRONT_LOCALES: ${NEXT_PUBLIC_STOREFRONT_LOCALES:-en}
+      NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: ${NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS:-en:us}
+      CONTENT_PROVIDER: ${CONTENT_PROVIDER:-saleor}
+      ALLOW_DUMMY_PAYMENT: ${ALLOW_DUMMY_PAYMENT:-true}
+      NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: ${NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT:-true}
+      ENABLE_STRIPE_PAYMENTS: ${ENABLE_STRIPE_PAYMENTS:-false}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks: [backend]
+
+volumes:
+  saleor-db:
+  saleor-cache:
+  saleor-media:
+
+networks:
+  backend:
+    driver: bridge
