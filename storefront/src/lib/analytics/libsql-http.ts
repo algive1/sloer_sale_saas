@@ -66,7 +66,9 @@ export async function libsqlPipeline(statements: readonly Statement[]): Promise<
 		if (result.type === "error") {
 			throw new Error(`Analytics database: ${result.error.message}`);
 		}
-		if (result.response.type === "execute") output.push(result.response.result);
+		if (result.response.type === "execute" && "result" in result.response) {
+			output.push(result.response.result);
+		}
 	}
 	return output;
 }
