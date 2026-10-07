@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CORE_REF="82ac1d190097a1a8b373d89d3a0396339e71f336"
-DASHBOARD_REF="a8c0d4cabb92c7d6ac7cabe569ebf4ec579ec49e"
+CORE_REF="ee79049fd27d8091ab897ea3ed8145df0b3c9ae7"
+DASHBOARD_REF="bc75e988da0fa4fbc3d47378a888d859d070746f"
 
 download_and_extract() {
   local repo="$1"
