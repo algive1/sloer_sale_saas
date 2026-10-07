@@ -39,14 +39,6 @@ jobs:
       SALEOR_API_URL: http://127.0.0.1:8000/graphql/
       SALEOR_BUILD_API_URL: http://127.0.0.1:8000/graphql/
       NEXT_PUBLIC_SALEOR_API_URL: http://127.0.0.1:8000/graphql/
-      NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
-      NEXT_PUBLIC_CHECKOUT_URL: http://localhost:3100
-      NEXT_PUBLIC_DEFAULT_CHANNEL: us
-      STOREFRONT_CHANNELS: us
-      NEXT_PUBLIC_DEFAULT_LOCALE: en
-      NEXT_PUBLIC_STOREFRONT_LOCALES: en
-      NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
-      CONTENT_PROVIDER: saleor
       POSTGRES_DB: saleor
       POSTGRES_USER: saleor
       POSTGRES_PASSWORD: ci-saleor-password
@@ -57,8 +49,6 @@ jobs:
       DASHBOARD_API_URL: http://127.0.0.1:8000/graphql/
       DASHBOARD_MOUNT_URI: /
       DASHBOARD_STATIC_URL: /
-      ALLOW_DUMMY_PAYMENT: "true"
-      NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
       ORDER_VIEW_SECRET: ci-order-view-secret-at-least-32-characters
       HUSKY: "0"
 
@@ -229,12 +219,33 @@ jobs:
 
       - name: Build self-hosted Dashboard and Storefront images
         shell: bash
+        env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
+          NEXT_PUBLIC_CHECKOUT_URL: http://localhost:3100
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: |
           set -euo pipefail
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml build dashboard storefront
 
       - name: Build US storefront
         env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
+          NEXT_PUBLIC_CHECKOUT_URL: http://localhost:3100
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ANALYTICS_CONSENT_MODE: required
           NEXT_PUBLIC_META_PIXEL_ID: "123456789012345"
           NEXT_PUBLIC_TIKTOK_PIXEL_ID: "E2EPIXEL123"
@@ -245,6 +256,16 @@ jobs:
       - name: Verify sitemap and Google Merchant feed
         shell: bash
         env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
+          NEXT_PUBLIC_CHECKOUT_URL: http://localhost:3100
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
           GOOGLE_MERCHANT_FEED_ENABLED: "true"
           NEXT_PUBLIC_ANALYTICS_CONSENT_MODE: required
           NEXT_PUBLIC_META_PIXEL_ID: "123456789012345"
