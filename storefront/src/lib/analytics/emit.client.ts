@@ -3,6 +3,7 @@
 import { track } from "@vercel/analytics";
 import { sendGa4Event } from "@/lib/analytics/browser";
 import { sendBrowserAdEvent, type BrowserAdContext } from "@/lib/analytics/browser-ads";
+import { sendFirstPartyCommerceEvent } from "@/lib/analytics/first-party-client";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { projectConsole } from "@/lib/analytics/destinations/console";
 import { projectGa4 } from "@/lib/analytics/destinations/ga4";
@@ -18,6 +19,7 @@ export type ClientEmitOptions = BrowserAdContext & {
 
 export function emitCommerceEvent(event: PaperCommerceEvent, options: ClientEmitOptions = {}): void {
 	try {
+		sendFirstPartyCommerceEvent(event);
 		if (options.coreDestinations !== false) {
 			const vercel = projectVercel(event);
 			if (vercel) {

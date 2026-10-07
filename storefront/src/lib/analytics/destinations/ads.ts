@@ -52,6 +52,20 @@ export function projectMeta(event: PaperCommerceEvent): AdProjection | null {
 	switch (event.name) {
 		case "product_viewed":
 			return { name: "ViewContent", params: metaCommerceParams(event) };
+		case "wishlist_added":
+			return { name: "AddToWishlist", params: metaCommerceParams(event) };
+		case "wishlist_removed":
+		case "product_list_viewed":
+		case "product_selected":
+		case "cart_viewed":
+		case "cart_item_removed":
+		case "cart_quantity_changed":
+		case "shipping_method_selected":
+		case "payment_method_selected":
+		case "payment_failed":
+		case "checkout_failed":
+		case "refund_completed":
+			return null;
 		case "product_added_to_cart":
 			return { name: "AddToCart", params: metaCommerceParams(event) };
 		case "checkout_started":
@@ -71,6 +85,20 @@ export function projectTikTok(event: PaperCommerceEvent): AdProjection | null {
 	switch (event.name) {
 		case "product_viewed":
 			return { name: "ViewContent", params: tiktokCommerceParams(event) };
+		case "wishlist_added":
+			return { name: "AddToWishlist", params: tiktokCommerceParams(event) };
+		case "wishlist_removed":
+		case "product_list_viewed":
+		case "product_selected":
+		case "cart_viewed":
+		case "cart_item_removed":
+		case "cart_quantity_changed":
+		case "shipping_method_selected":
+		case "payment_method_selected":
+		case "payment_failed":
+		case "checkout_failed":
+		case "refund_completed":
+			return null;
 		case "product_added_to_cart":
 			return { name: "AddToCart", params: tiktokCommerceParams(event) };
 		case "checkout_started":

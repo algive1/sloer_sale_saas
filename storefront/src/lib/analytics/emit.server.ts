@@ -7,6 +7,7 @@ import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { projectConsole } from "@/lib/analytics/destinations/console";
 import { deliverServerDestinations } from "@/lib/analytics/destinations/server-ads";
 import { projectVercel } from "@/lib/analytics/destinations/vercel";
+import { storeFirstPartyCommerceEvent } from "@/lib/analytics/first-party-store";
 import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
 
 /**
@@ -27,7 +28,10 @@ export function emitCommerceEvent(event: PaperCommerceEvent): void {
 async function deliver(event: PaperCommerceEvent): Promise<void> {
 	try {
 		const requestHeaders = await headers();
-		const jobs: Promise<unknown>[] = [deliverServerDestinations(event, requestHeaders)];
+		const jobs: Promise<unknown>[] = [
+			deliverServerDestinations(event, requestHeaders),
+			storeFirstPartyCommerceEvent(event, requestHeaders),
+		];
 
 		const vercel = projectVercel(event);
 		if (vercel && webAnalyticsEnabled()) {
