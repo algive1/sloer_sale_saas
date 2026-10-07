@@ -106,7 +106,15 @@ export function CountryTrendChart({
 	}
 
 	function pointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-		if (wrapRef.current) 
+		if (wrapRef.current) {
+			const rect = wrapRef.current.getBoundingClientRect();
+			setPointer((current) => ({
+				...current,
+				y: event.clientY - rect.top,
+				width: rect.width,
+				height: rect.height,
+			}));
+		}
 		const index = nearestIndex(event.clientX);
 		if (index === null) return;
 		setPinnedIndex((current) => (current === index ? null : index));
