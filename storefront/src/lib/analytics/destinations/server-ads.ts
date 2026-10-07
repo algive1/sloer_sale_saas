@@ -6,7 +6,9 @@ import { adsStorageAllowed, analyticsStorageAllowed } from "@/lib/analytics/cons
 import {
 	ANALYTICS_CONSENT_COOKIE,
 	ANALYTICS_SESSION_COOKIE,
+	ANALYTICS_LANDING_COOKIE,
 	parseConsentChoice,
+	parseLandingCookie,
 } from "@/lib/analytics/cookies";
 import { projectMeta, projectTikTok } from "@/lib/analytics/destinations/ads";
 import { projectGa4 } from "@/lib/analytics/destinations/ga4";
@@ -81,11 +83,12 @@ async function deliverMeta(event: PaperCommerceEvent, requestHeaders: HeaderRead
 	const projected = projectMeta(event);
 	if (!pixelId || !token || !projected) return;
 
+	const landing = parseLandingCookie(readCookie(requestHeaders, ANALYTICS_LANDING_COOKIE));
 	const userData = compact({
 		client_ip_address: clientIp(requestHeaders),
 		client_user_agent: requestHeaders.get("user-agent"),
 		fbp: readCookie(requestHeaders, "_fbp"),
-		fbc: readCookie(requestHeaders, "_fbc"),
+		fbc: readCookie(requestHeaders, "_fbc") || metaFbcFromLanding(landing),
 	});
 	if (Object.keys(userData).length === 0) return;
 
@@ -126,9 +129,12 @@ async function deliverTikTok(event: PaperCommerceEvent, requestHeaders: HeaderRe
 	const url = sourceUrl(requestHeaders);
 	if (!pixelId || !token || !projected || !url) return;
 
+	const landing = parseLandingCookie(readCookie(requestHeaders, ANALYTICS_LANDING_COOKIE));
 	const user = compact({
 		ip: clientIp(requestHeaders),
 		user_agent: requestHeaders.get("user-agent"),
+		ttclid: landing?.ttclid,
+		ttp: readCookie(requestHeaders, "_ttp"),
 	});
 	const data = compact({
 		event: projected.name,
@@ -189,6 +195,13 @@ function readCookie(headers: HeaderReader, name: string): string | null {
 		}
 	}
 	return null;
+}
+
+function metaFbcFromLanding(landing: ReturnType<typeof parseLandingCookie>): string | null {
+	if (!landing?.fbclid) return null;
+	const captured = Date.parse(landing.capturedAt);
+	const timestamp = Number.isFinite(captured) ? Math.floor(captured) : Date.now();
+	return `fb.1.${timestamp}.${landing.fbclid}`;
 }
 
 function gaClientId(raw: string | null): string | null {

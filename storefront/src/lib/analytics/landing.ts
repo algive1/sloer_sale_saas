@@ -1,13 +1,5 @@
 import { redactAnalyticsUrl } from "@/lib/analytics/redact-url";
 
-/**
- * First-touch capture for `commerce.context.marketing` (written fill-missing
- * before checkoutComplete) and campaign params on the merchant tag. Cookie
- * only when analytics storage is allowed. Never sent to a tag before consent.
- *
- * No full referrer, no click ids, no PII. UTM values are copied off the URL
- * (the URL is not storage); `landingPath` is redacted and stripped of `utm_*`.
- */
 export type LandingSnapshot = {
 	capturedAt: string;
 	landingPath: string;
@@ -16,6 +8,12 @@ export type LandingSnapshot = {
 	campaign?: string;
 	term?: string;
 	content?: string;
+	gclid?: string;
+	gbraid?: string;
+	wbraid?: string;
+	fbclid?: string;
+	ttclid?: string;
+	msclkid?: string;
 };
 
 const UTM_FIELDS = [
@@ -26,21 +24,24 @@ const UTM_FIELDS = [
 	["utm_content", "content"],
 ] as const;
 
-/** Click ids stay off the snapshot — marketing is UTM + path only. */
+const CLICK_FIELDS = [
+	["gclid", "gclid"],
+	["gbraid", "gbraid"],
+	["wbraid", "wbraid"],
+	["fbclid", "fbclid"],
+	["ttclid", "ttclid"],
+	["msclkid", "msclkid"],
+] as const;
+
 const CLICK_ID_PARAMS = new Set([
-	"gclid",
-	"gbraid",
-	"wbraid",
-	"fbclid",
-	"msclkid",
-	"ttclid",
+	...CLICK_FIELDS.map(([param]) => param),
 	"twclid",
 	"li_fat_id",
 	"mc_eid",
 ]);
 
 const MAX_UTM_CHARS = 200;
-/** Cookie + metadata JSON budget — drop the query before slicing the path. */
+const MAX_CLICK_ID_CHARS = 512;
 const MAX_LANDING_PATH_CHARS = 400;
 
 export function captureLandingSnapshot(href: string, now = new Date()): LandingSnapshot {
@@ -52,13 +53,16 @@ export function captureLandingSnapshot(href: string, now = new Date()): LandingS
 	try {
 		const url = new URL(href);
 		for (const [param, field] of UTM_FIELDS) {
-			const value = sanitizeUtm(url.searchParams.get(param));
+			const value = sanitizeToken(url.searchParams.get(param), MAX_UTM_CHARS);
+			if (value) snapshot[field] = value;
+		}
+		for (const [param, field] of CLICK_FIELDS) {
+			const value = sanitizeToken(url.searchParams.get(param), MAX_CLICK_ID_CHARS);
 			if (value) snapshot[field] = value;
 		}
 	} catch {
 		// landingPath already failed closed
 	}
-
 	return snapshot;
 }
 
@@ -74,24 +78,25 @@ export function parseLandingSnapshot(raw: string): LandingSnapshot | null {
 		return null;
 	}
 	if (!parsed || typeof parsed !== "object") return null;
-
 	const record = parsed as Record<string, unknown>;
-	if (typeof record.capturedAt !== "string" || typeof record.landingPath !== "string") {
-		return null;
-	}
+	if (typeof record.capturedAt !== "string" || typeof record.landingPath !== "string") return null;
 	if (!record.capturedAt || !isSafeLandingPath(record.landingPath)) return null;
 
 	const snapshot: LandingSnapshot = {
 		capturedAt: record.capturedAt,
 		landingPath: record.landingPath,
 	};
-
 	for (const [, field] of UTM_FIELDS) {
-		const raw = record[field];
-		const value = sanitizeUtm(typeof raw === "string" ? raw : null);
+		const value = sanitizeToken(typeof record[field] === "string" ? record[field] : null, MAX_UTM_CHARS);
 		if (value) snapshot[field] = value;
 	}
-
+	for (const [, field] of CLICK_FIELDS) {
+		const value = sanitizeToken(
+			typeof record[field] === "string" ? record[field] : null,
+			MAX_CLICK_ID_CHARS,
+		);
+		if (value) snapshot[field] = value;
+	}
 	return snapshot;
 }
 
@@ -101,9 +106,7 @@ export function landingPathFromHref(href: string): string {
 		const url = new URL(redacted);
 		for (const name of [...url.searchParams.keys()]) {
 			const lower = name.toLowerCase();
-			if (lower.startsWith("utm_") || CLICK_ID_PARAMS.has(lower)) {
-				url.searchParams.delete(name);
-			}
+			if (lower.startsWith("utm_") || CLICK_ID_PARAMS.has(lower)) url.searchParams.delete(name);
 		}
 		return clipLandingPath(`${url.pathname}${url.search}`);
 	} catch {
@@ -120,8 +123,7 @@ function clipLandingPath(path: string): string {
 	if (path.length <= MAX_LANDING_PATH_CHARS) return path;
 	const queryAt = path.indexOf("?");
 	const pathname = queryAt === -1 ? path : path.slice(0, queryAt);
-	if (pathname.length <= MAX_LANDING_PATH_CHARS) return pathname;
-	return pathname.slice(0, MAX_LANDING_PATH_CHARS);
+	return pathname.length <= MAX_LANDING_PATH_CHARS ? pathname : pathname.slice(0, MAX_LANDING_PATH_CHARS);
 }
 
 function hasControlChars(value: string): boolean {
@@ -132,9 +134,9 @@ function hasControlChars(value: string): boolean {
 	return false;
 }
 
-function sanitizeUtm(value: string | null): string | undefined {
+function sanitizeToken(value: string | null, maxChars: number): string | undefined {
 	if (!value) return undefined;
 	const trimmed = value.trim();
 	if (!trimmed || hasControlChars(trimmed)) return undefined;
-	return trimmed.length > MAX_UTM_CHARS ? trimmed.slice(0, MAX_UTM_CHARS) : trimmed;
+	return trimmed.length > maxChars ? trimmed.slice(0, maxChars) : trimmed;
 }

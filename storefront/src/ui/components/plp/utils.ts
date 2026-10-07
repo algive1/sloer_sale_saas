@@ -115,6 +115,7 @@ export function toProductCardData(
 		compareAtPrice: isSale ? undiscountedStartAmount : null,
 		discountPercent,
 		currency: startPrice?.currency ?? localeConfig.fallbackCurrency,
+		channel,
 		image: product.thumbnail?.url ?? "/placeholder.svg",
 		imageSrcSet: buildSaleorSrcSet([
 			{ width: 256, url: product.thumbnail256?.url },
