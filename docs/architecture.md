@@ -2,57 +2,60 @@
 
 ## Decision
 
-Phase 1 uses:
+This repository is the deployable application source of the commerce stack:
 
-- Saleor Core 3.23.x as the commerce API.
-- Saleor Dashboard from the same 3.23 generation.
-- Saleor Paper as the storefront baseline.
+- Saleor Core 3.23.38 under `backend/`.
+- Saleor Dashboard 3.23.38 under `dashboard/`.
+- Saleor Paper storefront under `storefront/`.
 - US / English / USD as the first active market.
 - Stripe as the first production payment provider.
-- Google Merchant Center, GA4 and Google Ads integrations after the checkout baseline is green.
 
-## Boundary
+PostgreSQL and Valkey/Redis are infrastructure dependencies and stay as maintained upstream container images.
 
-We do **not** fork Saleor Core during phase 1.
+## Customization boundary
 
-Business customization should first use:
+Owning the Core source does not mean modifying Core by default. Prefer:
 
 1. Paper storefront code.
 2. Saleor GraphQL APIs.
 3. Saleor Apps.
 4. Webhooks.
-5. External services.
+5. Project integration services.
+6. Direct Core patches only when the requirement cannot be implemented cleanly through the supported extension points.
 
-Forking Saleor Core is reserved for a requirement that cannot be implemented cleanly through those extension points.
+Any direct `backend/` change should be isolated and documented so upstream upgrades remain reviewable.
 
 ## Runtime shape
 
 ```
 Customer
   |
-Cloudflare
+TLS / reverse proxy
   |
-Paper / Next.js
+Paper / Next.js (storefront/)
   |
-Saleor GraphQL API
+Saleor GraphQL API (backend/)
   |-- PostgreSQL
   |-- Valkey/Redis
-  |-- Celery worker
-  |-- Object storage
+  |-- Celery worker (backend/)
+  |-- media/object storage
   |
-Saleor Dashboard
+Saleor Dashboard (dashboard/)
 ```
 
 ## Environments
 
 ### Local
-Use the official `saleor-platform` stack for backend dependencies and run Paper separately.
+
+`docker-compose.yml` builds Storefront, Saleor Core and Dashboard from this repository and starts PostgreSQL, Valkey and Mailpit.
 
 ### Staging
-Production-like Saleor API, isolated database, Stripe test mode, noindex.
+
+Use the production Compose overlay with an isolated database, test payment credentials and noindex.
 
 ### Production
-Paper and Saleor scale independently. Do not deploy the development `saleor-platform` compose file as production infrastructure.
+
+Use `docker-compose.yml` plus `docker-compose.prod.yml` or equivalent orchestration. Keep database/cache private, terminate TLS at a reverse proxy, persist database/media volumes and keep off-host backups.
 
 ## Non-negotiable storefront rules
 
@@ -60,11 +63,9 @@ Preserve Paper's:
 
 - checkout state model
 - auth/session flow
-- GraphQL code generation
+- generated GraphQL artifacts
 - cache tags and revalidation
 - locale/channel routing
 - variant selection logic
 - PPR/Suspense boundaries
 - upstream migration metadata
-
-Brand work should primarily modify presentation and content layers.
