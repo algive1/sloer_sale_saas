@@ -141,7 +141,7 @@ export const ShippingStep: FC<ShippingStepProps> = ({
 				setIsSubmitting(false);
 			}
 		},
-		[selectedMethod, savedDeliveryId, onComplete, checkout, isSubmitting, setAvailabilityIssue, t],
+		[selectedMethod, savedDeliveryId, onComplete, checkout, deliveries, isSubmitting, setAvailabilityIssue, t],
 	);
 
 	const showSpinner = isLoadingDeliveries && !isSubmitting && deliveries.length === 0;
