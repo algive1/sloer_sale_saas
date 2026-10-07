@@ -7,6 +7,7 @@ import { getNavbarMenuItems } from "@/lib/menus/get-menu-data";
 import { serializeMenuForNav } from "@/lib/menus/serialize-menu-for-nav";
 import { CartDrawerWrapper } from "@/ui/components/cart/cart-drawer-wrapper";
 import { CartNavItem } from "@/ui/components/nav/components/cart-nav-item";
+import { WishlistNavItem } from "@/ui/components/nav/components/wishlist-nav-item";
 import { MobileMenu } from "@/ui/components/nav/components/mobile-menu";
 import { MobileNavLinks } from "@/ui/components/nav/components/mobile-nav-links";
 import { NavLinksDesktop } from "@/ui/components/nav/components/nav-links-desktop";
@@ -116,6 +117,7 @@ export async function HeaderActionsSlot({ params }: { params: BrowseRouteParams 
 			<HeaderChromeSync>
 				<UserMenuServer locale={locale} channel={channel} />
 			</HeaderChromeSync>
+			<WishlistNavItem />
 			<CartNavItem channel={channel} localeSlug={locale} />
 		</>
 	);

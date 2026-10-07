@@ -89,6 +89,8 @@ import { toCheckoutActionResult } from "@/checkout/lib/server/mutation-result";
 import { toTypedDocument } from "@/checkout/lib/server/to-typed-document";
 import { checkoutGraphqlLanguageCode, resolveCheckoutLocaleSlug } from "@/lib/checkout-locale";
 import { emitCommerceEvent } from "@/lib/analytics/emit.server";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 import { checkoutCreateContextMetadata } from "@/lib/commerce-context/checkout-create-context";
 import { graphqlLanguageCodeVariables } from "@/lib/graphql-locale";
 import { isAllowedRedirectUrl } from "@/lib/auth/validate-redirect-url";
@@ -574,6 +576,10 @@ export async function processCheckoutTransaction(
 }
 
 export async function runCheckoutComplete(checkoutId: string): Promise<CheckoutCompleteActionResult> {
+	// Snapshot lines before completion so server-side conversion delivery can include
+	// product ids even though the compact checkoutComplete mutation returns only totals.
+	const checkoutBeforeComplete = await fetchCheckoutOnServer(checkoutId);
+
 	// Before complete — Saleor copies checkout public metadata onto the order.
 	await enrichCheckoutCommerceContext(checkoutId);
 
@@ -626,10 +632,12 @@ export async function runCheckoutComplete(checkoutId: string): Promise<CheckoutC
 	const order = payload.order;
 	emitCommerceEvent({
 		name: "checkout_completed",
+		eventId: createCommerceEventId("purchase", orderId),
 		channel: order?.channel?.slug ?? "",
 		value: order?.total?.gross?.amount ?? 0,
 		currency: order?.total?.gross?.currency ?? "",
 		transactionId: orderId,
+		items: checkoutBeforeComplete.ok ? commerceItemsFromLines(checkoutBeforeComplete.checkout?.lines) : [],
 	});
 
 	after(async () => {

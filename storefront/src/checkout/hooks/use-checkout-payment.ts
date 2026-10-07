@@ -28,6 +28,9 @@ import { useCheckoutGatewayMessages } from "@/checkout/hooks/use-checkout-gatewa
 import { useCheckoutPaymentMessages } from "@/checkout/hooks/use-checkout-payment-messages";
 import { useCheckoutAvailability } from "@/checkout/providers/checkout-availability";
 import { validateCheckoutFulfillment } from "@/checkout/lib/validate-checkout-fulfillment";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 
 type UseCheckoutPaymentParams = {
 	checkout: CheckoutFragment;
@@ -160,6 +163,16 @@ export function useCheckoutPayment({
 
 				markPaymentCompleting(liveCheckout.id);
 
+				emitCommerceEvent({
+					name: "payment_method_selected",
+					eventId: createCommerceEventId("payment_method", `${liveCheckout.id}:${provider.type}`),
+					channel: liveCheckout.channel.slug,
+					method: provider.type,
+					value: payAmount,
+					currency,
+					items: commerceItemsFromLines(liveCheckout.lines),
+				});
+
 				const payResult = await executePayment(
 					provider,
 					{
@@ -170,6 +183,16 @@ export function useCheckoutPayment({
 				);
 
 				if (!payResult.ok) {
+					emitCommerceEvent({
+						name: "payment_failed",
+						eventId: createCommerceEventId("payment_failed"),
+						channel: liveCheckout.channel.slug,
+						provider: provider.type,
+						code: payResult.errorKey ?? "payment",
+						value: payAmount,
+						currency,
+						items: commerceItemsFromLines(liveCheckout.lines),
+					});
 					const nextErrors: Record<string, string> = {};
 					if (payResult.errorKey) {
 						nextErrors[payResult.errorKey] = payResult.error;

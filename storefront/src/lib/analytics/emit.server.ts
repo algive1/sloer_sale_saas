@@ -5,13 +5,15 @@ import { after } from "next/server";
 import { track } from "@vercel/analytics/server";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { projectConsole } from "@/lib/analytics/destinations/console";
+import { deliverServerDestinations } from "@/lib/analytics/destinations/server-ads";
 import { projectVercel } from "@/lib/analytics/destinations/vercel";
+import { storeFirstPartyCommerceEvent } from "@/lib/analytics/first-party-store";
 import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
 
 /**
- * Server publisher. Schedules delivery with `after()` so a Server Action is not
- * held open for the beacon (Vercel maps this to `waitUntil`). Never throws to
- * the caller — analytics must not fail add-to-cart or checkoutComplete.
+ * Server publisher. Add-to-cart and purchase originate here only after Saleor
+ * confirms the mutation. Vercel + GA4 Measurement Protocol + consented ad APIs
+ * run in `after()` so they never hold open checkout mutations.
  */
 export function emitCommerceEvent(event: PaperCommerceEvent): void {
 	try {
@@ -25,14 +27,19 @@ export function emitCommerceEvent(event: PaperCommerceEvent): void {
 
 async function deliver(event: PaperCommerceEvent): Promise<void> {
 	try {
+		const requestHeaders = await headers();
+		const jobs: Promise<unknown>[] = [
+			deliverServerDestinations(event, requestHeaders),
+			storeFirstPartyCommerceEvent(event, requestHeaders),
+		];
+
 		const vercel = projectVercel(event);
 		if (vercel && webAnalyticsEnabled()) {
-			// The server SDK throws away the event unless it gets request headers.
-			// `after()` often loses the implicit Vercel request context — pass them.
-			await track(vercel.name, vercel.props, { headers: await headers() });
+			jobs.push(track(vercel.name, vercel.props, { headers: requestHeaders }));
 		}
-		// Server tag delivery is not shipped. Client events
-		// (begin_checkout, checkout_step, search) go through emit.client.
+
+		await Promise.allSettled(jobs);
+
 		if (process.env.NODE_ENV === "development") {
 			projectConsole(event);
 		}

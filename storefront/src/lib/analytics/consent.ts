@@ -1,20 +1,15 @@
 import type { OriginConsent } from "@/lib/commerce-context/keys";
 
+export const ANALYTICS_CONSENT_EVENT = "paper:analytics-consent";
+
 /**
  * Analytics consent mode.
  *
- * `required` (default) — storage-derived destinations (merchant tag) and
- * the first-touch cookie stay off until a fork banner calls
- * `window.paperAnalytics.setConsent("granted")`. Paper core ships no banner.
+ * `required` (default) — storage-derived analytics and first-touch storage stay
+ * off until the shopper explicitly decides.
  *
- * `implied` — visiting is enough (`origin.consent` = `not_required`). First-touch
- * cookie is written; the tag may load with `analytics_storage` granted. Ads
- * consents stay denied (Paper has no ad pixels).
- *
- * Agents / POS do not use this env. They write `origin.consent: "not_required"`
- * because there is no shopper cookie, not because a banner was skipped.
- *
- * Distinct from `paper.marketing_opt_in*` (newsletter). Do not merge them.
+ * `implied` — analytics storage may run without a stored choice. Advertising
+ * storage is deliberately stricter and still requires an explicit grant.
  */
 export type AnalyticsConsentMode = "required" | "implied";
 export type AnalyticsConsentChoice = "granted" | "denied";
@@ -32,7 +27,7 @@ export function analyticsConsentMode(
 	return "required";
 }
 
-/** True when first-touch storage and the merchant tag may run. */
+/** True when first-touch storage and the analytics merchant tag may run. */
 export function analyticsStorageAllowed(
 	choice: AnalyticsConsentChoice | null,
 	mode: AnalyticsConsentMode = analyticsConsentMode(),
@@ -40,6 +35,11 @@ export function analyticsStorageAllowed(
 	if (choice === "denied") return false;
 	if (choice === "granted") return true;
 	return mode === "implied";
+}
+
+/** Advertising tags/API calls always require an explicit shopper grant. */
+export function adsStorageAllowed(choice: AnalyticsConsentChoice | null): boolean {
+	return choice === "granted";
 }
 
 /**

@@ -15,6 +15,9 @@ const landing = {
 	source: "google",
 	medium: "cpc",
 	campaign: "summer",
+	gclid: "g-123",
+	fbclid: "fb-123",
+	ttclid: "tt-123",
 };
 const sid = "1b4e2a3c-1111-4111-8111-aaaaaaaaaaaa";
 const originUnknown = JSON.stringify({
@@ -87,6 +90,9 @@ describe("buildCheckoutCompleteContextMetadata", () => {
 			source: "google",
 			medium: "cpc",
 			campaign: "summer",
+			gclid: "g-123",
+			fbclid: "fb-123",
+			ttclid: "tt-123",
 		});
 		expect(section(writes, COMMERCE_CONTEXT_KEYS.session)).toEqual({ sessionId: sid });
 	});

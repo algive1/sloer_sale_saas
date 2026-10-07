@@ -25,6 +25,8 @@ import { buildStorefrontPath } from "@/lib/storefront-path";
 import { pickTranslatedName, pickTranslatedSlug } from "@/lib/saleor-translations";
 import { isBestseller, BESTSELLER_ATTRIBUTE_SLUGS } from "@/lib/catalog/product-flags";
 import { Breadcrumbs } from "@/ui/components/breadcrumbs";
+import { ProductCommerceEvent } from "@/ui/components/product-commerce-event";
+import { WishlistButton } from "@/ui/components/wishlist-button";
 import { BestsellerBadge } from "@/ui/components/ui/sale-label";
 import {
 	ProductAttributes,
@@ -241,6 +243,13 @@ async function ProductShell({
 				localeSlugs={buildLocaleSlugMap(product)}
 			/>
 			{productJsonLd && <script {...jsonLdScriptProps(productJsonLd)} />}
+			<ProductCommerceEvent
+				channel={params.channel}
+				productId={product.id}
+				productName={product.name}
+				value={product.pricing?.priceRange?.start?.gross?.amount ?? 0}
+				currency={product.pricing?.priceRange?.start?.gross?.currency ?? currency}
+			/>
 
 			{/* The browse layout (`(main)/layout.tsx`) owns the page's single <main> landmark. */}
 			<div className={layout.main}>
@@ -267,7 +276,20 @@ async function ProductShell({
 							</div>
 						)}
 
-						<h1 className="order-2 text-balance text-h1">{product.name}</h1>
+						<div className="order-2 flex items-start justify-between gap-4">
+							<h1 className="text-balance text-h1">{product.name}</h1>
+							<WishlistButton
+								item={{
+									productId: product.id,
+									name: product.name,
+									href: browse(productPath),
+									image: defaultImages[0]?.url,
+									price: product.pricing?.priceRange?.start?.gross?.amount ?? 0,
+									currency: product.pricing?.priceRange?.start?.gross?.currency ?? currency,
+									channel: params.channel,
+								}}
+							/>
+						</div>
 
 						<ErrorBoundary FallbackComponent={VariantSectionError}>
 							<Suspense fallback={variantSectionFallback}>

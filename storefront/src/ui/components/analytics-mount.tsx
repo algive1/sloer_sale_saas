@@ -4,6 +4,8 @@ import { gaMeasurementId } from "@/lib/analytics/ga4";
 import { AnalyticsPathnameViews } from "@/ui/components/analytics-pathname-views";
 import { AnalyticsRuntime } from "@/ui/components/analytics-runtime";
 import { GoogleAnalytics } from "@/ui/components/google-analytics";
+import { AdPixels } from "@/ui/components/ad-pixels";
+import { AnalyticsConsentBanner } from "@/ui/components/analytics-consent-banner";
 
 /**
  * Root-layout mount: merchant tag when a measurement id is set, plus the
@@ -21,6 +23,8 @@ export function AnalyticsMount() {
 				<GoogleAnalytics measurementId={measurementId} consentMode={analyticsConsentMode()} />
 			) : null}
 			<AnalyticsRuntime />
+			<AdPixels />
+			<AnalyticsConsentBanner />
 			<Suspense fallback={null}>
 				<AnalyticsPathnameViews />
 			</Suspense>

@@ -152,6 +152,12 @@ function marketingFromSnapshot(landing: LandingSnapshot | null): Record<string, 
 	if (landing.campaign) marketing.campaign = landing.campaign;
 	if (landing.term) marketing.term = landing.term;
 	if (landing.content) marketing.content = landing.content;
+	if (landing.gclid) marketing.gclid = landing.gclid;
+	if (landing.gbraid) marketing.gbraid = landing.gbraid;
+	if (landing.wbraid) marketing.wbraid = landing.wbraid;
+	if (landing.fbclid) marketing.fbclid = landing.fbclid;
+	if (landing.ttclid) marketing.ttclid = landing.ttclid;
+	if (landing.msclkid) marketing.msclkid = landing.msclkid;
 	return marketing;
 }
 

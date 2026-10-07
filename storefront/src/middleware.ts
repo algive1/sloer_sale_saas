@@ -9,6 +9,7 @@ const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
 	"checkout",
 	"order",
+	"ops",
 	"_next",
 	"favicon.ico",
 	"robots.txt",
@@ -38,6 +39,18 @@ function withBrowseLocaleCookie(request: NextRequest, response: NextResponse, lo
 
 export function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
+
+	if (pathname === "/ops" || pathname.startsWith("/ops/")) {
+		const secret = process.env.ANALYTICS_DASHBOARD_SECRET?.trim();
+		if (!secret) return new NextResponse("Not found", { status: 404 });
+		const auth = request.headers.get("authorization");
+		if (!validBasicAuth(auth, secret)) {
+			return new NextResponse("Authentication required", {
+				status: 401,
+				headers: { "WWW-Authenticate": 'Basic realm="Analytics", charset="UTF-8"' },
+			});
+		}
+	}
 
 	if (
 		pathname.startsWith("/_next") ||
@@ -103,6 +116,29 @@ export function middleware(request: NextRequest) {
 	}
 
 	return NextResponse.next();
+}
+
+function validBasicAuth(header: string | null, expectedPassword: string): boolean {
+	if (!header?.startsWith("Basic ")) return false;
+	try {
+		const decoded = atob(header.slice(6));
+		const separator = decoded.indexOf(":");
+		if (separator === -1) return false;
+		const username = decoded.slice(0, separator);
+		const password = decoded.slice(separator + 1);
+		return username === "analytics" && constantTimeEqual(password, expectedPassword);
+	} catch {
+		return false;
+	}
+}
+
+function constantTimeEqual(left: string, right: string): boolean {
+	if (left.length !== right.length) return false;
+	let mismatch = 0;
+	for (let index = 0; index < left.length; index++) {
+		mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
+	}
+	return mismatch === 0;
 }
 
 export const config = {

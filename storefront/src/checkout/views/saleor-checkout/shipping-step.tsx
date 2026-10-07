@@ -21,6 +21,9 @@ import { formatShippingPrice } from "@/checkout/lib/utils/money";
 import { MobileStickyAction } from "./mobile-sticky-action";
 import { useCheckoutStepNumber } from "@/checkout/hooks/use-checkout-steps";
 import { useTranslations } from "next-intl";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 
 interface ShippingStepProps {
 	checkout: CheckoutFragment;
@@ -78,6 +81,13 @@ export const ShippingStep: FC<ShippingStepProps> = ({
 				if (selectedMethod !== savedDeliveryId) {
 					const result = await updateCheckoutDeliveryMethod(checkout.id, selectedMethod);
 					if (!result.ok) {
+						emitCommerceEvent({
+							name: "checkout_failed",
+							eventId: createCommerceEventId("checkout_failed"),
+							channel: checkout.channel.slug,
+							stage: "shipping",
+							reason: "shipping_method_update",
+						});
 						const issue = result.fieldErrors?.length
 							? availabilityIssueFromFieldErrors(checkout.lines, result.fieldErrors)
 							: null;
@@ -99,6 +109,13 @@ export const ShippingStep: FC<ShippingStepProps> = ({
 					t("errors.fulfillmentCheckFailed"),
 				);
 				if (!fulfillment.ok) {
+					emitCommerceEvent({
+						name: "checkout_failed",
+						eventId: createCommerceEventId("checkout_failed"),
+						channel: checkout.channel.slug,
+						stage: "shipping",
+						reason: fulfillment.reason === "availability" ? "availability" : "fulfillment",
+					});
 					if (fulfillment.reason === "availability") {
 						setAvailabilityIssue(fulfillment.issue);
 					} else {
@@ -108,13 +125,23 @@ export const ShippingStep: FC<ShippingStepProps> = ({
 					return;
 				}
 
+				const delivery = deliveries.find((item) => item.id === selectedMethod);
+				emitCommerceEvent({
+					name: "shipping_method_selected",
+					eventId: createCommerceEventId("shipping_method", `${checkout.id}:${selectedMethod}`),
+					channel: checkout.channel.slug,
+					method: delivery?.shippingMethod?.name ?? selectedMethod,
+					value: nextCheckout.totalPrice?.gross?.amount ?? 0,
+					currency: nextCheckout.totalPrice?.gross?.currency ?? "",
+					items: commerceItemsFromLines(nextCheckout.lines),
+				});
 				onComplete(nextCheckout);
 			} catch {
 				setError(t("errors.fulfillmentCheckFailed"));
 				setIsSubmitting(false);
 			}
 		},
-		[selectedMethod, savedDeliveryId, onComplete, checkout, isSubmitting, setAvailabilityIssue, t],
+		[selectedMethod, savedDeliveryId, onComplete, checkout, deliveries, isSubmitting, setAvailabilityIssue, t],
 	);
 
 	const showSpinner = isLoadingDeliveries && !isSubmitting && deliveries.length === 0;

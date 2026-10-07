@@ -13,6 +13,7 @@ import { buildBrowsePageMetadata } from "@/lib/seo";
 import { resolveLocaleFromSlug } from "@/config/locale";
 import { LinkWithChannel } from "@/ui/atoms/link-with-channel";
 import { buttonClassName } from "@/ui/components/ui/button";
+import { CartCommerceEvent } from "@/ui/components/cart/cart-commerce-event";
 
 export async function generateMetadata(props: {
 	params: Promise<{ locale: string; channel: string }>;
@@ -71,6 +72,19 @@ async function CartContent({
 
 	return (
 		<>
+			<CartCommerceEvent
+				checkoutId={checkoutId}
+				channel={params.channel}
+				value={checkout.totalPrice.gross.amount}
+				currency={checkout.totalPrice.gross.currency}
+				items={checkout.lines.map((line) => ({
+					itemId: line.variant.id,
+					variantId: line.variant.id,
+					itemName: line.variant.product.name,
+					price: line.totalPrice.gross.amount / Math.max(1, line.quantity),
+					quantity: line.quantity,
+				}))}
+			/>
 			<h1 className="mt-8 text-balance text-h1 text-foreground">{t("title")}</h1>
 			<form className="mt-12">
 				<ul
@@ -117,7 +131,21 @@ async function CartContent({
 								</div>
 								<div className="flex justify-between">
 									<div className="text-sm font-bold">{t("quantity", { count: item.quantity })}</div>
-									<DeleteLineButton deleteLine={deleteCartLine.bind(null, checkoutId, item.id)} />
+									<DeleteLineButton
+										deleteLine={deleteCartLine.bind(null, checkoutId, item.id)}
+										analytics={{
+											channel: params.channel,
+											value: item.totalPrice.gross.amount,
+											currency: item.totalPrice.gross.currency,
+											item: {
+												itemId: item.variant.id,
+												variantId: item.variant.id,
+												itemName: item.variant.product.name,
+												price: item.totalPrice.gross.amount / Math.max(1, item.quantity),
+												quantity: item.quantity,
+											},
+										}}
+									/>
 								</div>
 							</div>
 						</li>
