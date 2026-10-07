@@ -103,45 +103,96 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 				/>
 			</section>
 
-			<section className="mt-8 grid gap-6 lg:grid-cols-2">
-				<div className="rounded-xl border border-border bg-card p-6">
-					<h2 className="text-lg font-semibold">Traffic sources</h2>
-					<div className="mt-5 overflow-x-auto">
-						<table className="w-full text-left text-sm">
-							<thead className="text-muted-foreground"><tr><th className="pb-2 font-medium">Source</th><th className="pb-2 font-medium">Type</th><th className="pb-2 text-right font-medium">Sessions</th><th className="pb-2 text-right font-medium">Orders</th></tr></thead>
-							<tbody>
-								{report.sources.map((row) => (
-									<tr key={`${row.source}:${row.trafficType}`} className="border-t border-border/60">
-										<td className="py-3 font-medium">{row.source}</td>
-										<td className="py-3 capitalize text-muted-foreground">{row.trafficType}</td>
-										<td className="py-3 text-right tabular-nums">{row.sessions.toLocaleString()}</td>
-										<td className="py-3 text-right tabular-nums">{row.purchases.toLocaleString()}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
+			<section className="mt-8 rounded-xl border border-border bg-card p-6">
+				<div className="flex flex-wrap items-end justify-between gap-3">
+					<div>
+						<h2 className="text-lg font-semibold">Traffic quality by source</h2>
+						<p className="mt-1 text-sm text-muted-foreground">
+							Compare acquisition volume with product interest, cart intent, checkout and purchase conversion.
+						</p>
 					</div>
+					<p className="text-xs text-muted-foreground">Revenue is net of tracked refunds and is never summed across currencies.</p>
 				</div>
+				<div className="mt-5 overflow-x-auto">
+					<table className="min-w-[980px] w-full text-left text-sm">
+						<thead className="text-muted-foreground">
+							<tr>
+								<th className="pb-2 font-medium">Source</th>
+								<th className="pb-2 font-medium">Type</th>
+								<th className="pb-2 text-right font-medium">Sessions</th>
+								<th className="pb-2 text-right font-medium">PDP</th>
+								<th className="pb-2 text-right font-medium">Add to cart</th>
+								<th className="pb-2 text-right font-medium">Checkout</th>
+								<th className="pb-2 text-right font-medium">Orders</th>
+								<th className="pb-2 text-right font-medium">CVR</th>
+								<th className="pb-2 text-right font-medium">Net revenue</th>
+							</tr>
+						</thead>
+						<tbody>
+							{report.sources.map((row) => (
+								<tr key={`${row.source}:${row.trafficType}`} className="border-t border-border/60">
+									<td className="py-3 font-medium">{row.source}</td>
+									<td className="py-3 capitalize text-muted-foreground">{row.trafficType}</td>
+									<td className="py-3 text-right tabular-nums">{row.sessions.toLocaleString()}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.productViews, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.addToCarts, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.checkouts, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{row.orders.toLocaleString()}</td>
+									<td className="py-3 text-right font-medium tabular-nums">{formatRate(row.purchaseSessions, row.sessions)}</td>
+									<td className="py-3 text-right"><RevenueCell values={row.revenueByCurrency} /></td>
+								</tr>
+							))}
+							{report.sources.length === 0 ? (
+								<tr><td colSpan={9} className="py-8 text-center text-muted-foreground">No traffic quality data yet.</td></tr>
+							) : null}
+						</tbody>
+					</table>
+				</div>
+			</section>
 
-				<div className="rounded-xl border border-border bg-card p-6">
-					<h2 className="text-lg font-semibold">Countries</h2>
-					<p className="mt-1 text-sm text-muted-foreground">Traffic location is taken from trusted CDN / reverse-proxy geo headers when available.</p>
-					<div className="mt-5 overflow-x-auto">
-						<table className="w-full text-left text-sm">
-							<thead className="text-muted-foreground"><tr><th className="pb-2 font-medium">Country</th><th className="pb-2 text-right font-medium">Sessions</th><th className="pb-2 text-right font-medium">Paid</th><th className="pb-2 text-right font-medium">Organic</th><th className="pb-2 text-right font-medium">Orders</th></tr></thead>
-							<tbody>
-								{report.countries.map((row) => (
-									<tr key={row.countryCode} className="border-t border-border/60">
-										<td className="py-3 font-medium">{row.countryCode}</td>
-										<td className="py-3 text-right tabular-nums">{row.sessions.toLocaleString()}</td>
-										<td className="py-3 text-right tabular-nums">{row.paid.toLocaleString()}</td>
-										<td className="py-3 text-right tabular-nums">{row.organic.toLocaleString()}</td>
-										<td className="py-3 text-right tabular-nums">{row.purchases.toLocaleString()}</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+			<section className="mt-8 rounded-xl border border-border bg-card p-6">
+				<div>
+					<h2 className="text-lg font-semibold">Traffic quality by country</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						See whether growth in each market is paid or organic, and whether that traffic converts.
+					</p>
+				</div>
+				<div className="mt-5 overflow-x-auto">
+					<table className="min-w-[1080px] w-full text-left text-sm">
+						<thead className="text-muted-foreground">
+							<tr>
+								<th className="pb-2 font-medium">Country</th>
+								<th className="pb-2 text-right font-medium">Sessions</th>
+								<th className="pb-2 text-right font-medium">Paid</th>
+								<th className="pb-2 text-right font-medium">Organic</th>
+								<th className="pb-2 text-right font-medium">PDP</th>
+								<th className="pb-2 text-right font-medium">Add to cart</th>
+								<th className="pb-2 text-right font-medium">Checkout</th>
+								<th className="pb-2 text-right font-medium">Orders</th>
+								<th className="pb-2 text-right font-medium">CVR</th>
+								<th className="pb-2 text-right font-medium">Net revenue</th>
+							</tr>
+						</thead>
+						<tbody>
+							{report.countries.map((row) => (
+								<tr key={row.countryCode} className="border-t border-border/60">
+									<td className="py-3 font-medium">{row.countryCode}</td>
+									<td className="py-3 text-right tabular-nums">{row.sessions.toLocaleString()}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.paid, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.organic, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.productViews, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.addToCarts, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{metricWithRate(row.checkouts, row.sessions)}</td>
+									<td className="py-3 text-right tabular-nums">{row.orders.toLocaleString()}</td>
+									<td className="py-3 text-right font-medium tabular-nums">{formatRate(row.purchaseSessions, row.sessions)}</td>
+									<td className="py-3 text-right"><RevenueCell values={row.revenueByCurrency} /></td>
+								</tr>
+							))}
+							{report.countries.length === 0 ? (
+								<tr><td colSpan={10} className="py-8 text-center text-muted-foreground">No country data yet.</td></tr>
+							) : null}
+						</tbody>
+					</table>
 				</div>
 			</section>
 
@@ -152,6 +203,41 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 
 function Metric({ label, value }: { label: string; value: number }) {
 	return <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{value.toLocaleString()}</p></div>;
+}
+
+function RevenueCell({ values }: { values: Array<{ currency: string; value: number }> }) {
+	if (values.length === 0) return <span className="text-muted-foreground">—</span>;
+	return (
+		<div className="grid gap-0.5">
+			{values.map((money) => (
+				<span key={money.currency} className="whitespace-nowrap tabular-nums">
+					{formatMoney(money.value, money.currency)}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function metricWithRate(value: number, sessions: number): string {
+	return `${value.toLocaleString()} · ${formatRate(value, sessions)}`;
+}
+
+function formatRate(value: number, total: number): string {
+	if (total <= 0) return "0.00%";
+	return `${((value / total) * 100).toFixed(2)}%`;
+}
+
+function formatMoney(value: number, currency: string): string {
+	if (currency === "UNKNOWN") return `${value.toFixed(2)} UNKNOWN`;
+	try {
+		return new Intl.NumberFormat("en", {
+			style: "currency",
+			currency,
+			maximumFractionDigits: 2,
+		}).format(value);
+	} catch {
+		return `${value.toFixed(2)} ${currency}`;
+	}
 }
 
 
