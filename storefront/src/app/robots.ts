@@ -16,7 +16,7 @@ import { getBaseUrl } from "@/lib/seo/config";
  */
 export default function robots(): MetadataRoute.Robots {
 	return {
-		sitemap: `${getBaseUrl().replace(/\\\/$/, "")}/sitemap.xml`,
+		sitemap: `${getBaseUrl().replace(/\/$/, "")}/sitemap.xml`,
 		rules: [
 			{
 				userAgent: "*",
