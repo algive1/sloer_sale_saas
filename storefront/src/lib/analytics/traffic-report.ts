@@ -30,6 +30,11 @@ export type TrafficReport = {
 		sessions: number;
 		purchases: number;
 	}>;
+	countryTrend: Array<{
+		bucket: string;
+		countryCode: string;
+		sessions: number;
+	}>;
 };
 
 export async function readTrafficReport(input: {
@@ -47,7 +52,7 @@ export async function readTrafficReport(input: {
 	const typeExpr = "COALESCE(NULLIF(traffic_type, ''), 'direct')";
 	const sourceExpr = "COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct')";
 
-	const [totalResult, typeResult, trendResult, countryResult, sourceResult] = await libsqlPipeline([
+	const [totalResult, typeResult, trendResult, countryResult, sourceResult, countryTrendResult] = await libsqlPipeline([
 		{
 			sql: `SELECT COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions
 				FROM analytics_events
@@ -106,7 +111,30 @@ export async function readTrafficReport(input: {
 				LIMIT 30`,
 			args: [from, to],
 			wantRows: true,
-		},
+		},,
+		{
+			sql: `WITH top_countries AS (
+				SELECT country_code
+				FROM analytics_events
+				WHERE occurred_at >= ? AND occurred_at < ?
+					AND COALESCE(device_type, '') != 'bot'
+					AND country_code IS NOT NULL AND country_code != ''
+				GROUP BY country_code
+				ORDER BY COUNT(DISTINCT COALESCE(session_id, event_id)) DESC
+				LIMIT 5
+			)
+			SELECT ${bucketExpr} AS bucket,
+				country_code,
+				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions
+			FROM analytics_events
+			WHERE occurred_at >= ? AND occurred_at < ?
+				AND COALESCE(device_type, '') != 'bot'
+				AND country_code IN (SELECT country_code FROM top_countries)
+			GROUP BY ${bucketExpr}, country_code
+			ORDER BY bucket ASC, sessions DESC`,
+			args: [from, to, from, to],
+			wantRows: true,
+		}
 	]);
 
 	const totalRow = hranaRowsToObjects(totalResult)[0] ?? {};
@@ -142,6 +170,11 @@ export async function readTrafficReport(input: {
 			trafficType: String(row.traffic_type ?? "direct"),
 			sessions: Number(row.sessions ?? 0),
 			purchases: Number(row.purchases ?? 0),
+		})),
+		countryTrend: hranaRowsToObjects(countryTrendResult).map((row) => ({
+			bucket: String(row.bucket ?? ""),
+			countryCode: String(row.country_code ?? "UNKNOWN"),
+			sessions: Number(row.sessions ?? 0),
 		})),
 	};
 }
