@@ -7,7 +7,6 @@ import { fetchSitemapCatalogSlugs } from "@/lib/seo/sitemap-source";
 import { getBaseUrl } from "@/lib/seo/config";
 import { buildStorefrontPath } from "@/lib/storefront-path";
 
-export const revalidate = 3600;
 
 function absoluteUrl(pathname: string): string {
 	const base = getBaseUrl().replace(/\/$/, "");
