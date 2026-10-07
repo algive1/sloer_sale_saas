@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { browserAdsConfigured } from "@/lib/analytics/ad-platforms";
 import { readConsentChoice, setAnalyticsConsent } from "@/lib/analytics/browser";
 import {
+	ANALYTICS_CONSENT_EVENT,
 	analyticsConsentMode,
 	type AnalyticsConsentChoice,
 } from "@/lib/analytics/consent";
@@ -11,24 +12,30 @@ import { Button } from "@/ui/components/ui/button";
 
 type BannerState = AnalyticsConsentChoice | "loading" | null;
 
+function subscribeToConsent(onStoreChange: () => void): () => void {
+	window.addEventListener(ANALYTICS_CONSENT_EVENT, onStoreChange);
+	return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, onStoreChange);
+}
+
+function readBrowserConsent(): BannerState {
+	return readConsentChoice();
+}
+
+function readServerConsent(): BannerState {
+	return "loading";
+}
+
 /**
- * Paper exposes the consent API but upstream ships no banner. This fork mounts a
- * compact binary choice so required-mode analytics and advertising tags can
- * actually be enabled by the shopper.
+ * Compact binary consent choice for analytics + advertising. Advertising
+ * remains opt-in even when analytics itself uses implied mode.
  */
 export function AnalyticsConsentBanner() {
-	const [choice, setChoice] = useState<BannerState>("loading");
-
-	useEffect(() => {
-		setChoice(readConsentChoice());
-	}, []);
-
+	const choice = useSyncExternalStore(subscribeToConsent, readBrowserConsent, readServerConsent);
 	const shouldAsk = analyticsConsentMode() === "required" || browserAdsConfigured();
 	if (!shouldAsk || choice === "loading" || choice) return null;
 
 	const choose = (next: AnalyticsConsentChoice) => {
 		setAnalyticsConsent(next);
-		setChoice(next);
 	};
 
 	return (
