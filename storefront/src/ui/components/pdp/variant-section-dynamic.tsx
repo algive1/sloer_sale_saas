@@ -6,6 +6,7 @@ import { resolveChannelCurrency } from "@/lib/channels/resolve-channel-currency"
 import { getStorefrontContent } from "@/lib/content/server";
 import { CheckoutAddLineDocument } from "@/gql/graphql";
 import { emitCommerceEvent } from "@/lib/analytics/emit.server";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
 import { executeAuthenticatedGraphQL } from "@/lib/graphql";
 import * as Checkout from "@/lib/checkout";
 import { getTranslations } from "next-intl/server";
@@ -161,9 +162,20 @@ export async function VariantSectionDynamic({
 			const linePrice = selectedVariant?.pricing?.price?.gross;
 			emitCommerceEvent({
 				name: "product_added_to_cart",
+				eventId: createCommerceEventId("add_to_cart"),
 				channel,
 				value: linePrice?.amount ?? 0,
 				currency: linePrice?.currency ?? "",
+				items: [
+					{
+						itemId: selectedVariant?.id ?? product.id,
+						variantId: selectedVariant?.id,
+						sku: selectedVariant?.sku,
+						itemName: product.name,
+						price: linePrice?.amount,
+						quantity: 1,
+					},
+				],
 			});
 
 			// Cart badge/drawer are cookie-gated dynamic holes — never in shared cache.

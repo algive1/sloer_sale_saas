@@ -6,6 +6,10 @@ import { CheckCircle, Mail, MapPin, Package, CreditCard, Truck } from "lucide-re
 import { useTranslations } from "next-intl";
 
 import { clearPaymentCompleting } from "@/checkout/lib/payment/checkout-payment-completion";
+import { emitCommerceEvent } from "@/lib/analytics/emit.client";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
+import { claimOnce } from "@/lib/analytics/claim";
 import { navigateToStorefrontHome } from "@/lib/auth";
 import { useCheckoutBrowseLocale } from "@/checkout/providers/checkout-browse";
 import { useCheckoutUser } from "@/checkout/providers/checkout-user";
@@ -79,7 +83,24 @@ export const OrderConfirmation = () => {
 		}
 
 		clearPaymentCompleting();
-	}, [order?.id]);
+
+		// The reliable core purchase event was emitted by the server action. This
+		// confirmation copy is ads-only (Meta/TikTok pixel + Google Ads) and shares
+		// the same event id so browser/server ad delivery is deduplicated.
+		if (!claimOnce(`paper.analytics.purchase_browser:${order.id}`)) return;
+		emitCommerceEvent(
+			{
+				name: "checkout_completed",
+				eventId: createCommerceEventId("purchase", order.id),
+				channel: order.channel?.slug ?? "",
+				value: order.total?.gross?.amount ?? 0,
+				currency: order.total?.gross?.currency ?? "",
+				transactionId: order.id,
+				items: commerceItemsFromLines(order.lines),
+			},
+			{ coreDestinations: false, userEmail: access === "verified" ? order.userEmail : null },
+		);
+	}, [access, order]);
 
 	if (!order) {
 		return <PageNotFound title={tErrors("orderNotFoundTitle")} message={tErrors("orderNotFoundMessage")} />;

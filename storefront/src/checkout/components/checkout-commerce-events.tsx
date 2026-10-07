@@ -4,6 +4,8 @@ import { Suspense, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { claimBeginCheckout } from "@/lib/analytics/claim";
 import type { CheckoutStepSlug } from "@/lib/analytics/catalog";
+import { createCommerceEventId } from "@/lib/analytics/event-id";
+import { commerceItemsFromLines } from "@/lib/analytics/items";
 import { emitCommerceEvent } from "@/lib/analytics/emit.client";
 import { useCheckoutStepFromUrl } from "@/checkout/hooks/use-checkout-step-from-url";
 import { useCheckoutData } from "@/checkout/providers/checkout-data";
@@ -31,6 +33,7 @@ function CheckoutCommerceEventsInner() {
 	const checkoutValue = checkout?.totalPrice?.gross?.amount ?? 0;
 	const checkoutCurrency = checkout?.totalPrice?.gross?.currency ?? "";
 	const lineCount = checkout?.lines?.length ?? 0;
+	const items = commerceItemsFromLines(checkout?.lines);
 
 	useEffect(() => {
 		if (loadState !== "ready" || !checkoutId || !channel) return;
@@ -39,11 +42,13 @@ function CheckoutCommerceEventsInner() {
 
 		emitCommerceEvent({
 			name: "checkout_started",
+			eventId: createCommerceEventId("checkout", checkoutId),
 			channel,
 			value: checkoutValue,
 			currency: checkoutCurrency,
+			items,
 		});
-	}, [channel, checkoutCurrency, checkoutId, checkoutValue, lineCount, loadState]);
+	}, [channel, checkoutCurrency, checkoutId, checkoutValue, items, lineCount, loadState]);
 
 	useEffect(() => {
 		if (!checkoutId) {
@@ -62,10 +67,14 @@ function CheckoutCommerceEventsInner() {
 
 		emitCommerceEvent({
 			name: "checkout_step_viewed",
+			eventId: createCommerceEventId("checkout_step", `${checkoutId}:${currentStep.slug}`),
 			channel,
 			step: currentStep.slug,
+			value: checkoutValue,
+			currency: checkoutCurrency,
+			items,
 		});
-	}, [channel, checkoutId, currentStep.slug, lineCount, loadState]);
+	}, [channel, checkoutCurrency, checkoutId, checkoutValue, currentStep.slug, items, lineCount, loadState]);
 
 	return null;
 }

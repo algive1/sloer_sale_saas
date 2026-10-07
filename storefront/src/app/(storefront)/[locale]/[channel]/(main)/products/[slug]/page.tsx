@@ -25,6 +25,7 @@ import { buildStorefrontPath } from "@/lib/storefront-path";
 import { pickTranslatedName, pickTranslatedSlug } from "@/lib/saleor-translations";
 import { isBestseller, BESTSELLER_ATTRIBUTE_SLUGS } from "@/lib/catalog/product-flags";
 import { Breadcrumbs } from "@/ui/components/breadcrumbs";
+import { ProductCommerceEvent } from "@/ui/components/product-commerce-event";
 import { BestsellerBadge } from "@/ui/components/ui/sale-label";
 import {
 	ProductAttributes,
@@ -241,6 +242,13 @@ async function ProductShell({
 				localeSlugs={buildLocaleSlugMap(product)}
 			/>
 			{productJsonLd && <script {...jsonLdScriptProps(productJsonLd)} />}
+			<ProductCommerceEvent
+				channel={params.channel}
+				productId={product.id}
+				productName={product.name}
+				value={product.pricing?.priceRange?.start?.gross?.amount ?? 0}
+				currency={product.pricing?.priceRange?.start?.gross?.currency ?? currency}
+			/>
 
 			{/* The browse layout (`(main)/layout.tsx`) owns the page's single <main> landmark. */}
 			<div className={layout.main}>
