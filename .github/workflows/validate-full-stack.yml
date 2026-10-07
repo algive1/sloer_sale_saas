@@ -1,0 +1,53 @@
+name: Validate full-stack self-hosting
+
+on:
+  push:
+    branches:
+      - chore/full-stack-selfhost
+    paths:
+      - "docker-compose*.yml"
+      - ".env.example"
+      - "backend/**"
+      - "dashboard/**"
+      - "storefront/**"
+      - "scripts/**"
+      - ".github/workflows/validate-full-stack.yml"
+  pull_request:
+    paths:
+      - "docker-compose*.yml"
+      - ".env.example"
+      - "backend/**"
+      - "dashboard/**"
+      - "storefront/**"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify vendored sources
+        run: |
+          test -f backend/manage.py
+          test -f backend/Dockerfile
+          test -f dashboard/package.json
+          test -f dashboard/Dockerfile
+          test "$(cat backend/.upstream-sha)" = "82ac1d190097a1a8b373d89d3a0396339e71f336"
+          test "$(cat dashboard/.upstream-sha)" = "a8c0d4cabb92c7d6ac7cabe569ebf4ec579ec49e"
+          node -e 'const p=require("./dashboard/package.json"); if (p.version !== "3.23.38") process.exit(1)'
+
+      - name: Validate Compose
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/bootstrap-local.sh
+          bash -n scripts/deploy.sh
+          bash -n scripts/vendor-upstreams.sh
