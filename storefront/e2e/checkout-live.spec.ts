@@ -15,6 +15,92 @@ type CapturedCommerceEvent = {
 	[key: string]: unknown;
 };
 
+type PaymentDiagnostics = {
+	consoleMessages: string[];
+	pageErrors: string[];
+	actionResponses: Array<{ status: number; url: string; bodyPreview: string }>;
+};
+
+function capturePaymentDiagnostics(page: Page): PaymentDiagnostics {
+	const diagnostics: PaymentDiagnostics = {
+		consoleMessages: [],
+		pageErrors: [],
+		actionResponses: [],
+	};
+
+	page.on("console", (message) => {
+		if (message.type() === "error" || message.type() === "warning") {
+			diagnostics.consoleMessages.push(`[${message.type()}] ${message.text()}`);
+		}
+	});
+
+	page.on("pageerror", (error) => {
+		diagnostics.pageErrors.push(error.stack || error.message);
+	});
+
+	page.on("response", async (response) => {
+		try {
+			const request = response.request();
+			const url = new URL(request.url());
+			if (request.method() !== "POST" || url.origin !== "http://localhost:3100" || url.pathname !== "/checkout") {
+				return;
+			}
+
+			const bodyPreview = (await response.text()).slice(0, 4_000);
+			diagnostics.actionResponses.push({
+				status: response.status(),
+				url: response.url(),
+				bodyPreview,
+			});
+		} catch {
+			// Diagnostic collection must never change checkout behavior.
+		}
+	});
+
+	return diagnostics;
+}
+
+async function fetchCheckoutPaymentDiagnostic(checkoutId: string) {
+	const response = await fetch(saleorApiUrl, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({
+			query: `
+				query BrowserCheckoutPaymentDiagnostic($id: ID!) {
+					checkout(id: $id) {
+						id
+						authorizeStatus
+						chargeStatus
+						totalPrice {
+							gross {
+								amount
+								currency
+							}
+						}
+						delivery {
+							id
+						}
+						availablePaymentGateways {
+							id
+							name
+						}
+						problems {
+							__typename
+						}
+					}
+				}
+			`,
+			variables: { id: checkoutId },
+		}),
+	});
+
+	const text = await response.text();
+	return {
+		status: response.status,
+		body: text.slice(0, 8_000),
+	};
+}
+
 async function expectOfficialDummyGateway(checkoutId: string) {
 	const response = await fetch(saleorApiUrl, {
 		method: "POST",
@@ -244,6 +330,7 @@ test.describe("live US browser commerce flow", () => {
 	}) => {
 		const candidate = await discoverInStockUsVariant();
 		const events = captureFirstPartyEvents(page);
+		const paymentDiagnostics = capturePaymentDiagnostics(page);
 
 		// Third-party script availability must never decide whether our CI passes.
 		// We stub only the downloaded SDK bodies; Paper's real inline bootstrap,
@@ -361,7 +448,32 @@ test.describe("live US browser commerce flow", () => {
 		await clickVisibleCheckoutSubmit(page);
 		await expectCommerceEvent(events, "payment_method_selected");
 
-		await expect(page).toHaveURL(/\/order\/[^?]+(?:\?|$)/, { timeout: 60_000 });
+		try {
+			await expect(page).toHaveURL(/\/order\/[^?]+(?:\?|$)/, { timeout: 60_000 });
+		} catch (error) {
+			const paymentFailureTitle = page.getByText("Payment failed", { exact: true }).first();
+			const paymentFailureText =
+				(await paymentFailureTitle.count()) > 0
+					? await paymentFailureTitle.locator("..").innerText().catch(() => null)
+					: null;
+			const checkoutDiagnostic = await fetchCheckoutPaymentDiagnostic(checkoutId).catch((diagnosticError) => ({
+				status: 0,
+				body: `diagnostic query failed: ${String(diagnosticError)}`,
+			}));
+
+			throw new Error(
+				[
+					"Checkout did not navigate to order confirmation after Pay.",
+					`Current URL: ${page.url()}`,
+					`Payment UI error: ${paymentFailureText ?? "(none visible)"}`,
+					`Saleor checkout diagnostic: ${JSON.stringify(checkoutDiagnostic)}`,
+					`Checkout POST responses: ${JSON.stringify(paymentDiagnostics.actionResponses.slice(-6))}`,
+					`Browser console: ${JSON.stringify(paymentDiagnostics.consoleMessages.slice(-20))}`,
+					`Page errors: ${JSON.stringify(paymentDiagnostics.pageErrors.slice(-10))}`,
+				].join("\n"),
+				{ cause: error },
+			);
+		}
 		await expect(page.getByText(/Order #?\d+/).first()).toBeVisible({ timeout: 30_000 });
 		await expect(page.locator("h1").first()).toBeVisible();
 
