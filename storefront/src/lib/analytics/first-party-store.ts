@@ -117,7 +117,7 @@ export async function storeFirstPartyCommerceEvent(
 			requestContext = {
 				countryCode: typeof purchase.country_code === "string" ? purchase.country_code : null,
 				regionCode: typeof purchase.region_code === "string" ? purchase.region_code : null,
-				deviceType: isDeviceType(purchase.device_type) ? purchase.device_type : "desktop",
+				deviceType: isDeviceType(purchase.device_type) ? purchase.device_type : "unknown",
 			};
 		}
 	}
@@ -375,6 +375,10 @@ async function ensureSchema(): Promise<void> {
 	await schemaPromise;
 }
 
+export async function ensureAnalyticsSchema(): Promise<void> {
+	await ensureSchema();
+}
+
 export async function recordRefundTotal(
 	orderId: string,
 	totalRefunded: number,
@@ -410,8 +414,8 @@ function isTrafficType(value: unknown): value is TrafficType {
 	return value === "paid" || value === "organic" || value === "direct" || value === "referral" || value === "other";
 }
 
-function isDeviceType(value: unknown): value is "desktop" | "mobile" | "tablet" | "bot" {
-	return value === "desktop" || value === "mobile" || value === "tablet" || value === "bot";
+function isDeviceType(value: unknown): value is "desktop" | "mobile" | "tablet" | "bot" | "unknown" {
+	return value === "desktop" || value === "mobile" || value === "tablet" || value === "bot" || value === "unknown";
 }
 
 function parseJsonRecord(value: unknown): Record<string, unknown> {
