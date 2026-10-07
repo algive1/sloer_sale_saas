@@ -132,8 +132,11 @@ async function expectCheckoutStep(page: Page, step: "contact" | "shipping" | "pa
 		.toBe(step);
 }
 
-async function clickVisibleSubmit(page: Page) {
-	const submit = page.locator('form button[type="submit"]:visible').last();
+async function clickVisibleCheckoutSubmit(page: Page) {
+	const submit = page
+		.locator('form button[type="submit"]:visible')
+		.filter({ hasNotText: "Apply" })
+		.last();
 	await expect(submit).toBeEnabled({ timeout: 30_000 });
 	await submit.click();
 }
@@ -281,14 +284,14 @@ test.describe("live US browser commerce flow", () => {
 		await setAddressField(page, "countryArea", "CA");
 		await setAddressField(page, "phone", "+14155550123");
 
-		await clickVisibleSubmit(page);
+		await clickVisibleCheckoutSubmit(page);
 		await expectCheckoutStep(page, "shipping");
 		await expectCommerceEvent(events, "checkout_step_viewed", (event) => event.step === "shipping");
 
 		const shippingMethod = page.locator('input[name="shipping"]').first();
 		await expect(shippingMethod).toBeAttached({ timeout: 30_000 });
 		await shippingMethod.check({ force: true });
-		await clickVisibleSubmit(page);
+		await clickVisibleCheckoutSubmit(page);
 
 		await expectCheckoutStep(page, "payment");
 		await expectCommerceEvent(events, "shipping_method_selected");
@@ -300,7 +303,7 @@ test.describe("live US browser commerce flow", () => {
 			timeout: 30_000,
 		});
 
-		await clickVisibleSubmit(page);
+		await clickVisibleCheckoutSubmit(page);
 		await expectCommerceEvent(events, "payment_method_selected");
 
 		await expect(page).toHaveURL(/\/order\/[^?]+(?:\?|$)/, { timeout: 60_000 });
