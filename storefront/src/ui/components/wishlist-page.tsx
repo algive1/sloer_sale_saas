@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import {
@@ -12,6 +11,7 @@ import {
 import type { WishlistRecord } from "@/lib/wishlist/types";
 import { WishlistButton } from "@/ui/components/wishlist-button";
 import { buttonClassName } from "@/ui/components/ui/button";
+import { SaleorImage } from "@/ui/atoms/saleor-image";
 
 export function WishlistPage() {
 	const snapshot = useSyncExternalStore(subscribeWishlist, wishlistSnapshot, () => "[]");
@@ -53,7 +53,12 @@ export function WishlistPage() {
 						<div className="relative mb-3 aspect-[3/4] overflow-hidden rounded-card bg-secondary">
 							<Link href={item.href} className="block h-full w-full">
 								{item.image ? (
-									<Image src={item.image} alt={item.name} fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover" />
+									<SaleorImage
+										src={item.image}
+										alt={item.name}
+										sizes="(min-width: 1024px) 25vw, 50vw"
+										className="object-cover"
+									/>
 								) : null}
 							</Link>
 							<WishlistButton item={item} className="absolute right-3 top-3" />
