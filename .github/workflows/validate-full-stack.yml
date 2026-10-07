@@ -44,7 +44,11 @@ jobs:
         run: |
           cp .env.example .env
           docker compose -f docker-compose.yml config -q
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          SALEOR_ALLOWED_CLIENT_HOSTS=www.example.com \
+          SALEOR_PUBLIC_URL=https://api.example.com/ \
+          SALEOR_RSA_PRIVATE_KEY=ci-placeholder-private-key \
+          SALEOR_EMAIL_URL=smtp://user:password@smtp.example.com:587/?tls=True \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
 
       - name: Validate shell scripts
         run: |
