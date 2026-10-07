@@ -209,7 +209,7 @@ jobs:
 
       - name: Build US storefront
         env:
-          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3000
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
           NEXT_PUBLIC_DEFAULT_CHANNEL: us
           STOREFRONT_CHANNELS: us
           NEXT_PUBLIC_DEFAULT_LOCALE: en
@@ -220,10 +220,52 @@ jobs:
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: pnpm --dir storefront build
 
+      - name: Verify sitemap and Google Merchant feed
+        shell: bash
+        env:
+          NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          STOREFRONT_CHANNELS: us
+          NEXT_PUBLIC_DEFAULT_LOCALE: en
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          CONTENT_PROVIDER: saleor
+          GOOGLE_MERCHANT_FEED_ENABLED: "true"
+        run: |
+          set -euo pipefail
+          nohup pnpm --dir storefront exec next start -p 3100 > /tmp/storefront.log 2>&1 &
+          echo "$!" > /tmp/storefront.pid
+
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://localhost:3100/robots.txt > /tmp/robots.txt; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/storefront.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+          curl -fsS http://localhost:3100/sitemap.xml | tee /tmp/sitemap.xml
+          grep -q 'http://localhost:3100/en/us/products/' /tmp/sitemap.xml
+          grep -q 'http://localhost:3100/sitemap.xml' /tmp/robots.txt
+
+          curl -fsS 'http://localhost:3100/merchant/google.xml?channel=us&locale=en' \
+            | tee /tmp/google-merchant.xml
+          grep -q '<rss xmlns:g="http://base.google.com/ns/1.0"' /tmp/google-merchant.xml
+          grep -q '<g:item_group_id>' /tmp/google-merchant.xml
+          grep -q '<g:price>.* USD</g:price>' /tmp/google-merchant.xml
+          grep -q '<g:availability>' /tmp/google-merchant.xml
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
         run: |
+          if [ -f /tmp/storefront.log ]; then
+            echo "===== Paper Storefront ====="
+            tail -n 300 /tmp/storefront.log || true
+          fi
           if [ -f /tmp/dummy-payment.log ]; then
             echo "===== Dummy Payment App ====="
             tail -n 300 /tmp/dummy-payment.log || true
@@ -243,6 +285,9 @@ jobs:
         if: always()
         shell: bash
         run: |
+          if [ -f /tmp/storefront.pid ]; then
+            kill "$(cat /tmp/storefront.pid)" || true
+          fi
           if [ -f /tmp/dummy-payment.pid ]; then
             kill "$(cat /tmp/dummy-payment.pid)" || true
           fi
