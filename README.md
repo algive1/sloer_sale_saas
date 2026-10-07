@@ -1,47 +1,45 @@
 # sloer_sale_saas
 
-Cross-border B2C commerce project based on Saleor Core and the Saleor Paper storefront.
+Self-hosted cross-border B2C commerce monorepo based on Saleor.
+
+## Full-stack source layout
+
+This repository is intended to contain the complete application source needed to build the commerce stack on your own server:
+
+```
+storefront/      Saleor Paper / Next.js storefront source
+backend/         Saleor Core 3.23.38 source
+dashboard/       Saleor Dashboard 3.23.38 source
+config/          project Saleor configuration and fixtures
+infra/           deployment overrides and infrastructure notes
+scripts/         bootstrap, deployment and maintenance scripts
+docs/            architecture and product decisions
+```
+
+PostgreSQL and Valkey/Redis remain infrastructure dependencies and are consumed as upstream container images; their application source is not vendored into this repository.
 
 ## Locked baseline
 
 - Saleor Core: **3.23.38**
-- Paper: pinned upstream source under `storefront/`
+- Saleor Dashboard: **3.23.38**
+- Paper storefront: pinned upstream source under `storefront/`
 - Next.js: **16.3.8**
 - Node.js: **24.x**
 - pnpm: **10.28.1**
 - Phase 1 market: **US / English / USD**
 
-First milestone:
+Exact upstream commits are recorded in [docs/upstream.md](docs/upstream.md).
 
-```
-PLP -> PDP -> variant -> cart -> guest checkout
-    -> shipping -> test payment -> Saleor order
-```
+## Local full-stack startup
 
-## Layout
-
-```
-storefront/      complete pinned Saleor Paper source
-docs/            architecture and product decisions
-infra/local/     local Saleor overrides
-scripts/         bootstrap and verification commands
-.github/         CI and reproducible Paper import
-```
-
-## Local setup
-
-Requirements: Docker, Node.js 24 and pnpm 10.28.1.
+Requirements: Docker with Compose v2.
 
 ```bash
-pnpm bootstrap:backend
+cp .env.example .env
+bash scripts/bootstrap-local.sh
 ```
 
-Run the Docker commands printed by the script, then:
-
-```bash
-pnpm bootstrap:storefront
-pnpm dev:storefront
-```
+The first start builds Saleor Core, Dashboard and Storefront from the source directories in this repository.
 
 Local endpoints:
 
@@ -50,19 +48,37 @@ Local endpoints:
 - Saleor Dashboard: http://localhost:9000/
 - Mailpit: http://localhost:8025
 
-Project storefront defaults live in `storefront/.env.project.example`. Do not commit `storefront/.env.local`.
+Create an administrator when needed:
 
-## Project docs
+```bash
+docker compose run --rm api python3 manage.py createsuperuser
+```
 
-- [Architecture](docs/architecture.md)
-- [Product / SKU model](docs/product-model.md)
-- [Phase 1 milestone](docs/phase-1.md)
-- [Upstream pins](docs/upstream.md)
-- [SEO / Google Merchant](docs/seo-google-merchant.md)
+## Self-hosted production
 
-## Rules
+Copy the repository to the server, configure `.env`, then run:
 
-- Do not fork Saleor Core in phase 1.
-- Never commit credentials.
-- Preserve Paper checkout, auth, routing, GraphQL generation, cache/revalidation and variant-selection architecture.
-- Finish the transaction baseline before major UI redesign.
+```bash
+bash scripts/deploy.sh
+```
+
+The production Compose file builds these application images from local source:
+
+- `./backend` -> Saleor API and Celery worker
+- `./dashboard` -> Saleor Dashboard
+- `./storefront` -> Paper / Next.js storefront
+
+PostgreSQL and Valkey are private Compose services. Put TLS/reverse proxying (Nginx, Caddy, Traefik or Cloudflare Tunnel) in front of ports 3000, 8000 and 9000. See [docs/self-hosting.md](docs/self-hosting.md).
+
+## Architecture rule
+
+The repository owns a copy of the Saleor Core source for reproducible self-hosting, but project-specific business features should still prefer GraphQL APIs, Saleor Apps, webhooks and separate integration services. Modify `backend/` itself only when a requirement cannot be implemented cleanly through supported extension points.
+
+## Transaction milestone
+
+```
+PLP -> PDP -> variant -> cart -> guest checkout
+    -> shipping -> payment -> Saleor order
+```
+
+Do not commit credentials. Keep production secrets only in `.env` or an external secret manager.
