@@ -13,7 +13,7 @@ PostgreSQL and Valkey use maintained upstream images because they are infrastruc
 
 ## Minimum server
 
-For a small staging or early production store, start with a Linux server with Docker Compose v2, 4 vCPU, 8 GB RAM and SSD storage. Larger catalogs, image processing, imports and traffic bursts may require more memory/CPU and managed database/object storage.
+For a small staging or early production store, use a Linux server with Docker Compose v2, at least 4 vCPU, 8 GB RAM plus swap, and SSD storage. Because this repository builds Saleor Core, Dashboard and Next.js from source on the server, **16 GB RAM is the safer target for comfortable rebuilds**. Larger catalogs, image processing, imports and traffic bursts may require more CPU/RAM and managed database/object storage.
 
 ## First deployment
 
@@ -35,6 +35,8 @@ Edit `.env` before continuing. At minimum change:
 - `SALEOR_ALLOWED_HOSTS`
 
 Use HTTPS public URLs in production.
+
+Before a production upgrade that includes Saleor migrations, take a PostgreSQL backup and keep the previously deployed Git commit available for rollback.
 
 Then:
 
@@ -62,7 +64,7 @@ SALEOR_DASHBOARD_URL=https://admin.example.com/
 SALEOR_ALLOWED_HOSTS=api.example.com,localhost,127.0.0.1,api
 ```
 
-The storefront container also receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/` so server-side rendering can call Saleor over the private Docker network while browsers use the public API URL.
+The storefront container also receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/` at runtime so server-side rendering calls Saleor over the private Docker network while browsers use the public API URL. During the Docker image build, `SALEOR_BUILD_API_URL` defaults to `http://127.0.0.1:8000/graphql/`; the deploy script therefore builds and starts Saleor first, applies migrations, waits for GraphQL, and only then builds Dashboard and Storefront.
 
 ## Reverse proxy and TLS
 
