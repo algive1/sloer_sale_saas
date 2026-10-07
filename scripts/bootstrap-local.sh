@@ -19,8 +19,8 @@ if [ ! -f dashboard/package.json ]; then
   exit 1
 fi
 
-echo "Building Storefront, Saleor Core and Dashboard from repository source..."
-docker compose build
+echo "Building Saleor backend images from repository source..."
+docker compose build api worker migrate
 
 echo "Starting PostgreSQL, Valkey and Mailpit..."
 docker compose up -d db cache mailpit
@@ -28,8 +28,28 @@ docker compose up -d db cache mailpit
 echo "Applying Saleor migrations..."
 docker compose run --rm migrate
 
-echo "Starting application services..."
-docker compose up -d api worker dashboard storefront
+echo "Starting Saleor API and worker..."
+docker compose up -d api worker
+
+echo "Waiting for Saleor GraphQL..."
+for attempt in $(seq 1 60); do
+  if docker compose exec -T api python3 -c     'import json, urllib.request; r=urllib.request.Request("http://127.0.0.1:8000/graphql/", data=json.dumps({"query":"{ shop { name } }"}).encode(), headers={"content-type":"application/json"}); urllib.request.urlopen(r, timeout=5).read()'     >/dev/null 2>&1; then
+    break
+  fi
+
+  if [ "$attempt" -eq 60 ]; then
+    echo "Saleor API did not become ready." >&2
+    docker compose logs --tail=200 api db cache >&2 || true
+    exit 1
+  fi
+  sleep 2
+done
+
+echo "Building Dashboard and Storefront against the running API..."
+docker compose build dashboard storefront
+
+echo "Starting Dashboard and Storefront..."
+docker compose up -d dashboard storefront
 
 cat <<'EOF'
 
