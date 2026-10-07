@@ -18,8 +18,8 @@ describe("readAnalyticsRequestContext", () => {
 		expect(
 			readAnalyticsRequestContext(
 				headers({
-					"cf-ipcountry": "de",
-					"x-region-code": "BY",
+					"x-vercel-ip-country": "de",
+					"x-vercel-ip-country-region": "BY",
 					"user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Mobile",
 				}),
 			),
