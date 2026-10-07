@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { getDefaultLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
@@ -25,6 +26,11 @@ function textResponse(message: string, status: number): Response {
 }
 
 export async function GET(request: Request): Promise<Response> {
+	// This endpoint is controlled by runtime deployment config and query parameters.
+	// Opt out of build-time prerendering so enabling/disabling the feed does not
+	// require the route to be statically baked as a 404 or stale catalog response.
+	await connection();
+
 	if (!enabled()) {
 		return textResponse("Google Merchant feed is disabled.", 404);
 	}
