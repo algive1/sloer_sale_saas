@@ -8,8 +8,8 @@ This repository is intended to contain the complete application source needed to
 
 ```
 storefront/      Saleor Paper / Next.js storefront source
-backend/         Saleor Core 3.23.38 source
-dashboard/       Saleor Dashboard 3.23.38 source
+backend/         Saleor Core 3.23.40 source
+dashboard/       Saleor Dashboard 3.23.39 source
 config/          project Saleor configuration and fixtures
 infra/           deployment overrides and infrastructure notes
 scripts/         bootstrap, deployment and maintenance scripts
@@ -20,8 +20,8 @@ PostgreSQL and Valkey/Redis remain infrastructure dependencies and are consumed 
 
 ## Locked baseline
 
-- Saleor Core: **3.23.38**
-- Saleor Dashboard: **3.23.38**
+- Saleor Core: **3.23.40**
+- Saleor Dashboard: **3.23.39**
 - Paper storefront: pinned upstream source under `storefront/`
 - Next.js: **16.3.8**
 - Node.js: **24.x**
