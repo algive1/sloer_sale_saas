@@ -74,7 +74,7 @@ async function CartContent({
 		<>
 			<CartCommerceEvent
 				checkoutId={checkoutId}
-				channel={checkout.channel.slug}
+				channel={params.channel}
 				value={checkout.totalPrice.gross.amount}
 				currency={checkout.totalPrice.gross.currency}
 				items={checkout.lines.map((line) => ({
@@ -134,7 +134,7 @@ async function CartContent({
 									<DeleteLineButton
 										deleteLine={deleteCartLine.bind(null, checkoutId, item.id)}
 										analytics={{
-											channel: checkout.channel.slug,
+											channel: params.channel,
 											value: item.totalPrice.gross.amount,
 											currency: item.totalPrice.gross.currency,
 											item: {
