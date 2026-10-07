@@ -31,6 +31,7 @@ jobs:
       SALEOR_APPS_SHA: 3601e299162023d151f8087d2334f7da1f420955
       SALEOR_API_URL: http://127.0.0.1:8000/graphql/
       NEXT_PUBLIC_SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+      ORDER_VIEW_SECRET: ci-order-view-secret-at-least-32-characters
       HUSKY: "0"
 
     steps:
