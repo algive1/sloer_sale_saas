@@ -10,7 +10,6 @@ import {
 } from "@/lib/wishlist/wishlist-store";
 import type { WishlistRecord } from "@/lib/wishlist/types";
 
-export const runtime = "nodejs";
 
 const OWNER_COOKIE = "paper_wishlist_owner";
 const OWNER_MAX_AGE = 60 * 60 * 24 * 365;
