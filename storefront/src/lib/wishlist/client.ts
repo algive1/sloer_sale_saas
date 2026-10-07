@@ -72,6 +72,8 @@ export function syncWishlistFromServer(): Promise<void> {
 			}
 		})
 		.catch(() => undefined)
-		.finally(() => undefined);
+		.finally(() => {
+			syncPromise = null;
+		});
 	return syncPromise;
 }
