@@ -138,7 +138,7 @@ export function CountryTrendChart({
 
 			<div
 				ref={wrapRef}
-				className="relative mt-4 touch-pan-y select-none overflow-hidden rounded-lg border border-border/70 bg-background"
+				className="relative mt-4 touch-pan-y select-none overflow-visible rounded-lg border border-border/70 bg-background"
 				onPointerMove={pointerMove}
 				onPointerLeave={() => {
 					if (pinnedIndex === null) setHoverIndex(null);
