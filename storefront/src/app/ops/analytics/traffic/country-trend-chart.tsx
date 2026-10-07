@@ -38,8 +38,7 @@ export function CountryTrendChart({
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
-	const [pointerX, setPointerX] = useState(0);
-	const [pointerY, setPointerY] = useState(0);
+	const [pointer, setPointer] = useState({ x: 0, y: 0, width: 0, height: 0 });
 	const [enabled, setEnabled] = useState<Record<string, boolean>>(
 		Object.fromEntries(countries.map((country) => [country, true])),
 	);
@@ -84,7 +83,7 @@ export function CountryTrendChart({
 		if (values.length === 0 || !wrapRef.current) return null;
 		const rect = wrapRef.current.getBoundingClientRect();
 		const localX = Math.max(0, Math.min(rect.width, clientX - rect.left));
-		setPointerX(localX);
+		setPointer((current) => ({ ...current, x: localX, width: rect.width, height: rect.height }));
 		if (values.length === 1) return 0;
 		const plotLeft = (PAD_X / WIDTH) * rect.width;
 		const plotWidth = (PLOT_WIDTH / WIDTH) * rect.width;
@@ -94,7 +93,15 @@ export function CountryTrendChart({
 
 	function pointerMove(event: ReactPointerEvent<HTMLDivElement>) {
 		if (pinnedIndex !== null) return;
-		if (wrapRef.current) setPointerY(event.clientY - wrapRef.current.getBoundingClientRect().top);
+		if (wrapRef.current) {
+			const rect = wrapRef.current.getBoundingClientRect();
+			setPointer((current) => ({
+				...current,
+				y: event.clientY - rect.top,
+				width: rect.width,
+				height: rect.height,
+			}));
+		}
 		setHoverIndex(nearestIndex(event.clientX));
 	}
 
@@ -201,8 +208,8 @@ export function CountryTrendChart({
 					<div
 						className="pointer-events-none absolute z-10 min-w-44 -translate-x-1/2 rounded-xl border border-border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-lg"
 						style={{
-							left: tooltipLeft(pointerX, wrapRef.current?.clientWidth ?? 0),
-							top: tooltipTop(pointerY, wrapRef.current?.clientHeight ?? 0),
+							left: tooltipLeft(pointer.x, pointer.width),
+							top: tooltipTop(pointer.y, pointer.height),
 						}}
 					>
 						<div className="mb-2 flex items-center justify-between gap-4">
