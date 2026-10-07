@@ -2,6 +2,7 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 import { readTrafficReport, type TrafficBucket } from "@/lib/analytics/traffic-report";
+import { TrafficTrendChart } from "./traffic-trend-chart";
 
 type SearchParams = Promise<{
 	range?: string;
@@ -27,7 +28,6 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 	const range = resolveRange(query);
 	const report = await readTrafficReport(range);
 	const types = new Map(report.byType.map((row) => [row.trafficType, row.sessions]));
-	const maxTrend = Math.max(1, ...report.trend.map((row) => row.total));
 
 	return (
 		<main className="mx-auto max-w-7xl px-6 py-10">
@@ -73,34 +73,13 @@ export default async function TrafficAnalyticsPage({ searchParams }: { searchPar
 			</section>
 
 			<section className="mt-8 rounded-xl border border-border bg-card p-6">
-				<div className="flex flex-wrap items-end justify-between gap-3">
-					<div>
-						<h2 className="text-lg font-semibold">Traffic trend</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
-							{formatDate(range.from)} – {formatDate(range.to)} · {range.bucket === "hour" ? "hourly" : "daily"}
-						</p>
-					</div>
-					<div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-						<span>Total</span><span>Paid</span><span>Organic</span><span>Direct</span>
-					</div>
+				<div>
+					<h2 className="text-lg font-semibold">Traffic trend</h2>
+					<p className="mt-1 text-sm text-muted-foreground">
+						{formatDate(range.from)} – {formatDate(range.to)} · {range.bucket === "hour" ? "hourly" : "daily"}
+					</p>
 				</div>
-				<div className="mt-6 overflow-x-auto">
-					<div className="flex min-w-[720px] items-end gap-2" style={{ height: 260 }}>
-						{report.trend.map((point) => (
-							<div key={point.bucket} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-								<div className="flex h-[210px] w-full items-end justify-center gap-1">
-									<Bar height={(point.total / maxTrend) * 100} label={`Total ${point.total}`} />
-									<Bar height={(point.paid / maxTrend) * 100} label={`Paid ${point.paid}`} muted />
-									<Bar height={(point.organic / maxTrend) * 100} label={`Organic ${point.organic}`} muted />
-								</div>
-								<span className="max-w-full truncate text-[10px] text-muted-foreground">{shortBucket(point.bucket)}</span>
-							</div>
-						))}
-						{report.trend.length === 0 ? (
-							<div className="grid h-full w-full place-items-center text-sm text-muted-foreground">No traffic yet.</div>
-						) : null}
-					</div>
-				</div>
+				<TrafficTrendChart points={report.trend} bucket={range.bucket} />
 			</section>
 
 			<section className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -154,9 +133,6 @@ function Metric({ label, value }: { label: string; value: number }) {
 	return <div className="rounded-xl border border-border bg-card p-5"><p className="text-sm text-muted-foreground">{label}</p><p className="mt-2 text-2xl font-semibold tabular-nums">{value.toLocaleString()}</p></div>;
 }
 
-function Bar({ height, label, muted = false }: { height: number; label: string; muted?: boolean }) {
-	return <div title={label} className={`w-2 rounded-t-sm ${muted ? "bg-muted-foreground/35" : "bg-foreground"}`} style={{ height: `${Math.max(1, height)}%` }} />;
-}
 
 function CustomRangeForm({ from, to }: { from: string; to: string }) {
 	return (
@@ -206,6 +182,3 @@ function formatInputDate(date: Date): string {
 	return date.toISOString().slice(0, 10);
 }
 
-function shortBucket(bucket: string): string {
-	return bucket.length > 10 ? bucket.slice(11, 16) : bucket.slice(5);
-}
