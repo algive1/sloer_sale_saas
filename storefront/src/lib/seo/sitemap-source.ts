@@ -1,3 +1,4 @@
+import { cacheLife, cacheTag } from "next/cache";
 import { getGraphqlLanguageCode } from "@/config/locale";
 import { executeRawGraphQL } from "@/lib/graphql";
 
@@ -57,6 +58,10 @@ export async function fetchSitemapCatalogSlugs(
 	channel: string,
 	localeSlug: string,
 ): Promise<SitemapCatalogSlugs> {
+	"use cache";
+	cacheLife("catalog");
+	cacheTag("products", "categories", "collections");
+
 	const languageCode = getGraphqlLanguageCode(localeSlug);
 
 	const [products, categories, collections] = await Promise.all([
