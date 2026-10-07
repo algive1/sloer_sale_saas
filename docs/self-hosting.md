@@ -33,6 +33,23 @@ Edit `.env` before continuing. At minimum change:
 - `DASHBOARD_API_URL`
 - `SALEOR_DASHBOARD_URL`
 - `SALEOR_ALLOWED_HOSTS`
+- `SALEOR_ALLOWED_CLIENT_HOSTS` (the customer-facing storefront hostnames Saleor may redirect to)
+- `SALEOR_PUBLIC_URL` (for example `https://api.example.com/`)
+- `SALEOR_EMAIL_URL` pointing to a real SMTP provider
+
+Production Compose runs Saleor with `DEBUG=False`, enables Saleor's HTTP IP filter, and forcibly disables Dummy Payment. Mailpit is local-only.
+
+Generate a persistent RSA key for Saleor JWT signing before the first production deployment:
+
+```bash
+mkdir -p .local/secrets
+openssl genrsa -out .local/secrets/saleor-rsa-private-key.pem 2048
+chmod 600 .local/secrets/saleor-rsa-private-key.pem
+```
+
+Keep the key stable across deployments. The default deploy script reads it from
+`.local/secrets/saleor-rsa-private-key.pem`; set `SALEOR_RSA_PRIVATE_KEY_FILE`
+if you store it elsewhere, or inject `SALEOR_RSA_PRIVATE_KEY` from a secret manager.
 
 Use HTTPS public URLs in production.
 
@@ -62,6 +79,9 @@ NEXT_PUBLIC_SALEOR_API_URL=https://api.example.com/graphql/
 DASHBOARD_API_URL=https://api.example.com/graphql/
 SALEOR_DASHBOARD_URL=https://admin.example.com/
 SALEOR_ALLOWED_HOSTS=api.example.com,localhost,127.0.0.1,api
+SALEOR_ALLOWED_CLIENT_HOSTS=www.example.com
+SALEOR_PUBLIC_URL=https://api.example.com/
+SALEOR_EMAIL_URL=smtp://USER:PASSWORD@smtp.example.com:587/?tls=True
 ```
 
 The storefront container also receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/` at runtime so server-side rendering calls Saleor over the private Docker network while browsers use the public API URL. During the Docker image build, `SALEOR_BUILD_API_URL` defaults to `http://127.0.0.1:8000/graphql/`; the deploy script therefore builds and starts Saleor first, applies migrations, waits for GraphQL, and only then builds Dashboard and Storefront.
