@@ -4,6 +4,7 @@ import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 
 const FUNNEL_ORDER = [
+	"page_viewed",
 	"product_viewed",
 	"wishlist_added",
 	"product_added_to_cart",
@@ -14,6 +15,7 @@ const FUNNEL_ORDER = [
 ] as const;
 
 const LABELS: Record<string, string> = {
+	page_viewed: "Sessions / page views",
 	product_viewed: "Product views",
 	wishlist_added: "Wishlist",
 	product_added_to_cart: "Add to cart",
@@ -83,10 +85,12 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 				</nav>
 			</header>
 
-			<section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				<Metric label="Sessions" value={summary.sessions.toLocaleString()} />
 				<Metric label="Purchases" value={summary.purchases.toLocaleString()} />
 				<Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
+				<Metric label="Abandoned checkout" value={summary.abandonedCheckouts.toLocaleString()} />
+				<Metric label="Payment failures" value={summary.paymentFailures.toLocaleString()} />
 				<Metric label="Tracked events" value={summary.totalEvents.toLocaleString()} />
 			</section>
 
@@ -137,11 +141,15 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 							</thead>
 							<tbody>
 								{summary.sources.map((row) => (
-									<tr key={`${row.source}:${row.currency}`} className="border-b border-border/60 last:border-0">
+									<tr key={row.source} className="border-b border-border/60 last:border-0">
 										<td className="py-3">{row.source}</td>
 										<td className="py-3 text-right tabular-nums">{row.sessions}</td>
 										<td className="py-3 text-right tabular-nums">{row.purchases}</td>
-										<td className="py-3 text-right tabular-nums">{formatMoney(row.revenue, row.currency)}</td>
+										<td className="py-3 text-right tabular-nums">
+											{row.revenueByCurrency.length > 0
+												? row.revenueByCurrency.map((money) => formatMoney(money.value, money.currency)).join(" · ")
+												: "—"}
+										</td>
 									</tr>
 								))}
 							</tbody>
