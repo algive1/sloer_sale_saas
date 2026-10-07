@@ -111,7 +111,7 @@ export async function readTrafficReport(input: {
 				LIMIT 30`,
 			args: [from, to],
 			wantRows: true,
-		},,
+		},
 		{
 			sql: `WITH top_countries AS (
 				SELECT country_code
