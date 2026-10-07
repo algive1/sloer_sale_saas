@@ -41,13 +41,51 @@ export async function storeFirstPartyCommerceEvent(
 	await ensureSchema();
 
 	const landing = parseLandingCookie(readCookie(headers, ANALYTICS_LANDING_COOKIE));
-	const sessionId = readCookie(headers, ANALYTICS_SESSION_COOKIE);
+	let sessionId = readCookie(headers, ANALYTICS_SESSION_COOKIE);
+	let attribution = landing
+		? {
+				source: landing.source ?? null,
+				medium: landing.medium ?? null,
+				campaign: landing.campaign ?? null,
+				landingPath: landing.landingPath ?? null,
+				clickIds: {
+					gclid: landing.gclid,
+					gbraid: landing.gbraid,
+					wbraid: landing.wbraid,
+					fbclid: landing.fbclid,
+					ttclid: landing.ttclid,
+					msclkid: landing.msclkid,
+				},
+			}
+		: null;
 	const itemIds = event.items?.map((item) => item.variantId || item.itemId) ?? [];
 	const transactionId = "transactionId" in event ? event.transactionId ?? null : null;
 	const value = "value" in event && typeof event.value === "number" ? event.value : null;
 	const currency = "currency" in event && typeof event.currency === "string" ? event.currency : null;
 	const channel = "channel" in event ? event.channel : "";
 	const eventId = event.eventId || randomId();
+
+	if (event.name === "refund_completed" && event.transactionId && !attribution) {
+		const [purchaseResult] = await libsqlPipeline([{
+			sql: `SELECT session_id, source, medium, campaign, landing_path, click_ids_json
+				FROM analytics_events
+				WHERE event_name = 'checkout_completed' AND transaction_id = ?
+				ORDER BY occurred_at ASC LIMIT 1`,
+			args: [event.transactionId],
+			wantRows: true,
+		}]);
+		const purchase = hranaRowsToObjects(purchaseResult)[0];
+		if (purchase) {
+			sessionId = typeof purchase.session_id === "string" ? purchase.session_id : sessionId;
+			attribution = {
+				source: typeof purchase.source === "string" ? purchase.source : null,
+				medium: typeof purchase.medium === "string" ? purchase.medium : null,
+				campaign: typeof purchase.campaign === "string" ? purchase.campaign : null,
+				landingPath: typeof purchase.landing_path === "string" ? purchase.landing_path : null,
+				clickIds: parseJsonRecord(purchase.click_ids_json),
+			};
+		}
+	}
 
 	await libsqlPipeline([
 		{
@@ -65,18 +103,11 @@ export async function storeFirstPartyCommerceEvent(
 				transactionId,
 				value,
 				currency,
-				landing?.source ?? null,
-				landing?.medium ?? null,
-				landing?.campaign ?? null,
-				landing?.landingPath ?? null,
-				JSON.stringify({
-					gclid: landing?.gclid,
-					gbraid: landing?.gbraid,
-					wbraid: landing?.wbraid,
-					fbclid: landing?.fbclid,
-					ttclid: landing?.ttclid,
-					msclkid: landing?.msclkid,
-				}),
+				attribution?.source ?? null,
+				attribution?.medium ?? null,
+				attribution?.campaign ?? null,
+				attribution?.landingPath ?? null,
+				JSON.stringify(attribution?.clickIds ?? {}),
 				JSON.stringify(itemIds),
 				safePayload(event),
 			],
@@ -101,9 +132,12 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 		},
 		{
 			sql: `SELECT COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
-				COALESCE(SUM(value), 0) AS value
+				COALESCE(SUM(CASE
+					WHEN event_name = 'checkout_completed' THEN value
+					WHEN event_name = 'refund_completed' THEN -value
+					ELSE 0 END), 0) AS value
 				FROM analytics_events
-				WHERE occurred_at >= ? AND event_name = 'checkout_completed'
+				WHERE occurred_at >= ? AND event_name IN ('checkout_completed', 'refund_completed')
 				GROUP BY COALESCE(NULLIF(currency, ''), 'UNKNOWN')
 				ORDER BY value DESC`,
 			args: [since],
@@ -124,7 +158,10 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
 				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases,
-				COALESCE(SUM(CASE WHEN event_name = 'checkout_completed' THEN value ELSE 0 END), 0) AS revenue
+				COALESCE(SUM(CASE
+					WHEN event_name = 'checkout_completed' THEN value
+					WHEN event_name = 'refund_completed' THEN -value
+					ELSE 0 END), 0) AS revenue
 				FROM analytics_events WHERE occurred_at >= ?
 				GROUP BY COALESCE(NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')
 				ORDER BY revenue DESC, sessions DESC LIMIT 20`,
@@ -202,9 +239,60 @@ async function ensureSchema(): Promise<void> {
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_occurred_idx ON analytics_events(occurred_at)",
 			},
+			{
+				sql: `CREATE TABLE IF NOT EXISTS analytics_refund_totals (
+					order_id TEXT PRIMARY KEY,
+					total_refunded REAL NOT NULL,
+					currency TEXT NOT NULL,
+					updated_at TEXT NOT NULL
+				)`,
+			},
 		]);
 	})();
 	await schemaPromise;
+}
+
+export async function recordRefundTotal(
+	orderId: string,
+	totalRefunded: number,
+	currency: string,
+): Promise<number> {
+	if (!analyticsDatabaseConfigured() || !orderId || totalRefunded <= 0 || !currency) return 0;
+	await ensureSchema();
+	const [previousResult] = await libsqlPipeline([{
+		sql: "SELECT total_refunded, currency FROM analytics_refund_totals WHERE order_id = ? LIMIT 1",
+		args: [orderId],
+		wantRows: true,
+	}]);
+	const previous = hranaRowsToObjects(previousResult)[0];
+	const previousTotal =
+		previous && String(previous.currency ?? "") === currency ? Number(previous.total_refunded ?? 0) : 0;
+	const delta = Math.max(0, totalRefunded - previousTotal);
+	if (delta <= 0) return 0;
+	await libsqlPipeline([{
+		sql: `INSERT INTO analytics_refund_totals(order_id, total_refunded, currency, updated_at)
+			VALUES (?, ?, ?, ?)
+			ON CONFLICT(order_id) DO UPDATE SET
+				total_refunded = CASE
+					WHEN excluded.total_refunded > analytics_refund_totals.total_refunded
+					THEN excluded.total_refunded ELSE analytics_refund_totals.total_refunded END,
+				currency = excluded.currency,
+				updated_at = excluded.updated_at`,
+		args: [orderId, totalRefunded, currency, new Date().toISOString()],
+	}]);
+	return delta;
+}
+
+function parseJsonRecord(value: unknown): Record<string, unknown> {
+	if (typeof value !== "string" || !value) return {};
+	try {
+		const parsed = JSON.parse(value) as unknown;
+		return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+			? (parsed as Record<string, unknown>)
+			: {};
+	} catch {
+		return {};
+	}
 }
 
 function readCookie(headers: HeaderReader, name: string): string | null {

@@ -38,6 +38,13 @@ export async function deliverServerDestinations(
 	await Promise.allSettled(jobs);
 }
 
+export async function deliverGa4ServerEvent(
+	event: PaperCommerceEvent,
+	requestHeaders: HeaderReader,
+): Promise<void> {
+	await deliverGa4(event, requestHeaders);
+}
+
 async function deliverGa4(event: PaperCommerceEvent, requestHeaders: HeaderReader): Promise<void> {
 	const measurementId = gaMeasurementId();
 	const apiSecret = process.env.GA4_API_SECRET?.trim();
