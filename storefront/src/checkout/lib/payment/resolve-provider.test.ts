@@ -20,6 +20,22 @@ describe("resolvePaymentProvider", () => {
 		});
 	});
 
+	it("prefers the current dummy payment app when Saleor also exposes the legacy plugin first", () => {
+		vi.stubEnv("NODE_ENV", "development");
+		const current = { id: "saleor.io.dummy-payment-app", name: "Dummy Payment App" };
+		expect(
+			resolvePaymentProvider([
+				{ id: "mirumee.payments.dummy", name: "Dummy" },
+				current,
+				{ id: "saleor.io.gift-card-payment-gateway", name: "Gift Card Payment Gateway" },
+			]),
+		).toEqual({
+			type: "dummy",
+			gateway: current,
+			submitMode: "server",
+		});
+	});
+
 	it("returns dummy in production when NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT is set", () => {
 		vi.stubEnv("NODE_ENV", "production");
 		vi.stubEnv("NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT", "true");
