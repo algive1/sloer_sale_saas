@@ -62,10 +62,13 @@ export function sendAdPageView(): void {
 	if (!canMeta && !canTikTok) return;
 
 	const path = landingPathFromHref(window.location.href);
-	if (!claimOnce(`paper.analytics.ad_page_view:${path}`)) return;
 
-	if (canMeta) window.fbq?.("track", "PageView");
-	if (canTikTok) window.ttq?.page?.();
+	if (canMeta && claimOnce(`paper.analytics.meta_page_view:${path}`)) {
+		window.fbq?.("track", "PageView");
+	}
+	if (canTikTok && claimOnce(`paper.analytics.tiktok_page_view:${path}`)) {
+		window.ttq?.page?.();
+	}
 }
 
 function sendGoogleAdsPurchase(
