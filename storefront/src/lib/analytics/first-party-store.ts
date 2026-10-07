@@ -52,8 +52,8 @@ export async function storeFirstPartyCommerceEvent(
 		{
 			sql: `INSERT OR IGNORE INTO analytics_events
 				(id, occurred_at, event_name, channel, session_id, event_id, transaction_id, value, currency,
-				 source, medium, campaign, landing_path, item_ids_json, payload_json)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 source, medium, campaign, landing_path, click_ids_json, item_ids_json, payload_json)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				randomId(),
 				new Date().toISOString(),
@@ -68,6 +68,14 @@ export async function storeFirstPartyCommerceEvent(
 				landing?.medium ?? null,
 				landing?.campaign ?? null,
 				landing?.landingPath ?? null,
+				JSON.stringify({
+					gclid: landing?.gclid,
+					gbraid: landing?.gbraid,
+					wbraid: landing?.wbraid,
+					fbclid: landing?.fbclid,
+					ttclid: landing?.ttclid,
+					msclkid: landing?.msclkid,
+				}),
 				JSON.stringify(itemIds),
 				safePayload(event),
 			],
@@ -161,6 +169,7 @@ async function ensureSchema(): Promise<void> {
 					medium TEXT,
 					campaign TEXT,
 					landing_path TEXT,
+					click_ids_json TEXT NOT NULL DEFAULT '{}',
 					item_ids_json TEXT NOT NULL DEFAULT '[]',
 					payload_json TEXT NOT NULL
 				)`,

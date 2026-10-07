@@ -1,6 +1,6 @@
 "use client";
 
-import type { WishlistRecord } from "@/lib/wishlist/wishlist-store";
+import type { WishlistRecord } from "@/lib/wishlist/types";
 
 const STORAGE_KEY = "paper.wishlist.v1";
 const EVENT = "paper:wishlist-change";

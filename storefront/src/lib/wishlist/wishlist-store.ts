@@ -1,17 +1,7 @@
 import "server-only";
 
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/analytics/libsql-http";
-
-export type WishlistRecord = {
-	productId: string;
-	variantId?: string;
-	name: string;
-	href: string;
-	image?: string;
-	price: number;
-	currency: string;
-	channel: string;
-};
+import type { WishlistRecord } from "@/lib/wishlist/types";
 
 let schemaPromise: Promise<void> | null = null;
 

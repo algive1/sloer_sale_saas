@@ -11,7 +11,7 @@ import {
 	syncWishlistFromServer,
 	wishlistSnapshot,
 } from "@/lib/wishlist/client";
-import type { WishlistRecord } from "@/lib/wishlist/wishlist-store";
+import type { WishlistRecord } from "@/lib/wishlist/types";
 import { cn } from "@/lib/utils";
 
 export function WishlistButton({

@@ -44,17 +44,21 @@ describe("captureLandingSnapshot", () => {
 		).toBe("/checkout?step=shipping");
 	});
 
-	it("does not store a referrer or click id", () => {
+	it("stores consent-ready click ids but never places them in the landing path", () => {
 		const snapshot = captureLandingSnapshot(
-			"https://shop.example/en/us?gclid=abc&fbclid=xyz&utm_source=google",
+			"https://shop.example/en/us?gclid=abc&fbclid=xyz&ttclid=tiktok&utm_source=google",
 			now,
 		);
 		expect(snapshot).toEqual({
 			capturedAt: "2026-09-12T12:00:00.000Z",
 			landingPath: "/en/us",
 			source: "google",
+			gclid: "abc",
+			fbclid: "xyz",
+			ttclid: "tiktok",
 		});
-		expect(JSON.stringify(snapshot)).not.toMatch(/gclid|fbclid|referrer/i);
+		expect(snapshot.landingPath).not.toMatch(/gclid|fbclid|ttclid/i);
+		expect(JSON.stringify(snapshot)).not.toMatch(/referrer/i);
 	});
 
 	it("caps and drops control characters in UTM values", () => {

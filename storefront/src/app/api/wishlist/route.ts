@@ -6,9 +6,9 @@ import {
 	mergeWishlistOwners,
 	removeWishlist,
 	upsertWishlist,
-	type WishlistRecord,
 	wishlistCloudConfigured,
 } from "@/lib/wishlist/wishlist-store";
+import type { WishlistRecord } from "@/lib/wishlist/types";
 
 export const runtime = "nodejs";
 
