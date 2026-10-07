@@ -116,15 +116,20 @@ export async function readTrafficReport(input: {
 			trafficType: String(row.traffic_type ?? "direct"),
 			sessions: Number(row.sessions ?? 0),
 		})),
-		trend: hranaRowsToObjects(trendResult).map((row) => ({
-			bucket: String(row.bucket ?? ""),
-			total: Number(row.total ?? 0),
-			paid: Number(row.paid ?? 0),
-			organic: Number(row.organic ?? 0),
-			direct: Number(row.direct ?? 0),
-			referral: Number(row.referral ?? 0),
-			other: Number(row.other ?? 0),
-		})),
+		trend: fillTrendGaps(
+			hranaRowsToObjects(trendResult).map((row) => ({
+				bucket: String(row.bucket ?? ""),
+				total: Number(row.total ?? 0),
+				paid: Number(row.paid ?? 0),
+				organic: Number(row.organic ?? 0),
+				direct: Number(row.direct ?? 0),
+				referral: Number(row.referral ?? 0),
+				other: Number(row.other ?? 0),
+			})),
+			input.from,
+			input.to,
+			input.bucket,
+		),
 		countries: hranaRowsToObjects(countryResult).map((row) => ({
 			countryCode: String(row.country_code ?? "UNKNOWN"),
 			sessions: Number(row.sessions ?? 0),
@@ -139,4 +144,56 @@ export async function readTrafficReport(input: {
 			purchases: Number(row.purchases ?? 0),
 		})),
 	};
+}
+
+
+type TrafficTrendPoint = TrafficReport["trend"][number];
+
+export function fillTrendGaps(
+	rows: TrafficTrendPoint[],
+	from: Date,
+	to: Date,
+	bucket: TrafficBucket,
+): TrafficTrendPoint[] {
+	if (to <= from) return [];
+	const byBucket = new Map(rows.map((row) => [row.bucket, row]));
+	const cursor = floorUtc(from, bucket);
+	const last = floorUtc(new Date(to.getTime() - 1), bucket);
+	const result: TrafficTrendPoint[] = [];
+
+	while (cursor <= last) {
+		const key = formatBucketKey(cursor, bucket);
+		result.push(
+			byBucket.get(key) ?? {
+				bucket: key,
+				total: 0,
+				paid: 0,
+				organic: 0,
+				direct: 0,
+				referral: 0,
+				other: 0,
+			},
+		);
+		if (bucket === "hour") cursor.setUTCHours(cursor.getUTCHours() + 1);
+		else cursor.setUTCDate(cursor.getUTCDate() + 1);
+	}
+
+	return result;
+}
+
+function floorUtc(date: Date, bucket: TrafficBucket): Date {
+	if (bucket === "hour") {
+		return new Date(Date.UTC(
+			date.getUTCFullYear(),
+			date.getUTCMonth(),
+			date.getUTCDate(),
+			date.getUTCHours(),
+		));
+	}
+	return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function formatBucketKey(date: Date, bucket: TrafficBucket): string {
+	const iso = date.toISOString();
+	return bucket === "hour" ? `${iso.slice(0, 13)}:00` : iso.slice(0, 10);
 }
