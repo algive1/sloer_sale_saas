@@ -14,6 +14,14 @@ import {
 
 type HeaderReader = { get(name: string): string | null };
 
+type StoredAttribution = {
+	source: string | null;
+	medium: string | null;
+	campaign: string | null;
+	landingPath: string | null;
+	clickIds: Record<string, unknown>;
+};
+
 let schemaPromise: Promise<void> | null = null;
 
 export type AnalyticsSummary = {
@@ -49,7 +57,7 @@ export async function storeFirstPartyCommerceEvent(
 
 	const landing = parseLandingCookie(readCookie(headers, ANALYTICS_LANDING_COOKIE));
 	let sessionId = readCookie(headers, ANALYTICS_SESSION_COOKIE);
-	let attribution = landing
+	let attribution: StoredAttribution | null = landing
 		? {
 				source: landing.source ?? null,
 				medium: landing.medium ?? null,
