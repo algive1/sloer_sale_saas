@@ -148,7 +148,15 @@ export function CartDrawer({
 	const intlLocale = resolveLocaleFromSlug(localeSlug).bcp47;
 
 	useEffect(() => {
-		if (isOpen && !wasOpen.current && lines.length > 0) {
+		if (!isOpen) {
+			wasOpen.current = false;
+			return;
+		}
+
+		// The drawer can open before the server refresh carrying newly-added cart
+		// lines reaches the client. Do not mark this open session as viewed until
+		// there is actually cart content to report, otherwise cart_viewed is lost.
+		if (!wasOpen.current && lines.length > 0) {
 			emitCommerceEvent({
 				name: "cart_viewed",
 				eventId: createCommerceEventId("cart_view"),
@@ -163,8 +171,8 @@ export function CartDrawer({
 					quantity: line.quantity,
 				})),
 			});
+			wasOpen.current = true;
 		}
-		wasOpen.current = isOpen;
 	}, [channel, currency, isOpen, lines, subtotal]);
 
 	const runCartMutation = (mutation: () => Promise<void>, onSuccess?: () => void) => {
