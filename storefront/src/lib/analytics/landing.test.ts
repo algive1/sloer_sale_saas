@@ -61,6 +61,28 @@ describe("captureLandingSnapshot", () => {
 		expect(JSON.stringify(snapshot)).not.toMatch(/referrer/i);
 	});
 
+	it("captures only external referrer hostnames, never the full referrer URL", () => {
+		expect(
+			captureLandingSnapshot(
+				"https://shop.example/en/us/products/shirt",
+				now,
+				"https://www.google.de/search?q=private+query",
+			),
+		).toEqual({
+			capturedAt: "2026-09-12T12:00:00.000Z",
+			landingPath: "/en/us/products/shirt",
+			referrerHost: "google.de",
+		});
+
+		expect(
+			captureLandingSnapshot(
+				"https://shop.example/en/us/products/shirt",
+				now,
+				"https://shop.example/en/us/search?q=internal",
+			).referrerHost,
+		).toBeUndefined();
+	});
+
 	it("caps and drops control characters in UTM values", () => {
 		const long = "x".repeat(250);
 		const snapshot = captureLandingSnapshot(
