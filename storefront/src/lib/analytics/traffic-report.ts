@@ -1,5 +1,6 @@
 import "server-only";
 
+import { ensureAnalyticsSchema } from "@/lib/analytics/first-party-store";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/analytics/libsql-http";
 
 export type TrafficBucket = "hour" | "day";
@@ -36,6 +37,7 @@ export async function readTrafficReport(input: {
 	to: Date;
 	bucket: TrafficBucket;
 }): Promise<TrafficReport> {
+	await ensureAnalyticsSchema();
 	const from = input.from.toISOString();
 	const to = input.to.toISOString();
 	const bucketExpr =
