@@ -1,5 +1,5 @@
 # Locale-canonical catalog URL slugs for every Paper-supported language.
-# Alias names are `slug` + Saleor LanguageCodeEnum (EN, PL, …) — keep in sync with
+# Alias names are `slug` + Saleor LanguageCodeEnum (EN, DE, …) — keep in sync with
 # LOCALE_DEFINITIONS in src/config/locale.ts when adding languages.
 #
 # Used for hreflang alternates and zero-hop language switching (ADR 0004 phase 2).
@@ -8,22 +8,43 @@ fragment ProductLocaleSlugTranslations on Product {
 	slugEN: translation(languageCode: EN) {
 		slug
 	}
-	slugPL: translation(languageCode: PL) {
-		slug
-	}
 	slugDE: translation(languageCode: DE) {
 		slug
 	}
 	slugFR: translation(languageCode: FR) {
 		slug
 	}
+	slugNL: translation(languageCode: NL) {
+		slug
+	}
+	slugDA: translation(languageCode: DA) {
+		slug
+	}
+	slugSV: translation(languageCode: SV) {
+		slug
+	}
+	slugES: translation(languageCode: ES) {
+		slug
+	}
+	slugIT: translation(languageCode: IT) {
+		slug
+	}
+	slugPL: translation(languageCode: PL) {
+		slug
+	}
+	slugPT: translation(languageCode: PT) {
+		slug
+	}
+	slugCS: translation(languageCode: CS) {
+		slug
+	}
+	slugJA: translation(languageCode: JA) {
+		slug
+	}
 	slugFI: translation(languageCode: FI) {
 		slug
 	}
 	slugNB: translation(languageCode: NB) {
-		slug
-	}
-	slugJA: translation(languageCode: JA) {
 		slug
 	}
 	slugKO: translation(languageCode: KO) {
@@ -35,22 +56,43 @@ fragment CategoryLocaleSlugTranslations on Category {
 	slugEN: translation(languageCode: EN) {
 		slug
 	}
-	slugPL: translation(languageCode: PL) {
-		slug
-	}
 	slugDE: translation(languageCode: DE) {
 		slug
 	}
 	slugFR: translation(languageCode: FR) {
 		slug
 	}
+	slugNL: translation(languageCode: NL) {
+		slug
+	}
+	slugDA: translation(languageCode: DA) {
+		slug
+	}
+	slugSV: translation(languageCode: SV) {
+		slug
+	}
+	slugES: translation(languageCode: ES) {
+		slug
+	}
+	slugIT: translation(languageCode: IT) {
+		slug
+	}
+	slugPL: translation(languageCode: PL) {
+		slug
+	}
+	slugPT: translation(languageCode: PT) {
+		slug
+	}
+	slugCS: translation(languageCode: CS) {
+		slug
+	}
+	slugJA: translation(languageCode: JA) {
+		slug
+	}
 	slugFI: translation(languageCode: FI) {
 		slug
 	}
 	slugNB: translation(languageCode: NB) {
-		slug
-	}
-	slugJA: translation(languageCode: JA) {
 		slug
 	}
 	slugKO: translation(languageCode: KO) {
@@ -62,22 +104,43 @@ fragment CollectionLocaleSlugTranslations on Collection {
 	slugEN: translation(languageCode: EN) {
 		slug
 	}
-	slugPL: translation(languageCode: PL) {
-		slug
-	}
 	slugDE: translation(languageCode: DE) {
 		slug
 	}
 	slugFR: translation(languageCode: FR) {
 		slug
 	}
+	slugNL: translation(languageCode: NL) {
+		slug
+	}
+	slugDA: translation(languageCode: DA) {
+		slug
+	}
+	slugSV: translation(languageCode: SV) {
+		slug
+	}
+	slugES: translation(languageCode: ES) {
+		slug
+	}
+	slugIT: translation(languageCode: IT) {
+		slug
+	}
+	slugPL: translation(languageCode: PL) {
+		slug
+	}
+	slugPT: translation(languageCode: PT) {
+		slug
+	}
+	slugCS: translation(languageCode: CS) {
+		slug
+	}
+	slugJA: translation(languageCode: JA) {
+		slug
+	}
 	slugFI: translation(languageCode: FI) {
 		slug
 	}
 	slugNB: translation(languageCode: NB) {
-		slug
-	}
-	slugJA: translation(languageCode: JA) {
 		slug
 	}
 	slugKO: translation(languageCode: KO) {
@@ -89,22 +152,43 @@ fragment PageLocaleSlugTranslations on Page {
 	slugEN: translation(languageCode: EN) {
 		slug
 	}
-	slugPL: translation(languageCode: PL) {
-		slug
-	}
 	slugDE: translation(languageCode: DE) {
 		slug
 	}
 	slugFR: translation(languageCode: FR) {
 		slug
 	}
+	slugNL: translation(languageCode: NL) {
+		slug
+	}
+	slugDA: translation(languageCode: DA) {
+		slug
+	}
+	slugSV: translation(languageCode: SV) {
+		slug
+	}
+	slugES: translation(languageCode: ES) {
+		slug
+	}
+	slugIT: translation(languageCode: IT) {
+		slug
+	}
+	slugPL: translation(languageCode: PL) {
+		slug
+	}
+	slugPT: translation(languageCode: PT) {
+		slug
+	}
+	slugCS: translation(languageCode: CS) {
+		slug
+	}
+	slugJA: translation(languageCode: JA) {
+		slug
+	}
 	slugFI: translation(languageCode: FI) {
 		slug
 	}
 	slugNB: translation(languageCode: NB) {
-		slug
-	}
-	slugJA: translation(languageCode: JA) {
 		slug
 	}
 	slugKO: translation(languageCode: KO) {
