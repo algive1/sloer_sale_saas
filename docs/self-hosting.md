@@ -5,8 +5,8 @@ The repository is designed so the application layer can be built entirely from s
 ## What is built locally
 
 - `storefront/`: Paper / Next.js
-- `backend/`: Saleor Core 3.23.38
-- `dashboard/`: Saleor Dashboard 3.23.38
+- `backend/`: Saleor Core 3.23.40
+- `dashboard/`: Saleor Dashboard 3.23.39
 - `worker`: same `backend/` image, different command
 
 PostgreSQL and Valkey use maintained upstream images because they are infrastructure dependencies rather than project application code.
