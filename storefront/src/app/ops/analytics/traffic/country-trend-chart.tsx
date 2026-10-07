@@ -39,6 +39,7 @@ export function CountryTrendChart({
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
 	const [pointerX, setPointerX] = useState(0);
+	const [pointerY, setPointerY] = useState(0);
 	const [enabled, setEnabled] = useState<Record<string, boolean>>(
 		Object.fromEntries(countries.map((country) => [country, true])),
 	);
@@ -93,10 +94,12 @@ export function CountryTrendChart({
 
 	function pointerMove(event: ReactPointerEvent<HTMLDivElement>) {
 		if (pinnedIndex !== null) return;
+		if (wrapRef.current) setPointerY(event.clientY - wrapRef.current.getBoundingClientRect().top);
 		setHoverIndex(nearestIndex(event.clientX));
 	}
 
 	function pointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+		if (wrapRef.current) setPointerY(event.clientY - wrapRef.current.getBoundingClientRect().top);
 		const index = nearestIndex(event.clientX);
 		if (index === null) return;
 		setPinnedIndex((current) => (current === index ? null : index));
@@ -196,8 +199,11 @@ export function CountryTrendChart({
 
 				{selected ? (
 					<div
-						className="pointer-events-none absolute top-3 z-10 min-w-44 -translate-x-1/2 rounded-xl border border-border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-lg"
-						style={{ left: tooltipLeft(pointerX, wrapRef.current?.clientWidth ?? 0) }}
+						className="pointer-events-none absolute z-10 min-w-44 -translate-x-1/2 rounded-xl border border-border bg-popover px-3 py-2.5 text-xs text-popover-foreground shadow-lg"
+						style={{
+							left: tooltipLeft(pointerX, wrapRef.current?.clientWidth ?? 0),
+							top: tooltipTop(pointerY, wrapRef.current?.clientHeight ?? 0),
+						}}
 					>
 						<div className="mb-2 flex items-center justify-between gap-4">
 							<strong>{formatBucket(selected.bucket, bucket)}</strong>
@@ -224,6 +230,12 @@ export function CountryTrendChart({
 function tooltipLeft(pointerX: number, width: number): string {
 	if (width <= 0) return "50%";
 	return `${Math.max(105, Math.min(width - 105, pointerX))}px`;
+}
+
+function tooltipTop(pointerY: number, height: number): string {
+	if (height <= 0) return "12px";
+	const preferred = pointerY > 145 ? pointerY - 125 : pointerY + 18;
+	return `${Math.max(12, Math.min(height - 130, preferred))}px`;
 }
 
 function formatBucket(value: string, bucket: "hour" | "day"): string {
