@@ -1,0 +1,19 @@
+services:
+  db:
+    ports: []
+  cache:
+    ports: []
+  mailpit:
+    profiles: ["local-only"]
+
+  api:
+    restart: always
+
+  worker:
+    restart: always
+
+  dashboard:
+    restart: always
+
+  storefront:
+    restart: always
