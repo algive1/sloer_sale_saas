@@ -29,8 +29,8 @@ jobs:
     env:
       SALEOR_PLATFORM_SHA: ab6315bd59c58b4815175df4c679107ff9695be4
       SALEOR_APPS_SHA: 3601e299162023d151f8087d2334f7da1f420955
-      SALEOR_API_URL: http://localhost:8000/graphql/
-      NEXT_PUBLIC_SALEOR_API_URL: http://localhost:8000/graphql/
+      SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+      NEXT_PUBLIC_SALEOR_API_URL: http://127.0.0.1:8000/graphql/
       HUSKY: "0"
 
     steps:
@@ -276,7 +276,7 @@ jobs:
       - name: Browser commerce full-flow E2E
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3100
-          SALEOR_API_URL: http://localhost:8000/graphql/
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
         run: pnpm --dir storefront exec playwright test e2e/checkout-live.spec.ts --workers=1
 
       - name: Integration logs on failure
