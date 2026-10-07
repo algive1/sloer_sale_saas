@@ -32,6 +32,11 @@ type OptionalMoneyContext = {
 
 export type PaperCommerceEvent =
 	| (EventContext & {
+			name: "page_viewed";
+			channel: string;
+			path: string;
+	  })
+	| (EventContext & {
 			name: "product_list_viewed";
 			channel: string;
 			listName: string;
