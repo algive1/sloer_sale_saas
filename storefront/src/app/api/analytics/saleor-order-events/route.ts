@@ -7,7 +7,6 @@ import {
 } from "@/lib/analytics/first-party-store";
 import { verifyWebhookSignature } from "@/lib/api-auth";
 
-export const runtime = "nodejs";
 
 type Money = { amount?: number | string | null; currency?: string | null };
 type MetadataItem = { key?: string | null; value?: string | null };
