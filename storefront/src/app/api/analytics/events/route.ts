@@ -6,6 +6,7 @@ import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 export const runtime = "nodejs";
 
 const ALLOWED_EVENTS = new Set([
+	"page_viewed",
 	"product_list_viewed",
 	"product_selected",
 	"product_viewed",
