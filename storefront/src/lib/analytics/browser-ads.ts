@@ -30,6 +30,10 @@ export type BrowserAdContext = {
 
 const pendingMetaEvents = new Map<string, PaperCommerceEvent>();
 const pendingTikTokEvents = new Map<string, PaperCommerceEvent>();
+let pendingFlushTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingFlushAttempts = 0;
+const MAX_PENDING_FLUSH_ATTEMPTS = 100;
+const PENDING_FLUSH_INTERVAL_MS = 50;
 
 function browserAdEventKey(event: PaperCommerceEvent): string {
 	return event.eventId || JSON.stringify(event);
@@ -68,11 +72,43 @@ function sendTikTokEvent(event: PaperCommerceEvent): boolean {
  * The queues are destination-specific: if Meta is ready before TikTok, Meta
  * can flush without causing a duplicate Meta send when TikTok becomes ready.
  */
+function hasPendingBrowserAdEvents(): boolean {
+	return pendingMetaEvents.size > 0 || pendingTikTokEvents.size > 0;
+}
+
+function stopPendingFlushScheduler(): void {
+	if (pendingFlushTimer !== null) {
+		clearTimeout(pendingFlushTimer);
+		pendingFlushTimer = null;
+	}
+	pendingFlushAttempts = 0;
+}
+
+function schedulePendingFlush(): void {
+	if (typeof window === "undefined" || pendingFlushTimer !== null || !hasPendingBrowserAdEvents()) return;
+	if (pendingFlushAttempts >= MAX_PENDING_FLUSH_ATTEMPTS) {
+		stopPendingFlushScheduler();
+		return;
+	}
+
+	pendingFlushTimer = setTimeout(() => {
+		pendingFlushTimer = null;
+		pendingFlushAttempts += 1;
+		flushBrowserAdEvents();
+		if (hasPendingBrowserAdEvents()) {
+			schedulePendingFlush();
+		} else {
+			stopPendingFlushScheduler();
+		}
+	}, PENDING_FLUSH_INTERVAL_MS);
+}
+
 export function flushBrowserAdEvents(): void {
 	if (typeof window === "undefined") return;
 	if (!adsStorageAllowed(readConsentChoice())) {
 		pendingMetaEvents.clear();
 		pendingTikTokEvents.clear();
+		stopPendingFlushScheduler();
 		return;
 	}
 
@@ -81,6 +117,12 @@ export function flushBrowserAdEvents(): void {
 	}
 	for (const [key, event] of pendingTikTokEvents) {
 		if (sendTikTokEvent(event)) pendingTikTokEvents.delete(key);
+	}
+
+	if (hasPendingBrowserAdEvents()) {
+		schedulePendingFlush();
+	} else {
+		stopPendingFlushScheduler();
 	}
 }
 
@@ -102,6 +144,10 @@ export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAd
 		} else {
 			pendingTikTokEvents.set(key, event);
 		}
+	}
+
+	if (hasPendingBrowserAdEvents()) {
+		schedulePendingFlush();
 	}
 
 	if (event.name === "checkout_completed") {
