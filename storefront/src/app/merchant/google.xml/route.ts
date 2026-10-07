@@ -38,7 +38,6 @@ export async function GET(request: Request): Promise<Response> {
 		return textResponse("Unknown storefront channel.", 400);
 	}
 
-	const allowedLocales = getStorefrontLocaleSlugs();
 	const pairedLocales = getLocalesForChannel(channel);
 	const requestedLocale = url.searchParams.get("locale")?.trim().toLowerCase();
 	const fallbackLocale = pairedLocales?.[0] || getDefaultLocaleSlug();
