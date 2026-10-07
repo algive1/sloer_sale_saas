@@ -236,7 +236,10 @@ test.describe("live US browser commerce flow", () => {
 
 		const wishlistButton = page.getByRole("button", { name: "Add to wishlist" });
 		await wishlistButton.click();
-		await expect(wishlistButton).toHaveAttribute("aria-pressed", "true");
+		await expect(page.getByRole("button", { name: "Remove from wishlist" })).toHaveAttribute(
+			"aria-pressed",
+			"true",
+		);
 		await expectCommerceEvent(events, "wishlist_added");
 		await expectMetaTrack(page, "AddToWishlist");
 		await expectTikTokTrack(page, "AddToWishlist");
