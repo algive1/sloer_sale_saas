@@ -359,6 +359,37 @@ async function ensureSchema(): Promise<void> {
 
 		await libsqlPipeline([
 			{
+				sql: `UPDATE analytics_events
+				SET traffic_type = CASE
+					WHEN click_ids_json LIKE '%"gclid":%' OR click_ids_json LIKE '%"gbraid":%' OR click_ids_json LIKE '%"wbraid":%'
+						OR click_ids_json LIKE '%"ttclid":%' OR click_ids_json LIKE '%"msclkid":%' THEN 'paid'
+					WHEN lower(replace(COALESCE(medium, ''), '-', '_')) IN
+						('cpc','ppc','paid','paid_search','paid_social','paidsocial','display','cpm','cpv','cpa','affiliate_paid') THEN 'paid'
+					WHEN lower(replace(COALESCE(medium, ''), '-', '_')) IN
+						('organic','organic_search','organic_social') THEN 'organic'
+					WHEN COALESCE(source, '') = '' AND COALESCE(medium, '') = '' THEN 'direct'
+					ELSE 'other'
+				END
+				WHERE traffic_type IS NULL OR traffic_type = ''`,
+			},
+			{
+				sql: `UPDATE analytics_events
+				SET source_group = CASE
+					WHEN lower(COALESCE(source, '')) LIKE '%google%' OR click_ids_json LIKE '%"gclid":%'
+						OR click_ids_json LIKE '%"gbraid":%' OR click_ids_json LIKE '%"wbraid":%' THEN 'google'
+					WHEN lower(COALESCE(source, '')) IN ('facebook','fb','instagram','meta') THEN 'meta'
+					WHEN lower(COALESCE(source, '')) LIKE '%tiktok%' OR click_ids_json LIKE '%"ttclid":%' THEN 'tiktok'
+					WHEN lower(COALESCE(source, '')) IN ('bing','microsoft','msn') OR click_ids_json LIKE '%"msclkid":%' THEN 'microsoft'
+					WHEN COALESCE(source, '') != '' THEN lower(source)
+					WHEN traffic_type = 'direct' THEN 'direct'
+					ELSE 'other'
+				END
+				WHERE source_group IS NULL OR source_group = ''`,
+			},
+		]);
+
+		await libsqlPipeline([
+			{
 				sql: "CREATE UNIQUE INDEX IF NOT EXISTS analytics_event_id_idx ON analytics_events(event_name, event_id)",
 			},
 			{
