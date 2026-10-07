@@ -33,6 +33,13 @@ export type CountryTrafficRow = {
 
 export type TrafficReport = {
 	sessions: number;
+	quality: {
+		productViews: number;
+		addToCarts: number;
+		checkouts: number;
+		purchaseSessions: number;
+		orders: number;
+	};
 	byType: Array<{ trafficType: string; sessions: number }>;
 	trend: Array<{
 		bucket: string;
@@ -80,7 +87,12 @@ export async function readTrafficReport(input: {
 		countryTrendResult,
 	] = await libsqlPipeline([
 		{
-			sql: `SELECT COUNT(DISTINCT ${sessionExpr}) AS sessions
+			sql: `SELECT COUNT(DISTINCT ${sessionExpr}) AS sessions,
+				COUNT(DISTINCT CASE WHEN event_name = 'product_viewed' THEN ${sessionExpr} END) AS product_views,
+				COUNT(DISTINCT CASE WHEN event_name = 'product_added_to_cart' THEN ${sessionExpr} END) AS add_to_carts,
+				COUNT(DISTINCT CASE WHEN event_name = 'checkout_started' THEN ${sessionExpr} END) AS checkouts,
+				COUNT(DISTINCT CASE WHEN event_name = 'checkout_completed' THEN ${sessionExpr} END) AS purchase_sessions,
+				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS orders
 				FROM analytics_events
 				WHERE occurred_at >= ? AND occurred_at < ? AND COALESCE(device_type, '') != 'bot'`,
 			args: [from, to],
@@ -214,6 +226,13 @@ export async function readTrafficReport(input: {
 	const totalRow = hranaRowsToObjects(totalResult)[0] ?? {};
 	return {
 		sessions: Number(totalRow.sessions ?? 0),
+		quality: {
+			productViews: Number(totalRow.product_views ?? 0),
+			addToCarts: Number(totalRow.add_to_carts ?? 0),
+			checkouts: Number(totalRow.checkouts ?? 0),
+			purchaseSessions: Number(totalRow.purchase_sessions ?? 0),
+			orders: Number(totalRow.orders ?? 0),
+		},
 		byType: hranaRowsToObjects(typeResult).map((row) => ({
 			trafficType: String(row.traffic_type ?? "direct"),
 			sessions: Number(row.sessions ?? 0),
