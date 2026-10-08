@@ -14,12 +14,16 @@ export function ProductCommerceEvent({
 	channel,
 	productId,
 	productName,
+	categoryName,
+	imageUrl,
 	value,
 	currency,
 }: {
 	channel: string;
 	productId: string;
 	productName: string;
+	categoryName?: string;
+	imageUrl?: string;
 	value: number;
 	currency: string;
 }) {
@@ -37,6 +41,9 @@ export function ProductCommerceEvent({
 				items: [
 					{
 						itemId: productId,
+						productId,
+						categoryName,
+						imageUrl,
 						itemName: productName,
 						price: value,
 						quantity: 1,
@@ -54,7 +61,7 @@ export function ProductCommerceEvent({
 		const onConsent = () => emitOnce();
 		window.addEventListener(ANALYTICS_CONSENT_EVENT, onConsent, { once: true });
 		return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, onConsent);
-	}, [channel, currency, productId, productName, value]);
+	}, [channel, currency, productId, productName, categoryName, imageUrl, value]);
 
 	return null;
 }
