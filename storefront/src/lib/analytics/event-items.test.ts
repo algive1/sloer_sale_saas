@@ -20,6 +20,10 @@ describe("analyticsEventItems", () => {
 		};
 		expect(analyticsEventItems(event)).toEqual([{
 			itemId: "product-1",
+			productId: null,
+			categoryId: null,
+			categoryName: null,
+			imageUrl: null,
 			variantId: "variant-1",
 			sku: "SKU-1",
 			itemName: "Classic Sneaker",
@@ -41,6 +45,10 @@ describe("analyticsEventItems", () => {
 		};
 		expect(analyticsEventItems(event)).toEqual([{
 			itemId: "v2",
+			productId: null,
+			categoryId: null,
+			categoryName: null,
+			imageUrl: null,
 			variantId: null,
 			sku: null,
 			itemName: "Namewith controls",
