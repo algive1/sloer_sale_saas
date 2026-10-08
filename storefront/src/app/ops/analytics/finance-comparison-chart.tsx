@@ -51,7 +51,7 @@ export function FinanceComparisonChart({
   const x=(i:number)=>LEFT+(all.length<=1?PLOT_W/2:i*PLOT_W/(all.length-1));
   const y=(v:number)=>TOP+(max-v)/denominator*PLOT_H;
   const path=(key:"all"|"region")=>all.map((p,i)=>(i===0?"M":"L")+x(i).toFixed(2)+","+y(p[key]).toFixed(2)).join(" ");
-  const pointerIndex=(event:PointerEvent<HTMLDivElement>)=>{
+  const pointerIndex=(event:PointerEvent<SVGSVGElement>)=>{
     const bounds=ref.current?.getBoundingClientRect();
     if (!bounds||!all.length)return null;
     const xx=(event.clientX-bounds.left)*WIDTH/bounds.width;
