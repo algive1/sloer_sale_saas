@@ -8,7 +8,7 @@ export type SystemPluginDefinition = Readonly<{
   apiVersion: 1;
   scope: "system";
   availability: "all-stores";
-  integration: "storefront-module" | "legacy-inline";
+  integration: "storefront-module" | "partial" | "legacy-inline";
   capabilities: readonly string[];
 }>;
 
@@ -26,7 +26,7 @@ export const SYSTEM_PLUGINS = {
     apiVersion: 1,
     scope: "system",
     availability: "all-stores",
-    integration: "legacy-inline",
+    integration: "partial",
     capabilities: ["commerce.events", "ops.analytics"],
   },
   "ads-tracking": {

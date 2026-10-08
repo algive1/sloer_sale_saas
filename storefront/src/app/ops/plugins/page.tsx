@@ -39,7 +39,11 @@ export default function SystemPluginsPage() {
         <section className="grid gap-4 md:grid-cols-2" aria-label="系统插件列表">
           {plugins.map((plugin) => {
             const details = labels[plugin.id as SystemPluginId];
-            const extracted = plugin.integration === "storefront-module";
+            const status = plugin.integration === "storefront-module"
+              ? "已模块化"
+              : plugin.integration === "partial"
+                ? "部分模块化"
+                : "现有路径运行";
             return (
               <article key={plugin.id} className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -48,7 +52,7 @@ export default function SystemPluginsPage() {
                     <p className="mt-1 font-mono text-xs text-stone-500">{plugin.id}</p>
                   </div>
                   <span className="rounded-md bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
-                    {extracted ? "已模块化" : "现有路径运行"}
+                    {status}
                   </span>
                 </div>
                 <p className="mt-4 text-xs text-stone-500">
