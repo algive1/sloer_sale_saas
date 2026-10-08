@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { SaleorImage } from "@/ui/atoms/saleor-image";
 import type { OpsOrder } from "@/lib/analytics/saleor-ops-orders";
+import { reminderSkipReason } from "@/lib/analytics/reminder-policy";
 
 type Props={orders:OpsOrder[]|null;dashboardBase:string;emailReady:boolean};
 function amount(value:number,currency:string){
@@ -42,7 +43,7 @@ export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
    <tbody>{orders.slice(0,10).map(o=>{
     const [label,kind]=state(o);
     const href=dashboardBase?dashboardBase+"/orders/"+encodeURIComponent(o.id):"";
-    const canRemind=!o.isPaid&&!["CANCELED","FULFILLED","RETURNED"].includes(o.status);
+    const canRemind=reminderSkipReason(o)===null;
     return <tr key={o.id} className="border-b border-border/50 last:border-0">
       <td className="py-2 pr-2"><div className="flex min-w-[174px] items-center gap-2">
        {o.thumbnailUrl?<span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border"><SaleorImage src={o.thumbnailUrl} srcSet={o.thumbnailUrl+" 64w"} sizes="40px" alt={o.productName}/></span>:<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span>}
