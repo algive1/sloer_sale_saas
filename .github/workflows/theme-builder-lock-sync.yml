@@ -29,8 +29,10 @@ jobs:
         env:
           HUSKY: "0"
         run: |
-          pnpm --dir storefront install --lockfile-only --no-frozen-lockfile --ignore-scripts
-          pnpm --dir storefront install --frozen-lockfile --lockfile-only --ignore-scripts
+          # Only the dependency resolution pass bypasses pnpm's date-based provenance heuristic.
+          # The resulting lockfile MUST pass the project's normal trust policy below.
+          pnpm --config.trust-policy=off --dir storefront install --lockfile-only --no-frozen-lockfile --ignore-scripts
+          pnpm --dir storefront install --frozen-lockfile --ignore-scripts
       - name: Commit dependency lockfile
         run: |
           if git diff --quiet -- storefront/pnpm-lock.yaml; then
