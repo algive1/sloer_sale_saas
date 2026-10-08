@@ -37,11 +37,16 @@ function ProductTable({items,traffic}:{items:ProductPerformanceRow[];traffic:Ove
 export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo}:Props) {
  const countries=useMemo(()=>["ALL",...new Set(sources.map(s=>s.country).filter(s=>s!=="ALL"))],[sources]);
  const [country,setCountry]=useState("ALL");
+ const [topCountry,setTopCountry]=useState("ALL");
  const [region,setRegion]=useState("ALL");
  const [currency,setCurrency]=useState("USD");
  const [mode,setMode]=useState("products");
  const [dialog,setDialog]=useState<string|null>(null);
  const filtered=sources.filter(s=>s.country===country);
+ const topRows=sources.filter(s=>s.country===topCountry);
+ const topTotals={sessions:topRows.reduce((n,r)=>n+r.sessions,0),carts:topRows.reduce((n,r)=>n+r.carts,0),orders:topRows.reduce((n,r)=>n+r.orders,0)};
+ const topRevenue=new Map<string,number>();
+ topRows.forEach(r=>r.revenueByCurrency.forEach(m=>topRevenue.set(m.currency,(topRevenue.get(m.currency)||0)+m.value)));
  const sum=(field:"sessions"|"carts"|"orders")=>filtered.reduce((t,r)=>t+r[field],0);
  const totals={sessions:sum("sessions"),carts:sum("carts"),orders:sum("orders")};
  const currencies=new Map<string,number>();
@@ -62,7 +67,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
  const gross=finance.reduce((n,f)=>n+f.gross,0),refunds=finance.reduce((n,f)=>n+f.refunds,0);
  const share=(values:{currency:string;value:number}[])=>
   values.length?<span className="flex flex-col text-right">{values.map(m=><span key={m.currency} title={m.currency}>{m.currency} {pct(m.value,currencies.get(m.currency)||0)}</span>)}</span>:<span>—</span>;
- const sourcesTable=(all:boolean)=><div className="overflow-x-auto"><table className="min-w-[600px] w-full text-xs"><thead><tr className="border-b border-border">{["来源","流量","加购","订单","转化率","收入"].map(h=><th key={h} className="p-2 text-left">{h}</th>)}</tr></thead><tbody>{filtered.slice().sort((a,b)=>b.sessions-a.sessions).slice(0,all?undefined:5).map((r,i)=><tr key={i} className="border-b border-border/50"><td className="p-2">{r.source}<small className="ml-1 text-muted-foreground">{labels[r.trafficType]||r.trafficType}</small></td><td>{pct(r.sessions,totals.sessions)}</td><td>{pct(r.carts,totals.carts)}</td><td>{pct(r.orders,totals.orders)}</td><td>{pct(r.purchaseSessions,r.sessions)}</td><td>{share(r.revenueByCurrency)}</td></tr>)}</tbody></table></div>;
+ const sourcesTable=(all:boolean)=><div className="overflow-x-auto"><table className="min-w-[600px] w-full text-xs"><thead><tr className="border-b border-border">{["来源","流量","加购","订单","转化率","收入"].map(h=><th key={h} className="p-2 text-left">{h}</th>)}</tr></thead><tbody>{topRows.slice().sort((a,b)=>b.sessions-a.sessions).slice(0,all?undefined:5).map((r,i)=><tr key={i} className="border-b border-border/50"><td className="p-2">{r.source}<small className="ml-1 text-muted-foreground">{labels[r.trafficType]||r.trafficType}</small></td><td>{pct(r.sessions,topTotals.sessions)}</td><td>{pct(r.carts,topTotals.carts)}</td><td>{pct(r.orders,topTotals.orders)}</td><td>{pct(r.purchaseSessions,r.sessions)}</td><td>{r.revenueByCurrency.length?<span className="flex flex-col">{r.revenueByCurrency.map(m=><span key={m.currency}>{m.currency} {pct(m.value,topRevenue.get(m.currency)||0)}</span>)}</span>:"—"}</td></tr>)}</tbody></table></div>;
  return <div className="space-y-4">
   <div className="grid gap-4 xl:grid-cols-2">
    <section className="rounded-xl border border-border bg-card p-5">
@@ -75,7 +80,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
       <td className="whitespace-nowrap py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{background:colors[i]}}/>{labels[g.type]}</td><td className="text-right">{pct(g.sessions,totals.sessions)}</td><td className="text-right">{pct(g.carts,totals.carts)}</td><td className="text-right">{pct(g.orders,totals.orders)}</td><td className="text-right">{pct(g.purchases,g.sessions)}</td><td>{share(g.revenue)}</td></tr>)}</tbody></table></div>
     </div><p className="mt-3 text-xs text-muted-foreground">环形图始终展示流量分布；收入百分比按币种分别计算。</p>
    </section>
-   <section className="rounded-xl border border-border bg-card p-5"><header className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Top 流量来源</h2><button type="button" className={selectClass} onClick={()=>setDialog("sources")}>查看全部</button></header>{sourcesTable(false)}</section>
+   <section className="rounded-xl border border-border bg-card p-5"><header className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Top 流量来源</h2><div className="flex items-center gap-2"><select aria-label="Top 来源地区" className={selectClass} value={topCountry} onChange={e=>setTopCountry(e.target.value)}>{countries.map(c=><option key={c} value={c}>{c==="ALL"?"全部地区":c}</option>)}</select><button type="button" className={selectClass} onClick={()=>setDialog("sources")}>查看全部</button></div></header>{sourcesTable(false)}</section>
   </div>
   <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
    <section className="rounded-xl border border-border bg-card p-5">
