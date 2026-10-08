@@ -345,6 +345,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3100
           PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
+          PLAYWRIGHT_THEME_DB_RESET_TOKEN: ci-theme-secret-only-for-testing
         run: pnpm --dir storefront exec playwright test e2e/theme-builder-live.spec.ts --workers=1
 
       - name: Integration logs on failure

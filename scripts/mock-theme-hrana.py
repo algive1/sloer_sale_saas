@@ -49,11 +49,26 @@ class Handler(BaseHTTPRequestHandler):
         self.respond(200, {"status": "ok"})
 
     def do_POST(self):
-        if self.path != "/v3/pipeline":
-            self.send_error(404)
-            return
         if self.headers.get("Authorization") != f"Bearer {TOKEN}":
             self.respond(401, {"error": "unauthorized"})
+            return
+        # CI-only fixture cleanup. The server binds loopback and this route
+        # requires the same bearer credential as the Hrana pipeline.
+        if self.path == "/__test__/reset":
+            exists = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'storefront_theme_homepages'"
+            ).fetchone()
+            if exists:
+                conn.execute(
+                    "DELETE FROM storefront_theme_homepages WHERE site_id = ?",
+                    ("fashion-ci",),
+                )
+                conn.commit()
+            self.respond(200, {"ok": True})
+            return
+        if self.path != "/v3/pipeline":
+            self.send_error(404)
             return
         try:
             size = int(self.headers.get("Content-Length", "0"))

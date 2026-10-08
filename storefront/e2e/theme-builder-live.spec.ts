@@ -12,7 +12,20 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
   test.describe.configure({ mode: "serial", timeout: 120_000 });
 
   test("protected editor writes and homepage publishing with real SQLite persistence", async ({ browser }) => {
-    test.skip(!password, "Set PLAYWRIGHT_THEME_EDITOR_SECRET in isolated CI");
+    const resetToken = process.env.PLAYWRIGHT_THEME_DB_RESET_TOKEN;
+    test.skip(!password || !resetToken, "Requires the isolated CI theme editor and database credentials");
+    // Retry-safe isolation: a prior Playwright attempt may have successfully
+    // published a page before a later assertion failed.
+    const fixture = await playwrightRequest.newContext({
+      baseURL: "http://127.0.0.1:3789",
+      extraHTTPHeaders: { Authorization: "Bearer " + resetToken },
+    });
+    try {
+      const reset = await fixture.post("/__test__/reset", { data: {} });
+      expect(reset.status(), await reset.text()).toBe(200);
+    } finally {
+      await fixture.dispose();
+    }
     const unauth = await playwrightRequest.newContext({ baseURL });
     const blocked = await unauth.get(scope);
     expect(blocked.status()).toBe(401);
@@ -119,7 +132,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       await page.goto("/ops/themes");
       await requirePuckPublishButton();
       await (await requirePuckPublishButton()).click();
-      await expect(page.getByRole("status")).toContainText("Published.", { timeout: 30_000 });
+      await expect(page.locator('p[role="status"]')).toContainText("Published.", { timeout: 30_000 });
 
       const published = await authorized.get(scope);
       const after = await published.json() as {
