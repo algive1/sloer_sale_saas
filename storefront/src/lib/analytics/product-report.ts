@@ -9,6 +9,7 @@ export type ProductMoney = { currency: string; value: number };
 export type ProductPerformanceRow = {
 	itemKey: string;
 	itemName: string;
+	categoryId: string;
 	categoryName: string;
 	thumbnailUrl: string;
 	sku: string;
@@ -74,6 +75,7 @@ export async function readProductReport(input: {
 			sql: `SELECT
 				${itemKey} AS item_key,
 				COALESCE(MAX(NULLIF(ai.item_name, '')), ${itemKey}) AS item_name,
+				COALESCE(MAX(NULLIF(ai.category_id, '')), '') AS category_id,
 				COALESCE(MAX(NULLIF(ai.category_name, '')), '') AS category_name,
 				COALESCE(MAX(NULLIF(ai.image_url, '')), '') AS thumbnail_url,
 				COALESCE(MAX(NULLIF(ai.sku, '')), '') AS sku,
@@ -158,6 +160,7 @@ export async function readProductReport(input: {
 		return {
 			itemKey: key,
 			itemName: String(row.item_name ?? key),
+			categoryId: String(row.category_id ?? ""),
 			categoryName: String(row.category_name ?? ""),
 			thumbnailUrl: String(row.thumbnail_url ?? ""),
 			sku: String(row.sku ?? ""),
