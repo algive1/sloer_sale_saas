@@ -20,6 +20,7 @@ query ProductDetails(
 			slug
 		}
 		...ProductLocaleSlugTranslations
+		thumbnail64: thumbnail(size: 64, format: WEBP) { url }
 		thumbnail(size: 2048, format: WEBP) {
 			url
 			alt
