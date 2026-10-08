@@ -68,6 +68,9 @@ async function CheckoutAnalyticsContent({ searchParams }: { searchParams: Search
 					<Link href="/ops/analytics/traffic" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
 						Traffic
 					</Link>
+					<Link href="/ops/analytics/products" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Products
+					</Link>
 					<Link href="/ops/analytics" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
 						Overview
 					</Link>

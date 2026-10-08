@@ -80,6 +80,9 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 					<Link href="/ops/analytics/checkout" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
 						Checkout
 					</Link>
+					<Link href="/ops/analytics/products" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Products
+					</Link>
 					<nav className="flex gap-2" aria-label="Date range">
 						{[7, 30, 90].map((range) => (
 							<a
