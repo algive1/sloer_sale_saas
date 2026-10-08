@@ -23,6 +23,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
   const [locale,setLocale] = useState(locales[0] || "en");
   const [document,setDocument] = useState<ThemeData | null>(null);
   const documentRef = useRef<Data>(BLANK_TEMPLATE);
+  const savedRef = useRef<Data>(BLANK_TEMPLATE);
   const [generation,setGeneration] = useState(0);
   const [loading,setLoading] = useState(false);
   const [saving,setSaving] = useState(false);
@@ -48,21 +49,39 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
         if(controller.signal.aborted) return;
         const loaded = result.draft || result.published || freshTemplate("fashion");
         documentRef.current = loaded;
+        savedRef.current = loaded;
         setDocument(loaded);
         setRevision({draft:result.draftRevision || 0,published:result.publishedRevision || 0});
         setGeneration(current=>current+1);
       })
-      .catch(error=>{
+.catch(error=>{
         if(controller.signal.aborted) return;
-        const initial=freshTemplate("fashion");
-        documentRef.current=initial;
-        setDocument(initial);
-        setGeneration(current=>current+1);
         setStatus(error instanceof Error ? error.message : "Unable to load draft");
+        if (!storageReady) {
+          const initial=freshTemplate("fashion");
+          documentRef.current=initial;
+          savedRef.current=initial;
+          setDocument(initial);
+          setGeneration(current=>current+1);
+        } else {
+          // Never substitute a new template for an existing draft when storage is offline.
+          // Otherwise a transient GET failure could overwrite a live store on publish.
+          setDocument(null);
+        }
       })
       .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return ()=>controller.abort();
-  },[channel,locale,scope]);
+  },[channel,locale,scope,storageReady]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const preventLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventLeave);
+    return () => window.removeEventListener("beforeunload", preventLeave);
+  }, [dirty]);
 
   const persist = useCallback(async (action:"draft"|"publish", data:Data)=>{
     if(!storageReady) throw new Error("Please configure the theme database before saving.");
@@ -76,7 +95,8 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
       });
       const body=await response.json() as APIResponse;
       if(!response.ok) throw new Error(body.error || "Save failed");
-      setDirty(false);
+      savedRef.current=data;
+      setDirty(JSON.stringify(documentRef.current.content)!==JSON.stringify(data.content));
       setStatus(action==="publish"?"Published. Open your storefront to view the new homepage.":"Draft saved. Your live storefront is unchanged.");
       setRevision(prev=>({
         draft:prev.draft+1,
@@ -95,7 +115,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
     return !dirty || window.confirm("Unsaved edits will be discarded. Continue?");
   }
   function setTemplate(name:"fashion"|"blank") {
-    if(!confirmNavigation())return;
+    if(saving || !confirmNavigation())return;
     const next=freshTemplate(name);
     documentRef.current=next;
     setDocument(next);
@@ -104,7 +124,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
     setStatus(name==="fashion"?"Fashion template applied to draft. Publish to go live.":"Blank draft created. Live site unchanged.");
   }
   function changeScope(kind:"channel"|"locale",value:string) {
-    if(!confirmNavigation())return;
+    if(saving || !confirmNavigation())return;
     if(kind==="channel")setChannel(value);else setLocale(value);
   }
   return (
@@ -117,22 +137,22 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
         <label className="block text-xs font-medium text-stone-600">
           销售渠道
           <select className="mt-1 block min-w-36 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
-            value={channel} onChange={event=>changeScope("channel",event.target.value)}>
+            value={channel} disabled={saving} onChange={event=>changeScope("channel",event.target.value)}>
             {channels.map(item=><option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="block text-xs font-medium text-stone-600">
           语言
           <select className="mt-1 block rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
-            value={locale} onChange={event=>changeScope("locale",event.target.value)}>
+            value={locale} disabled={saving} onChange={event=>changeScope("locale",event.target.value)}>
             {locales.map(item=><option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button onClick={()=>setTemplate("fashion")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
+          <button disabled={saving} onClick={()=>setTemplate("fashion")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
             套用服饰模板
           </button>
-          <button onClick={()=>setTemplate("blank")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
+          <button disabled={saving} onClick={()=>setTemplate("blank")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
             空白页面
           </button>
           <button disabled={saving || loading || !document || !storageReady} onClick={()=>{void persist("draft",documentRef.current).catch(()=>{});}}
@@ -148,14 +168,19 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
         <span>{dirty?"● Unsaved edits · ":""}草稿版本 {revision.draft} · 发布版本 {revision.published}</span>
       </div>
       {status && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-8">{status}</p>}
-      {loading || !document ? (
+      {loading ? (
         <div className="mx-auto max-w-6xl animate-pulse p-12 text-sm text-stone-500">Loading storefront editor…</div>
+      ) : !document ? (
+        <div className="mx-auto max-w-6xl p-12 text-sm text-stone-700">
+          Draft storage could not be loaded. No changes have been made to your live storefront.
+          <button type="button" className="ml-4 underline" onClick={()=>window.location.reload()}>Retry</button>
+        </div>
       ) : (
         <Puck key={channel+":"+locale+":"+generation} config={fashionEditorConfig} data={document}
           headerTitle="Fashion storefront · Homepage" headerPath={"/"+locale+"/"+channel}
           height="calc(100vh - 215px)"
           viewports={[{width:1440,height:"auto",label:"Desktop"},{width:390,height:"auto",label:"Mobile"}]}
-          onChange={data=>{documentRef.current=data;setDirty(true);}}
+          onChange={data=>{documentRef.current=data;setDirty(JSON.stringify(data.content)!==JSON.stringify(savedRef.current.content));}}
           onPublish={async data=>{await persist("publish",data);}}
         />
       )}
