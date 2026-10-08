@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import { readTrafficReport } from "@/lib/analytics/traffic-report";
 import { readProductReport } from "@/lib/analytics/product-report";
 import { readOverviewDetails, readOverviewFinances } from "@/lib/analytics/overview-details";
 import { OperationsOverviewV3 } from "./operations-overview-v3";
@@ -68,8 +67,8 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 	const from = new Date(to.getTime() - days * 86_400_000);
 	const range = { from, to, bucket: (days === 1 ? "hour" : "day") as "hour" | "day" };
 	const financeRange = resolveFinanceRange(query, to);
-	const [traffic, product, detail, finances] = await Promise.all([
-		readTrafficReport(range), readProductReport(range), readOverviewDetails(range), readOverviewFinances(financeRange),
+	const [product, detail, finances] = await Promise.all([
+		readProductReport(range), readOverviewDetails(range), readOverviewFinances(financeRange),
 	]);
 	if (!summary) return null;
 	const conversion = summary.sessions > 0 ? (summary.purchases / summary.sessions) * 100 : 0;
