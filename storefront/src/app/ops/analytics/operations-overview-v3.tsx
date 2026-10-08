@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import type { OverviewSource, OverviewFinance, OverviewProductTraffic } from "@/lib/analytics/overview-details";
 import type { ProductPerformanceRow } from "@/lib/analytics/product-report";
 
-type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[]; financeRange: string; financeFrom?: string; financeTo?: string; financeBucket: "hour"|"day" };
+type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[]; financeRange: string; financeFrom?: string; financeTo?: string; financeBucket: "hour"|"day"; days: number };
 const types = ["organic","paid","direct","referral","other"];
 const labels: Record<string,string> = { organic:"自然搜索",paid:"付费广告",direct:"Direct",referral:"Referral",other:"其他" };
 const colors = ["#424750","#858c95","#afb5bf","#d0d4da","#ebeef2"];
@@ -35,7 +35,7 @@ function ProductTable({items,traffic}:{items:ProductPerformanceRow[];traffic:Ove
  <td>{fmt(p.productViews)}</td><td>{fmt(p.addToCarts)}</td><td>{fmt(p.purchaseSessions)}</td><td>{pct(p.purchaseSessions,p.productViews)}</td><td>{rate(p.itemKey,"paid")}</td><td>{rate(p.itemKey,"organic")}</td><td><MoneyCell values={p.purchasedItemValue}/></td></tr>)}</tbody></table>
  {!items.length&&<p className="p-6 text-center text-sm text-muted-foreground">暂无商品数据</p>}</div>;
 }
-export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo,financeBucket}:Props) {
+export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo,financeBucket,days}:Props) {
  const countries=useMemo(()=>["ALL",...new Set(sources.map(s=>s.country).filter(s=>s!=="ALL"))],[sources]);
  const financeCountries=useMemo(()=>["ALL",...new Set(finances.map(f=>f.country).filter(c=>c!=="ALL"))],[finances]);
  const [country,setCountry]=useState("ALL");
@@ -90,8 +90,8 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
     {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">暂无可用分类统计</div>}
    </section>
    <section className="rounded-xl border border-border bg-card p-5">
-    <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><div className="flex flex-wrap gap-1">{[["today","今日"],["7d","近7日"],["15d","近15日"],["month","本月"]].map(([value,label])=><Link key={value} href={"/ops/analytics?finance="+value} aria-current={financeRange===value?"page":undefined} className={selectClass+(financeRange===value?" bg-foreground text-background":"")}>{label}</Link>)}<a href="#finance-custom" className={selectClass}>自定义</a><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></div></header>
-    <form id="finance-custom" action="/ops/analytics" className="mb-3 flex flex-wrap items-center gap-2 text-xs"><input type="hidden" name="finance" value="custom"/><label>开始 <input className={selectClass} type="date" name="financeFrom" defaultValue={financeFrom} required/></label><label>结束 <input className={selectClass} type="date" name="financeTo" defaultValue={financeTo} required/></label><button className={selectClass} type="submit">应用</button></form>
+    <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><div className="flex flex-wrap gap-1">{[["today","今日"],["7d","近7日"],["15d","近15日"],["month","本月"]].map(([value,label])=><Link key={value} href={"/ops/analytics?days="+days+"&finance="+value} aria-current={financeRange===value?"page":undefined} className={selectClass+(financeRange===value?" bg-foreground text-background":"")}>{label}</Link>)}<a href="#finance-custom" className={selectClass}>自定义</a><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></div></header>
+    <form id="finance-custom" action="/ops/analytics" className="mb-3 flex flex-wrap items-center gap-2 text-xs"><input type="hidden" name="finance" value="custom"/><input type="hidden" name="days" value={days}/><label>开始 <input className={selectClass} type="date" name="financeFrom" defaultValue={financeFrom} required/></label><label>结束 <input className={selectClass} type="date" name="financeTo" defaultValue={financeTo} required/></label><button className={selectClass} type="submit">应用</button></form>
     <label className="text-xs text-muted-foreground">地区 <select className={selectClass} value={region} onChange={e=>setRegion(e.target.value)}>{financeCountries.map(c=><option value={c} key={c}>{c==="ALL"?"全站":c}</option>)}</select></label>
     <label className="ml-2 text-xs text-muted-foreground">币种 <select className={selectClass} value={selectedCurrency||""} onChange={e=>setCurrency(e.target.value)}>{currenciesInRegion.map(c=><option key={c}>{c}</option>)}</select></label>
     <div className="mt-4"><FinanceComparisonChart rows={finances} country={region} currency={selectedCurrency||""} bucket={financeBucket}/></div>
