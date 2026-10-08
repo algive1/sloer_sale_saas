@@ -249,7 +249,7 @@ async function ProductShell({
 				productName={product.name}
 				categoryId={product.category?.id}
 				categoryName={product.category?.name}
-				imageUrl={product.thumbnail?.url}
+				imageUrl={product.thumbnail64?.url}
 				value={product.pricing?.priceRange?.start?.gross?.amount ?? 0}
 				currency={product.pricing?.priceRange?.start?.gross?.currency ?? currency}
 			/>
