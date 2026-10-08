@@ -111,7 +111,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
  return <div className="space-y-4">
 
   <div className="grid items-stretch gap-3 xl:grid-cols-3">
-    <section className="min-w-0 rounded-xl border border-border bg-card p-4">{funnel}</section>
+    <div className="min-w-0">{funnel}</div>
     <section className="rounded-xl border border-border bg-card p-5">
     <div className="mb-4 flex items-center justify-between gap-2"><h2 className="font-semibold">流量构成</h2><label className="text-xs text-muted-foreground">地区 <select aria-label="选择流量地区" className={selectClass} value={country} onChange={e=>setCountry(e.target.value)}>{countries.map(c=><option key={c} value={c}>{c==="ALL"?"全部地区":c}</option>)}</select></label></div>
     <div className="grid items-center gap-2 grid-cols-1">
@@ -132,7 +132,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
     <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">{[["总销售额",gross],["退款",refunds],["运费",null],["净销售额",gross-refunds]].map(([title,value])=><div key={title} className="rounded-lg border border-border p-3"><p className="text-muted-foreground">{title}</p><b className="mt-2 block">{value===null||!selectedCurrency?"—":money(Number(value),selectedCurrency)}</b></div>)}</div>
     <p className="mt-2 text-xs text-muted-foreground" title="以已追踪完成结账金额扣除退款计算；运费需等待订单数据关联。">* 根据站内已追踪订单事件统计，非财务对账结果。</p>
    </section>
-    <section className="min-w-0 rounded-xl border border-border bg-card p-4">{health}</section>
+    <div className="min-w-0">{health}</div>
   </div>
   <div className="grid items-stretch gap-4 xl:grid-cols-2">
     <section className="rounded-xl border border-border bg-card p-4">
