@@ -53,7 +53,7 @@ export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
       <td className="px-2"><span className={"rounded-full px-2 py-1 text-[11px] font-semibold "+(kind==="good"?"bg-emerald-50 text-emerald-700":kind==="bad"?"bg-rose-50 text-rose-700":"bg-amber-50 text-amber-700")}>{label}</span></td>
       <td className="px-2">{o.paymentMethod}</td>
       <td className="whitespace-nowrap px-2"><div className="flex gap-1">
-       {href&&<a href={href} target="_blank" rel="noopener noreferrer" className="rounded border border-border px-2 py-1 hover:bg-secondary">{o.isPaid?"发货 / 查看":"查看"}</a>}
+       {href&&<a href={href} target="_blank" rel="noopener noreferrer" className="rounded border border-border px-2 py-1 hover:bg-secondary">{o.isPaid&&o.status!=="FULFILLED"?"去发货":"查看"}</a>}
        {canRemind&&<button type="button" disabled={!emailReady||busy===o.id} title={!emailReady?"请先配置邮件服务":undefined} className="rounded border border-border px-2 py-1 disabled:opacity-40" onClick={()=>setDialog(o)}>催付</button>}
       </div></td>
     </tr>;
