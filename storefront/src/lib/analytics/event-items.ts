@@ -3,6 +3,7 @@ import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 export type AnalyticsEventItem = {
 	itemId: string;
 	productId: string | null;
+	categoryId: string | null;
 	categoryName: string | null;
 	imageUrl: string | null;
 	variantId: string | null;
@@ -25,6 +26,7 @@ export function analyticsEventItems(event: PaperCommerceEvent): AnalyticsEventIt
 			return {
 				itemId,
 				productId: clipText(item.productId, 300),
+				categoryId: clipText(item.categoryId, 300),
 				categoryName: clipText(item.categoryName, 200),
 				imageUrl: safeImageUrl(item.imageUrl),
 				variantId: clipText(item.variantId, 300),
