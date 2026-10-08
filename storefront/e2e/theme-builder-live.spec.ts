@@ -27,6 +27,26 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       viewport: { width: 1366, height: 860 },
     });
     const page = await context.newPage();
+    const browserErrors: string[] = [];
+    page.on("pageerror", error => browserErrors.push(error.message));
+    page.on("console", message => {
+      if (message.type() === "error") browserErrors.push(message.text());
+    });
+    page.on("requestfailed", request => browserErrors.push("Request failed: " + request.url() + " " + (request.failure()?.errorText || "")));
+    async function requirePuckPublishButton() {
+      const publish = page.getByRole("button", { name: "Publish", exact: true }).first();
+      try {
+        await expect(publish).toBeVisible({ timeout: 30_000 });
+      } catch (error) {
+        throw new Error(
+          "Puck Publish control did not mount. " + String(error) +
+          "\\nCurrent URL: " + page.url() +
+          "\\nPage content: " + (await page.locator("body").innerText().catch(() => "")).slice(0, 3500) +
+          "\\nBrowser errors: " + browserErrors.join("\\n").slice(0, 3500),
+        );
+      }
+      return publish;
+    }
 
     try {
       const response = await authorized.get(scope);
@@ -41,7 +61,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       await page.goto("/ops/themes");
       await expect(page.getByRole("heading", { name: "店铺可视化装修" })).toBeVisible();
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
-      await expect(page.getByRole("button", { name: "Publish", exact: true }).first()).toBeVisible();
+      await requirePuckPublishButton();
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";
@@ -95,8 +115,8 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       // Use the real Puck UI for publishing rather than bypassing the editor.
       // Reload first so it picks up the persisted draft and revision #1.
       await page.goto("/ops/themes");
-      await expect(page.getByRole("button", { name: "Publish", exact: true }).first()).toBeVisible();
-      await page.getByRole("button", { name: "Publish", exact: true }).first().click();
+      await requirePuckPublishButton();
+      await (await requirePuckPublishButton()).click();
       await expect(page.getByRole("status")).toContainText("Published.", { timeout: 30_000 });
 
       const published = await authorized.get(scope);
