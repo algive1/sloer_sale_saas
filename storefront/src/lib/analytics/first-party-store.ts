@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { checkoutAnalyticsDimensions } from "@/lib/analytics/checkout-dimensions";
+import { analyticsEventItems } from "@/lib/analytics/event-items";
 import { readAnalyticsRequestContext } from "@/lib/analytics/request-context";
 import { normalizeTrafficAttribution, type TrafficType } from "@/lib/analytics/traffic-source";
 import {
@@ -85,7 +86,8 @@ export async function storeFirstPartyCommerceEvent(
 				},
 			}
 		: null;
-	const itemIds = event.items?.map((item) => item.variantId || item.itemId) ?? [];
+	const normalizedItems = analyticsEventItems(event);
+	const itemIds = normalizedItems.map((item) => item.variantId || item.itemId);
 	const transactionId = "transactionId" in event ? event.transactionId ?? null : null;
 	const value = "value" in event && typeof event.value === "number" ? event.value : null;
 	const currency = "currency" in event && typeof event.currency === "string" ? event.currency : null;
@@ -93,6 +95,7 @@ export async function storeFirstPartyCommerceEvent(
 	const { checkoutStage, method, provider, errorCode, failureReason } =
 		checkoutAnalyticsDimensions(event);
 	const eventId = event.eventId || randomId();
+	const occurredAt = new Date().toISOString();
 
 	if (event.name === "refund_completed" && event.transactionId && !attribution) {
 		const [purchaseResult] = await libsqlPipeline([{
@@ -136,7 +139,7 @@ export async function storeFirstPartyCommerceEvent(
 		clickIds: {},
 	};
 
-	await libsqlPipeline([
+	const statements = [
 		{
 			sql: `INSERT OR IGNORE INTO analytics_events
 				(id, occurred_at, event_name, channel, session_id, event_id, transaction_id, value, currency,
@@ -146,7 +149,7 @@ export async function storeFirstPartyCommerceEvent(
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				randomId(),
-				new Date().toISOString(),
+				occurredAt,
 				event.name,
 				channel,
 				sessionId,
@@ -174,7 +177,28 @@ export async function storeFirstPartyCommerceEvent(
 				safePayload(event),
 			],
 		},
-	]);
+	];
+
+	for (const [itemIndex, item] of normalizedItems.entries()) {
+		statements.push({
+			sql: `INSERT OR IGNORE INTO analytics_event_items
+				(event_name, event_id, item_index, item_id, variant_id, sku, item_name, price, quantity)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			args: [
+				event.name,
+				eventId,
+				itemIndex,
+				item.itemId,
+				item.variantId,
+				item.sku,
+				item.itemName,
+				item.price,
+				item.quantity,
+			],
+		});
+	}
+
+	await libsqlPipeline(statements);
 }
 
 export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary | null> {
@@ -354,6 +378,26 @@ async function ensureSchema(): Promise<void> {
 					updated_at TEXT NOT NULL
 				)`,
 			},
+			{
+				sql: `CREATE TABLE IF NOT EXISTS analytics_event_items (
+					event_name TEXT NOT NULL,
+					event_id TEXT NOT NULL,
+					item_index INTEGER NOT NULL,
+					item_id TEXT NOT NULL,
+					variant_id TEXT,
+					sku TEXT,
+					item_name TEXT,
+					price REAL,
+					quantity INTEGER NOT NULL,
+					PRIMARY KEY(event_name, event_id, item_index)
+				)`,
+			},
+			{
+				sql: `CREATE TABLE IF NOT EXISTS analytics_schema_meta (
+					key TEXT PRIMARY KEY,
+					applied_at TEXT NOT NULL
+				)`,
+			},
 		]);
 
 		const [columnResult] = await libsqlPipeline([{ sql: "PRAGMA table_info(analytics_events)", wantRows: true }]);
@@ -407,6 +451,43 @@ async function ensureSchema(): Promise<void> {
 			},
 		]);
 
+		const [itemBackfillResult] = await libsqlPipeline([{
+			sql: "SELECT key FROM analytics_schema_meta WHERE key = 'event_items_backfill_v1' LIMIT 1",
+			wantRows: true,
+		}]);
+		if (hranaRowsToObjects(itemBackfillResult).length === 0) {
+			await libsqlPipeline([
+				{
+					sql: `INSERT OR IGNORE INTO analytics_event_items
+						(event_name, event_id, item_index, item_id, variant_id, sku, item_name, price, quantity)
+					SELECT ae.event_name,
+						ae.event_id,
+						CAST(items.key AS INTEGER),
+						COALESCE(NULLIF(json_extract(items.value, '$.itemId'), ''), NULLIF(json_extract(items.value, '$.variantId'), '')),
+						NULLIF(json_extract(items.value, '$.variantId'), ''),
+						NULLIF(json_extract(items.value, '$.sku'), ''),
+						NULLIF(json_extract(items.value, '$.itemName'), ''),
+						CAST(json_extract(items.value, '$.price') AS REAL),
+						CASE
+							WHEN CAST(COALESCE(json_extract(items.value, '$.quantity'), 1) AS INTEGER) > 0
+							THEN CAST(COALESCE(json_extract(items.value, '$.quantity'), 1) AS INTEGER)
+							ELSE 1
+						END
+					FROM analytics_events AS ae
+					JOIN json_each(
+						CASE WHEN json_valid(ae.payload_json) THEN ae.payload_json ELSE '{}' END,
+						'$.items'
+					) AS items
+					WHERE ae.event_id IS NOT NULL
+						AND COALESCE(NULLIF(json_extract(items.value, '$.itemId'), ''), NULLIF(json_extract(items.value, '$.variantId'), '')) IS NOT NULL`,
+				},
+				{
+					sql: "INSERT OR IGNORE INTO analytics_schema_meta(key, applied_at) VALUES ('event_items_backfill_v1', ?)",
+					args: [new Date().toISOString()],
+				},
+			]);
+		}
+
 		await libsqlPipeline([
 			{
 				sql: "CREATE UNIQUE INDEX IF NOT EXISTS analytics_event_id_idx ON analytics_events(event_name, event_id)",
@@ -422,6 +503,12 @@ async function ensureSchema(): Promise<void> {
 			},
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_checkout_idx ON analytics_events(event_name, checkout_stage, occurred_at)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_item_variant_idx ON analytics_event_items(variant_id, event_name)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_item_sku_idx ON analytics_event_items(sku, event_name)",
 			},
 		]);
 	})();
