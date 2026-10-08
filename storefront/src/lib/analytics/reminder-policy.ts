@@ -1,7 +1,8 @@
-export type ReminderTarget = {status:string;isPaid:boolean;email:string};
+export type ReminderTarget = {status:string;isPaid:boolean;email:string;authorizeStatus?:string};
 export function reminderSkipReason(order:ReminderTarget):string|null {
  if(order.isPaid)return "already_paid";
- if(["CANCELED","FULFILLED","PARTIALLY_FULFILLED","RETURNED"].includes(order.status.toUpperCase()))return "closed_order";
+ if(["DRAFT","UNCONFIRMED","CANCELED","FULFILLED","PARTIALLY_FULFILLED","RETURNED"].includes(order.status.toUpperCase()))return "closed_order";
+ if(["FULL","PARTIAL"].includes((order.authorizeStatus??"").toUpperCase()))return "payment_authorized";
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email))return "no_customer_email";
  return null;
 }
