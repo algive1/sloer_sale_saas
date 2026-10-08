@@ -63,6 +63,9 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
  const invalid=reminderSkipReason(order);
  if(invalid)return {status:"skipped",reason:invalid};
  await schema();
+ const rule=await getReminderRule();
+ const [dailyCountResult]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=?",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
+ if(Number(hranaRowsToObjects(dailyCountResult)[0]?.count??0)>=rule.dailyLimit)return {status:"skipped",reason:"daily_limit"};
  const now=new Date().toISOString();
  const [recent] = await libsqlPipeline([{sql:"SELECT MAX(sent_at) AS last_sent FROM ops_reminder_delivery WHERE order_id=? AND status='sent'",args:[order.id],wantRows:true}]);
  const lastSent=hranaRowsToObjects(recent)[0]?.last_sent;
