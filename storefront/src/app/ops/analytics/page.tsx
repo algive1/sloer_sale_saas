@@ -74,6 +74,9 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 					<p className="mt-2 text-sm text-muted-foreground">First-party behavior and attributed commerce events.</p>
 				</div>
 				<div className="flex flex-wrap gap-2">
+					<Link href="/ops/analytics/realtime" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Realtime
+					</Link>
 					<Link href="/ops/analytics/traffic" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
 						Traffic
 					</Link>
