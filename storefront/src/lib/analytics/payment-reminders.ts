@@ -1,6 +1,6 @@
 import "server-only";
 import { analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline } from "@/lib/analytics/libsql-http";
-import { fetchSaleorOrders, fetchSaleorOrder, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
+import { fetchSaleorOrdersPage, fetchSaleorOrder, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 import {reminderSkipReason,reminderDueStage,reminderCooldown} from "@/lib/analytics/reminder-policy";
 
 export type PaymentReminderRule = { enabled:boolean; firstAfterHours:number; secondAfterHours:number; dailyLimit:number };
@@ -97,27 +97,43 @@ export async function sendManualReminder(orderId:string):Promise<ReminderResult>
  if(!order)return {status:"skipped",reason:"order_not_found_or_saleor_unavailable"};
  return sendReminder(order,"manual");
 }
-export async function runAutomaticReminders():Promise<{sent:number;skipped:number;failed:number}>{
+export type AutomaticReminderRun={sent:number;skipped:number;failed:number;scanned:number;truncated:boolean};
+export async function runAutomaticReminders():Promise<AutomaticReminderRun>{
  const rule=await getReminderRule();
- const result={sent:0,skipped:0,failed:0};
+ const result:AutomaticReminderRun={sent:0,skipped:0,failed:0,scanned:0,truncated:false};
  if(!rule.enabled||!reminderEmailConfigured())return result;
- const orders=await fetchSaleorOrders(100);
- if(!orders)return result;
  await schema();
- const [daily]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=? AND status IN ('sending','sent','failed')",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
- const count=Number(hranaRowsToObjects(daily)[0]?.count??0);
+ const [daily]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=?",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
+ let attempts=Number(hranaRowsToObjects(daily)[0]?.count??0);
  const limit=Math.min(20,rule.dailyLimit);
- let attempts=count;
- for(const order of orders){
+ // Do not contact people about arbitrarily old orders; paginate the relevant age window.
+ const cutoff=Date.now()-(Math.max(rule.firstAfterHours,rule.secondAfterHours)+24)*3600000;
+ let cursor:string|null=null;
+ const MAX_PAGES=20;
+ for(let pageIndex=0;pageIndex<MAX_PAGES;pageIndex++){
   if(attempts>=limit)break;
-  if(reminderSkipReason(order)){result.skipped++;continue;}
-  const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
-  const stage=reminderDueStage({createdAt:order.createdAt,firstHours:rule.firstAfterHours,secondHours:rule.secondAfterHours,firstSent:hranaRowsToObjects(first)[0]?.status==="sent",now:Date.now()});
-  if(!stage){result.skipped++;continue;}
-  const sent=await sendReminder(order,stage);
-  if(sent.status==="sent"){result.sent++;attempts++;}
-  else if(sent.status==="failed"){result.failed++;attempts++;}
-  else result.skipped++;
+  const page=await fetchSaleorOrdersPage(100,cursor??undefined);
+  if(!page)return result;
+  let reachedCutoff=false;
+  for(const order of page.orders){
+   if(attempts>=limit)break;
+   const created=Date.parse(order.createdAt);
+   if(!Number.isFinite(created)){result.skipped++;continue;}
+   if(created<cutoff){reachedCutoff=true;break;}
+   result.scanned++;
+   if(reminderSkipReason(order)){result.skipped++;continue;}
+   const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
+   const stage=reminderDueStage({createdAt:order.createdAt,firstHours:rule.firstAfterHours,secondHours:rule.secondAfterHours,firstSent:hranaRowsToObjects(first)[0]?.status==="sent",now:Date.now()});
+   if(!stage){result.skipped++;continue;}
+   const sent=await sendReminder(order,stage);
+   if(sent.status==="sent"){result.sent++;attempts++;}
+   else if(sent.status==="failed"){result.failed++;attempts++;}
+   else result.skipped++;
+  }
+  if(reachedCutoff||!page.hasNextPage)break;
+  if(!page.endCursor){result.truncated=true;break;}
+  cursor=page.endCursor;
+  if(pageIndex===MAX_PAGES-1)result.truncated=true;
  }
  return result;
 }
