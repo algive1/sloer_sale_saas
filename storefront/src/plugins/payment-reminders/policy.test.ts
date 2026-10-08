@@ -1,5 +1,5 @@
 import {describe,it,expect} from "vitest";
-import {reminderSkipReason,reminderDueStage,reminderCooldown} from "./reminder-policy";
+import {reminderSkipReason,reminderDueStage,reminderCooldown} from "./policy";
 
 describe("payment reminder safeguards",()=>{
  it("never reminds paid, closed or invalid-contact orders",()=>{

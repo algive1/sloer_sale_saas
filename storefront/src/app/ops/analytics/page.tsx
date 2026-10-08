@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
-import { readProductReport } from "@/lib/analytics/product-report";
-import { readTrafficReport } from "@/lib/analytics/traffic-report";
+import { readProductReport } from "@/plugins/analytics/product-report";
+import { readTrafficReport } from "@/plugins/analytics/traffic-report";
 import { fetchSaleorOrders } from "@/lib/analytics/saleor-ops-orders";
 import { reminderEmailConfigured } from "@/lib/analytics/payment-reminders";
 import { RecentOrdersTable } from "./recent-orders";
-import { readOverviewDetails, readOverviewFinances } from "@/lib/analytics/overview-details";
-import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
+import { readOverviewDetails, readOverviewFinances } from "@/plugins/analytics/overview-details";
+import { readAnalyticsSummary } from "@/plugins/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 import { OperationsOverviewV3 } from "./operations-overview-v3";
 

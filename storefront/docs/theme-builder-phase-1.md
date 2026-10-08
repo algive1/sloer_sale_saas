@@ -52,7 +52,7 @@ It reuses the existing `/ops/*` middleware authentication
 cd storefront
 corepack pnpm install --frozen-lockfile
 corepack pnpm run typecheck
-corepack pnpm exec vitest run src/lib/theme-builder/validate.test.ts
+corepack pnpm exec vitest run src/plugins/theme-builder/validate.test.ts
 corepack pnpm run lint
 corepack pnpm run build
 ```
@@ -60,3 +60,15 @@ corepack pnpm run build
 Also verify with a real Saleor channel, a non-empty collection, libSQL credentials,
 a draft publish, a second browser reload, and mobile viewports. Do not merge the
 prototype on static checks alone.
+
+## System plugin boundary (V1)
+
+The editor, theme schema, validation, and storage now live in `src/plugins/theme-builder/`.
+The homepage calls only `entry.server.tsx`; its Puck renderer is dynamically imported
+**only when a validated published document exists**. Ordinary Paper pages avoid this
+load. Checkout, cart and PDP behavior is unchanged.
+
+The plugin is global to every shop. Documents remain keyed by site/channel/locale;
+Host-to-site routing and per-store plugin switches are not implemented here.
+LibSQL reads remain uncached to preserve publish visibility until a distributed
+invalidation strategy exists. See `docs/system-plugins.md`.

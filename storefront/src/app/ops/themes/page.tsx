@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { getStorefrontLocaleSlugs } from "@/config/locale";
-import { activeThemeSiteId, themeDatabaseConfigured } from "@/lib/theme-builder/store";
+import { activeThemeSiteId, themeDatabaseConfigured } from "@/plugins/theme-builder/store";
 import { ThemeEditor } from "./theme-editor";
 
 export const metadata: Metadata = {

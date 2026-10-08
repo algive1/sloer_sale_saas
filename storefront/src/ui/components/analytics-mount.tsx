@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { analyticsConsentMode } from "@/lib/analytics/consent";
-import { gaMeasurementId } from "@/lib/analytics/ga4";
+import { gaMeasurementId } from "@/plugins/ads-tracking/ga4-config";
+import { browserAdsConfigured } from "@/plugins/ads-tracking/config";
 import { AnalyticsPathnameViews } from "@/ui/components/analytics-pathname-views";
 import { AnalyticsRuntime } from "@/ui/components/analytics-runtime";
 import { GoogleAnalytics } from "@/ui/components/google-analytics";
@@ -16,6 +17,7 @@ import { AnalyticsConsentBanner } from "@/ui/components/analytics-consent-banner
  */
 export function AnalyticsMount() {
 	const measurementId = gaMeasurementId();
+	const hasAdvertisingPixels = browserAdsConfigured();
 
 	return (
 		<>
@@ -23,7 +25,7 @@ export function AnalyticsMount() {
 				<GoogleAnalytics measurementId={measurementId} consentMode={analyticsConsentMode()} />
 			) : null}
 			<AnalyticsRuntime />
-			<AdPixels />
+			{hasAdvertisingPixels ? <AdPixels /> : null}
 			<AnalyticsConsentBanner />
 			<Suspense fallback={null}>
 				<AnalyticsPathnameViews />

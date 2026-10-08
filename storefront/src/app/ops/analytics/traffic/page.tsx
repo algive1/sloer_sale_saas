@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
-import { readTrafficReport, type TrafficBucket } from "@/lib/analytics/traffic-report";
+import { readTrafficReport, type TrafficBucket } from "@/plugins/analytics/traffic-report";
 import { CountryTrendChart } from "./country-trend-chart";
 import { TrafficTrendChart } from "./traffic-trend-chart";
 

@@ -5,15 +5,15 @@ vi.mock("@/lib/analytics/saleor-ops-orders", () => ({
   fetchSaleorOrder: vi.fn(),
   fetchSaleorOrdersPage: vi.fn(),
 }));
-vi.mock("@/lib/analytics/libsql-http", () => ({
+vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => false,
   libsqlPipeline: vi.fn(),
   hranaRowsToObjects: () => [],
 }));
 
-import { fetchSaleorOrder } from "./saleor-ops-orders";
-import { sendManualReminder, sendReminder } from "./payment-reminders";
-import type { OpsOrder } from "./saleor-ops-orders";
+import { fetchSaleorOrder } from "@/lib/analytics/saleor-ops-orders";
+import { sendManualReminder, sendReminder } from "./service";
+import type { OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 
 const pending: OpsOrder = {
   id: "T3JkZXI6MQ==",
@@ -62,6 +62,15 @@ describe("reminder revalidation", () => {
     expect(await sendManualReminder(pending.id)).toEqual({
       status: "skipped", reason: "order_not_found_or_saleor_unavailable",
     });
+    expect(emailFetch).not.toHaveBeenCalled();
+  });
+
+  it("uses one authoritative Saleor lookup for a manual reminder request", async () => {
+    vi.mocked(fetchSaleorOrder).mockResolvedValue({ ...pending, isPaid: true, paymentStatus: "FULLY_CHARGED" });
+    const emailFetch = vi.fn();
+    vi.stubGlobal("fetch", emailFetch);
+    expect(await sendManualReminder(pending.id)).toEqual({status:"skipped",reason:"already_paid"});
+    expect(fetchSaleorOrder).toHaveBeenCalledTimes(1);
     expect(emailFetch).not.toHaveBeenCalled();
   });
 

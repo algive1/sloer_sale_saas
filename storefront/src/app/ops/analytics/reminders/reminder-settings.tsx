@@ -1,6 +1,6 @@
 "use client";
 import {useState} from "react";
-import type {PaymentReminderRule} from "@/lib/analytics/payment-reminders";
+import type {PaymentReminderRule} from "@/plugins/payment-reminders/service";
 
 export function ReminderSettings({initial,emailReady,cronReady}:{initial:PaymentReminderRule;emailReady:boolean;cronReady:boolean}){
  const [rule,setRule]=useState(initial);

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
-import { readProductReport, type ProductBucket } from "@/lib/analytics/product-report";
+import { readProductReport, type ProductBucket } from "@/plugins/analytics/product-report";
 import { ProductTrendChart } from "./product-trend-chart";
 
 type SearchParams = Promise<{

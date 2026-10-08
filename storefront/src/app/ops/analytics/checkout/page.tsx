@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
-import { readCheckoutReport, type CheckoutBucket } from "@/lib/analytics/checkout-report";
+import { readCheckoutReport, type CheckoutBucket } from "@/plugins/analytics/checkout-report";
 import { CheckoutTrendChart } from "./checkout-trend-chart";
 
 type SearchParams = Promise<{

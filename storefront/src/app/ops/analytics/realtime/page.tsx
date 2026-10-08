@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { connection } from "next/server";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
-import { readRealtimeAnalytics, type RealtimeAnalytics } from "@/lib/analytics/realtime-report";
+import { readRealtimeAnalytics, type RealtimeAnalytics } from "@/plugins/analytics/realtime-report";
 import { RealtimeDashboard } from "./realtime-dashboard";
 
 export default function RealtimeAnalyticsPage() {

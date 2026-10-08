@@ -5,7 +5,7 @@ import {
 	googleAdsPurchaseLabel,
 	metaPixelId,
 	tiktokPixelId,
-} from "./ad-platforms";
+} from "./config";
 
 describe("ad platform configuration", () => {
 	it("validates supported public ids", () => {
