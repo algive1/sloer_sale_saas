@@ -22,8 +22,9 @@ type GqlOrder = {
  payments?:Array<{gateway?:string|null;created?:string|null}>|null;
  transactions?:Array<{name:string;events:Array<{createdAt:string;type:string|null}>}>|null;
 };
-const query=`query OpsRecentOrders($first:Int!){
- orders(first:$first,sortBy:{field:CREATED_AT,direction:DESC}) {
+const query=`query OpsRecentOrders($first:Int!,$after:String){
+ orders(first:$first,after:$after,sortBy:{field:CREATED_AT,direction:DESC}) {
+  pageInfo { hasNextPage endCursor }
   edges { node {
    id number created status paymentStatus authorizeStatus isPaid userEmail
    shippingAddress {country {code}}
@@ -51,17 +52,18 @@ function mapOrders(nodes:GqlOrder[]):OpsOrder[]{
  }))
 }
 
-export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
+export type OpsOrdersPage={orders:OpsOrder[];hasNextPage:boolean;endCursor:string|null};
+export async function fetchSaleorOrdersPage(first=24,after?:string):Promise<OpsOrdersPage|null>{
  const endpoint=process.env.SALEOR_INTERNAL_API_URL?.trim()||process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
  const token=process.env.SALEOR_APP_TOKEN?.trim();
  if(!endpoint||!token)return null;
  const response=await fetch(endpoint,{
    method:"POST",cache:"no-store",signal:AbortSignal.timeout(8000),
    headers:{"content-type":"application/json",authorization:"Bearer "+token},
-   body:JSON.stringify({query,variables:{first:Math.max(1,Math.min(100,first))}}),
+   body:JSON.stringify({query,variables:{first:Math.max(1,Math.min(100,first)),after:after||null}}),
  });
  if(!response.ok)throw new Error("Saleor order API HTTP "+response.status);
- const body=await response.json() as {data?:{orders?:{edges:Array<{node:GqlOrder}>}|null};errors?:Array<{message:string}>};
+ const body=await response.json() as {data?:{orders?:{edges:Array<{node:GqlOrder}>;pageInfo?:{hasNextPage:boolean;endCursor:string|null}}|null};errors?:Array<{message:string}>};
  if(body.errors?.length)throw new Error("Saleor order query failed: "+body.errors[0]?.message);
  const orders=mapOrders((body.data?.orders?.edges??[]).map(edge=>edge.node));
 
@@ -81,7 +83,12 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
    for(const order of orders)order.source=attribution.get(order.id)??"—";
   }catch{/* Saleor orders remain usable if analytics attribution is unavailable. */}
  }
- return orders;
+ return {orders,hasNextPage:Boolean(body.data?.orders?.pageInfo?.hasNextPage),endCursor:body.data?.orders?.pageInfo?.endCursor??null};
+}
+
+export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
+ const page=await fetchSaleorOrdersPage(first);
+ return page?.orders??null;
 }
 
 export async function fetchSaleorOrder(id:string):Promise<OpsOrder|null>{
