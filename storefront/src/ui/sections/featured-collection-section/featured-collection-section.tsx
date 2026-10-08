@@ -5,6 +5,7 @@ import { Section, type SectionTone, type SectionWidth } from "@/ui/sections/sect
 import { SectionHeader, type SectionHeaderCta } from "@/ui/sections/section-header";
 
 export interface FeaturedCollectionSectionProps {
+	id?: string;
 	locale: string;
 	channel: string;
 	heading?: string;
@@ -21,6 +22,7 @@ export interface FeaturedCollectionSectionProps {
 }
 
 export async function FeaturedCollectionSection({
+	id = "featured-collection-heading",
 	locale,
 	channel,
 	heading = "Featured products",
@@ -35,7 +37,7 @@ export async function FeaturedCollectionSection({
 	className,
 }: FeaturedCollectionSectionProps) {
 	const products = await getFeaturedProducts(channel, locale, limit, collectionSlug);
-	const headingId = "featured-collection-heading";
+	const headingId = id;
 
 	return (
 		<Section

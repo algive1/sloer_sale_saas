@@ -3,18 +3,33 @@
 import type { Config } from "@puckeditor/core";
 import type { ReactNode } from "react";
 
-const showcase = (title: string, imageUrl: string, children: ReactNode) => (
-  <section className="relative overflow-hidden bg-[#eee9e0]">
-    {imageUrl.startsWith("https://") ? (
-      <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{backgroundImage: "url(" + JSON.stringify(imageUrl) + ")"}} />
-    ) : null}
-    <div className="relative mx-auto flex min-h-[430px] max-w-6xl flex-col items-start justify-center px-10 py-20 md:min-h-[580px]">
-      <span className="mb-4 text-xs uppercase tracking-[0.35em] text-stone-600">{title}</span>
-      {children}
-    </div>
-  </section>
-);
-
+const showcase = (title: string, imageUrl: string, children: ReactNode) => {
+  const hasPhoto = imageUrl.startsWith("https://");
+  return (
+    <section className={hasPhoto
+      ? "relative isolate min-h-[580px] overflow-hidden bg-stone-900 text-white"
+      : "grid min-h-[580px] overflow-hidden bg-white text-stone-900 lg:grid-cols-2"}>
+      {hasPhoto ? (
+        <>
+          <div className="absolute inset-0 -z-10 bg-cover bg-center"
+            style={{ backgroundImage: "url(" + JSON.stringify(imageUrl) + ")" }} />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-t from-stone-900/80 via-stone-900/30 to-transparent" />
+        </>
+      ) : null}
+      <div className={hasPhoto
+        ? "relative mx-auto flex min-h-[580px] max-w-7xl flex-col items-start justify-end px-8 pb-20 pt-24"
+        : "flex min-h-[580px] flex-col items-start justify-center px-8 py-16 lg:px-16"}>
+        <span className={"mb-4 text-xs uppercase tracking-[0.35em] " + (hasPhoto ? "text-white/85" : "text-stone-500")}>{title}</span>
+        {children}
+      </div>
+      {!hasPhoto && (
+        <div className="flex min-h-[360px] items-center justify-center bg-stone-100 px-10 text-center text-sm text-stone-400">
+          The hero image comes from the first Saleor collection product when no banner image is set.
+        </div>
+      )}
+    </section>
+  );
+};
 /**
  * Client-safe authoring config. Saleor is intentionally not fetched in the browser
  * editor; the published Server Component config binds collections to real products.
@@ -47,9 +62,12 @@ export const fashionEditorConfig: Config = {
       },
       render: ({ eyebrow, heading, subheading, imageUrl, ctaLabel, ctaHref }) =>
         showcase(eyebrow, imageUrl, <>
-          <h1 className="max-w-3xl text-5xl font-light tracking-tight text-stone-900 md:text-7xl">{heading}</h1>
-          <p className="mt-6 max-w-xl text-lg text-stone-700">{subheading}</p>
-          <a href={typeof ctaHref === "string" && ctaHref.startsWith("/") ? ctaHref : "#"} className="mt-10 bg-stone-900 px-7 py-4 text-sm tracking-wide text-white">{ctaLabel}</a>
+          <h1 className={"max-w-3xl text-5xl font-light tracking-tight md:text-7xl " +
+            (imageUrl ? "text-white" : "text-stone-900")}>{heading}</h1>
+          <p className={"mt-6 max-w-xl text-lg " + (imageUrl ? "text-white/90" : "text-stone-600")}>{subheading}</p>
+          <a href={typeof ctaHref === "string" && ctaHref.startsWith("/") ? ctaHref : "#"}
+            className={"mt-10 px-7 py-4 text-sm tracking-wide " + (imageUrl
+              ? "bg-white text-stone-900" : "bg-stone-900 text-white")}>{ctaLabel}</a>
         </>),
     },
     Collection: {
