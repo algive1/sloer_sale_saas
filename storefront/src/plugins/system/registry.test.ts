@@ -19,7 +19,8 @@ describe("system business plugin catalog", () => {
     expect(getSystemPlugin("theme-builder").integration).toBe("storefront-module");
     expect(getSystemPlugin("payment-reminders").integration).toBe("storefront-module");
     expect(getSystemPlugin("analytics").integration).toBe("partial");
-    for (const id of ["ads-tracking", "seo-merchant"] as const) {
+    expect(getSystemPlugin("ads-tracking").integration).toBe("partial");
+    for (const id of ["seo-merchant"] as const) {
       expect(getSystemPlugin(id).integration).toBe("legacy-inline");
     }
     expect(Object.keys(SYSTEM_PLUGINS)).toEqual([

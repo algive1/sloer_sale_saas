@@ -6,6 +6,14 @@ on:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
       - "storefront/src/plugins/analytics/**"
+      - "storefront/src/plugins/ads-tracking/**"
+      - "storefront/src/lib/analytics/ad-platforms.ts"
+      - "storefront/src/lib/analytics/ga4.ts"
+      - "storefront/src/lib/analytics/browser-ads.ts"
+      - "storefront/src/lib/analytics/destinations/server-ads.ts"
+      - "storefront/src/ui/components/ad-pixels.tsx"
+      - "storefront/src/ui/components/analytics-mount.tsx"
+      - "storefront/src/app/api/analytics/**"
       - "storefront/src/lib/analytics/first-party-store.ts"
       - "storefront/src/lib/analytics/*-report.ts"
       - "storefront/src/lib/analytics/overview-details.ts"
@@ -31,6 +39,14 @@ on:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
       - "storefront/src/plugins/analytics/**"
+      - "storefront/src/plugins/ads-tracking/**"
+      - "storefront/src/lib/analytics/ad-platforms.ts"
+      - "storefront/src/lib/analytics/ga4.ts"
+      - "storefront/src/lib/analytics/browser-ads.ts"
+      - "storefront/src/lib/analytics/destinations/server-ads.ts"
+      - "storefront/src/ui/components/ad-pixels.tsx"
+      - "storefront/src/ui/components/analytics-mount.tsx"
+      - "storefront/src/app/api/analytics/**"
       - "storefront/src/lib/analytics/first-party-store.ts"
       - "storefront/src/lib/analytics/*-report.ts"
       - "storefront/src/lib/analytics/overview-details.ts"
@@ -86,4 +102,4 @@ jobs:
           fi
 
       - name: Theme builder tests
-        run: pnpm --dir storefront exec vitest run src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts
+        run: pnpm --dir storefront exec vitest run src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts src/plugins/ads-tracking/config.test.ts src/plugins/ads-tracking/ga4-config.test.ts

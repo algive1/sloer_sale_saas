@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | theme-builder | system/all stores | `storefront-module`: schema/editor/storage moved to `storefront/src/plugins/theme-builder` and published renderer loaded on demand |
 | analytics | system/all stores | `partial`: first-party ingest/storage, dashboard report calculations moved to `storefront/src/plugins/analytics`, while storefront event emitters, app routes and UI remain in Paper |
-| ads-tracking | system/all stores | `legacy-inline`: original browser/server tracking remains operational |
+| ads-tracking | system/all stores | `partial`: browser/server delivery logic, pixel and GA4 config live in `storefront/src/plugins/ads-tracking`; consent state, event projections, browser mount and routes remain integrated with Paper |
 | payment-reminders | system/all stores | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved |
 | seo-merchant | system/all stores | `legacy-inline`: original SEO and feed routes remain operational |
 
@@ -36,7 +36,7 @@ The theme builder and reminders now use the shared libSQL transport at `storefro
 
 The current theme store uses deployment-level `STOREFRONT_SITE_ID + channel + locale`. Shared-host domain-to-site routing and per-site permissions are not implemented here. Existing analytics and reminder queries are not yet reliably site-scoped. Do not assume multi-tenant isolation because a plugin is listed in the registry.
 
-Next: trusted request-scoped site context and site-scoped analytics queries; isolate browser ads and server events into a separate advertising module and complete the Saleor App lifecycle for reminders; implement complete global lifecycle controls only after their routes/workers are gated. Do not add store-specific plugin toggles unless requested.
+Next: trusted request-scoped site context and site-scoped analytics queries; isolate remaining event projections/consent contracts; complete the Saleor App lifecycle for external services including reminders; implement complete global lifecycle controls only after their routes/workers are gated. Do not add store-specific plugin toggles unless requested.
 
 ## Verification
 
@@ -44,7 +44,7 @@ Next: trusted request-scoped site context and site-scoped analytics queries; iso
 pnpm --dir storefront install --frozen-lockfile
 pnpm --dir storefront generate:all
 pnpm --dir storefront exec tsc --noEmit
-pnpm --dir storefront exec vitest run src/plugins/system/registry.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/validate.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts
+pnpm --dir storefront exec vitest run src/plugins/system/registry.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/validate.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts src/plugins/ads-tracking/config.test.ts src/plugins/ads-tracking/ga4-config.test.ts
 ```
 
 CI is in `.github/workflows/theme-builder.yml`. A real storefront build and end-to-end checkout/theme publishing still need staging checks.

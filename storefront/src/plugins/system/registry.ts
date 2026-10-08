@@ -34,7 +34,7 @@ export const SYSTEM_PLUGINS = {
     apiVersion: 1,
     scope: "system",
     availability: "all-stores",
-    integration: "legacy-inline",
+    integration: "partial",
     capabilities: ["marketing.browser-pixels", "marketing.server-events"],
   },
   "payment-reminders": {
