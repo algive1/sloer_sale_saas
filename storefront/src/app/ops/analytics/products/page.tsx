@@ -71,6 +71,9 @@ async function ProductAnalyticsContent({ searchParams }: { searchParams: SearchP
 							{label}
 						</Link>
 					))}
+					<Link href="/ops/analytics/realtime" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Realtime
+					</Link>
 					<Link href="/ops/analytics/traffic" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
 						Traffic
 					</Link>
