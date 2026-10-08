@@ -1,6 +1,6 @@
 import { connection, NextResponse } from "next/server";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
-import { readRealtimeAnalytics } from "@/lib/analytics/realtime-report";
+import { readRealtimeAnalytics } from "@/plugins/analytics/realtime-report";
 
 
 export async function GET() {

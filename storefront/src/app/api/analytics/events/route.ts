@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
-import { storeFirstPartyCommerceEvent } from "@/lib/analytics/first-party-store";
+import { storeFirstPartyCommerceEvent } from "@/plugins/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 
 

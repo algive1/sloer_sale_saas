@@ -4,7 +4,7 @@ import { deliverGa4ServerEvent } from "@/lib/analytics/destinations/server-ads";
 import {
 	recordRefundTotal,
 	storeFirstPartyCommerceEvent,
-} from "@/lib/analytics/first-party-store";
+} from "@/plugins/analytics/first-party-store";
 import { verifyWebhookSignature } from "@/lib/api-auth";
 
 
