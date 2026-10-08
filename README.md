@@ -74,6 +74,13 @@ PostgreSQL and Valkey are private Compose services. Put TLS/reverse proxying (Ng
 
 The repository owns a copy of the Saleor Core source for reproducible self-hosting, but project-specific business features should still prefer GraphQL APIs, Saleor Apps, webhooks and separate integration services. Modify `backend/` itself only when a requirement cannot be implemented cleanly through supported extension points.
 
+## System-wide business plugins
+
+Custom features are available platform-wide. Store data isolation is separate from
+plugin availability. The first extracted module is Puck theme builder; analytics,
+advertising, reminders and SEO remain active while awaiting migration.
+See [docs/system-plugins.md](docs/system-plugins.md).
+
 ## Transaction milestone
 
 ```

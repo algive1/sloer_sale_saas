@@ -4,8 +4,8 @@ import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { isStorefrontLocaleSlug } from "@/config/locale";
 import { isAllowedStorefrontChannel } from "@/config/channels";
 import { buildStorefrontPath } from "@/lib/storefront-path";
-import { activeThemeSiteId, readTheme, saveTheme, themeDatabaseConfigured, ThemeConflictError } from "@/lib/theme-builder/store";
-import { ThemeValidationError } from "@/lib/theme-builder/validate";
+import { activeThemeSiteId, readTheme, saveTheme, themeDatabaseConfigured, ThemeConflictError } from "@/plugins/theme-builder/store";
+import { ThemeValidationError } from "@/plugins/theme-builder/validate";
 
 // This handler reads request data directly; Cache Components does not need route-level dynamic config.
 const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };

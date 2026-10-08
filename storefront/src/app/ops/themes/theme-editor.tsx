@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
-import { fashionEditorConfig } from "@/lib/theme-builder/config.client";
-import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/lib/theme-builder/template";
+import { fashionEditorConfig } from "@/plugins/theme-builder/config.client";
+import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 
 type EditorProps = {
   channels: readonly string[];
