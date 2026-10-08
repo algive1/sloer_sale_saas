@@ -71,3 +71,12 @@ and the browser test checks the actual click. Wishlist records now require
 bounded, safe internal links, a valid price and currency before cloud/local
 storage. Sync skips rewriting identical cloud records. This does not yet solve
 shared-database tenant `site_id` isolation across unrelated merchants.
+
+## API boundary and authorization E2E (PR #26)
+
+The browser suite `e2e/api-boundaries-live.spec.ts` checks invalid account
+request payloads, protected cache/admin routes, unsigned Saleor webhook,
+invalid Listing/Merchant parameters and reminder mutation/Cron protections.
+It performs no email sends or theme writes. Tests run against CI Saleor and
+Paper but do not prove real provider credentials, merchant RBAC or multi-site
+Host-to-site isolation.
