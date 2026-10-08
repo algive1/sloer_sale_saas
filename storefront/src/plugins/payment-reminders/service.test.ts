@@ -65,6 +65,15 @@ describe("reminder revalidation", () => {
     expect(emailFetch).not.toHaveBeenCalled();
   });
 
+  it("uses one authoritative Saleor lookup for a manual reminder request", async () => {
+    vi.mocked(fetchSaleorOrder).mockResolvedValue({ ...pending, isPaid: true, paymentStatus: "FULLY_CHARGED" });
+    const emailFetch = vi.fn();
+    vi.stubGlobal("fetch", emailFetch);
+    expect(await sendManualReminder(pending.id)).toEqual({status:"skipped",reason:"already_paid"});
+    expect(fetchSaleorOrder).toHaveBeenCalledTimes(1);
+    expect(emailFetch).not.toHaveBeenCalled();
+  });
+
   it("does not proceed if the fresh Saleor status request fails", async () => {
     vi.mocked(fetchSaleorOrder).mockRejectedValue(new Error("Saleor is unavailable"));
     const emailFetch = vi.fn();

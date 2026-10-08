@@ -58,7 +58,7 @@ async function sendEmail(order:OpsOrder):Promise<string>{
  if(!result.id)throw new Error("email_provider_missing_message_id");
  return result.id;
 }
-export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second"):Promise<ReminderResult>{
+export async function sendReminder(order:Pick<OpsOrder,"id">,stage:"manual"|"first"|"second"):Promise<ReminderResult>{
  if(!reminderEmailConfigured())return {status:"skipped",reason:"email_not_configured"};
  // Re-read the authoritative order immediately before claiming a send slot.
  // A stale analytics list can outlive a successful payment or cancellation.
@@ -92,10 +92,10 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
  }
 }
 export async function sendManualReminder(orderId:string):Promise<ReminderResult>{
- // Verify unpaid/eligible against Saleor immediately before making a side effect.
- const order=await fetchSaleorOrder(orderId);
- if(!order)return {status:"skipped",reason:"order_not_found_or_saleor_unavailable"};
- return sendReminder(order,"manual");
+ if(!orderId||orderId.length>300)return {status:"skipped",reason:"order_not_found_or_saleor_unavailable"};
+ // One authoritative fresh Saleor read in sendReminder, not two network calls.
+ // Its validation still happens immediately before any email side effect.
+ return sendReminder({id:orderId},"manual");
 }
 export type AutomaticReminderRun={sent:number;skipped:number;failed:number;scanned:number;truncated:boolean};
 export async function runAutomaticReminders():Promise<AutomaticReminderRun>{
