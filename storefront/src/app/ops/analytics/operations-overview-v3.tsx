@@ -1,11 +1,12 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { FinanceComparisonChart } from "./finance-comparison-chart";
 import { useEffect } from "react";
 import type { OverviewSource, OverviewFinance, OverviewProductTraffic } from "@/lib/analytics/overview-details";
 import type { ProductPerformanceRow } from "@/lib/analytics/product-report";
 
-type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[]; financeRange: string; financeFrom?: string; financeTo?: string };
+type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[]; financeRange: string; financeFrom?: string; financeTo?: string; financeBucket: "hour"|"day" };
 const types = ["organic","paid","direct","referral","other"];
 const labels: Record<string,string> = { organic:"自然搜索",paid:"付费广告",direct:"Direct",referral:"Referral",other:"其他" };
 const colors = ["#424750","#858c95","#afb5bf","#d0d4da","#ebeef2"];
@@ -34,8 +35,9 @@ function ProductTable({items,traffic}:{items:ProductPerformanceRow[];traffic:Ove
  <td>{fmt(p.productViews)}</td><td>{fmt(p.addToCarts)}</td><td>{fmt(p.purchaseSessions)}</td><td>{pct(p.purchaseSessions,p.productViews)}</td><td>{rate(p.itemKey,"paid")}</td><td>{rate(p.itemKey,"organic")}</td><td><MoneyCell values={p.purchasedItemValue}/></td></tr>)}</tbody></table>
  {!items.length&&<p className="p-6 text-center text-sm text-muted-foreground">暂无商品数据</p>}</div>;
 }
-export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo}:Props) {
+export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo,financeBucket}:Props) {
  const countries=useMemo(()=>["ALL",...new Set(sources.map(s=>s.country).filter(s=>s!=="ALL"))],[sources]);
+ const financeCountries=useMemo(()=>["ALL",...new Set(finances.map(f=>f.country).filter(c=>c!=="ALL"))],[finances]);
  const [country,setCountry]=useState("ALL");
  const [topCountry,setTopCountry]=useState("ALL");
  const [region,setRegion]=useState("ALL");
@@ -78,28 +80,28 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
      </div>
      <div className="overflow-x-auto"><table className="w-full min-w-[400px] text-xs"><thead><tr>{["渠道","流量","加购","订单","转化率","收入"].map(h=><th key={h} className="pb-2 text-right font-normal text-muted-foreground first:text-left">{h}</th>)}</tr></thead><tbody>{grouped.map((g,i)=><tr className="border-t border-border/50" key={g.type}>
       <td className="whitespace-nowrap py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{background:colors[i]}}/>{labels[g.type]}</td><td className="text-right">{pct(g.sessions,totals.sessions)}</td><td className="text-right">{pct(g.carts,totals.carts)}</td><td className="text-right">{pct(g.orders,totals.orders)}</td><td className="text-right">{pct(g.purchases,g.sessions)}</td><td>{share(g.revenue)}</td></tr>)}</tbody></table></div>
-    </div><p className="mt-3 text-xs text-muted-foreground">环形图始终展示流量分布；收入百分比按币种分别计算。</p>
+    </div><p className="mt-3 text-xs text-muted-foreground">转化率按购买会话计算；收入按币种分别统计。</p>
    </section>
    <section className="rounded-xl border border-border bg-card p-5"><header className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Top 流量来源</h2><div className="flex items-center gap-2"><select aria-label="Top 来源地区" className={selectClass} value={topCountry} onChange={e=>setTopCountry(e.target.value)}>{countries.map(c=><option key={c} value={c}>{c==="ALL"?"全部地区":c}</option>)}</select><button type="button" className={selectClass} onClick={()=>setDialog("sources")}>查看全部</button></div></header>{sourcesTable(false)}</section>
   </div>
   <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
    <section className="rounded-xl border border-border bg-card p-5">
     <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">商品表现</h2><div className="flex gap-2"><button type="button" className={selectClass} aria-pressed={mode==="categories"} onClick={()=>setMode("categories")}>商品分类</button><button type="button" className={selectClass} aria-pressed={mode==="products"} onClick={()=>setMode("products")}>具体商品</button><button type="button" className={selectClass} onClick={()=>setDialog("products")}>查看全部</button></div></header>
-    {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">商品分类需要 Saleor 分类数据关联，尚未具备可靠统计来源。</div>}
+    {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">暂无可用分类统计</div>}
    </section>
    <section className="rounded-xl border border-border bg-card p-5">
     <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><div className="flex flex-wrap gap-1">{[["today","今日"],["7d","近7日"],["15d","近15日"],["month","本月"]].map(([value,label])=><Link key={value} href={"/ops/analytics?finance="+value} aria-current={financeRange===value?"page":undefined} className={selectClass+(financeRange===value?" bg-foreground text-background":"")}>{label}</Link>)}<a href="#finance-custom" className={selectClass}>自定义</a><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></div></header>
     <form id="finance-custom" action="/ops/analytics" className="mb-3 flex flex-wrap items-center gap-2 text-xs"><input type="hidden" name="finance" value="custom"/><label>开始 <input className={selectClass} type="date" name="financeFrom" defaultValue={financeFrom} required/></label><label>结束 <input className={selectClass} type="date" name="financeTo" defaultValue={financeTo} required/></label><button className={selectClass} type="submit">应用</button></form>
-    <label className="text-xs text-muted-foreground">地区 <select className={selectClass} value={region} onChange={e=>setRegion(e.target.value)}>{countries.map(c=><option value={c} key={c}>{c==="ALL"?"全站":c}</option>)}</select></label>
+    <label className="text-xs text-muted-foreground">地区 <select className={selectClass} value={region} onChange={e=>setRegion(e.target.value)}>{financeCountries.map(c=><option value={c} key={c}>{c==="ALL"?"全站":c}</option>)}</select></label>
     <label className="ml-2 text-xs text-muted-foreground">币种 <select className={selectClass} value={selectedCurrency||""} onChange={e=>setCurrency(e.target.value)}>{currenciesInRegion.map(c=><option key={c}>{c}</option>)}</select></label>
-    <div className="mt-4 flex h-36 items-end gap-1 rounded-lg border border-border p-3">{finance.map(f=><div key={f.bucket} title={f.bucket+" "+money(f.gross-f.refunds,f.currency)} className="min-w-1 flex-1 rounded-t bg-slate-500" style={{height:(Math.max(2,(f.gross-f.refunds)/Math.max(1,...finance.map(m=>m.gross-m.refunds))*100))+"%"}}/>)}</div>
+    <div className="mt-4"><FinanceComparisonChart rows={finances} country={region} currency={selectedCurrency||""} bucket={financeBucket}/></div>
     <div className="mt-3 grid grid-cols-2 gap-2 text-xs lg:grid-cols-4">{[["总销售额",gross],["退款",refunds],["运费",null],["净销售额",gross-refunds]].map(([title,value])=><div key={title} className="rounded-lg border border-border p-3"><p className="text-muted-foreground">{title}</p><b className="mt-2 block">{value===null||!selectedCurrency?"—":money(Number(value),selectedCurrency)}</b></div>)}</div>
-    <p className="mt-2 text-xs text-muted-foreground">运费暂无独立事件字段，不能推算；收入按币种展示。</p>
+    <p className="mt-2 text-xs text-muted-foreground" title="以已追踪完成结账金额扣除退款计算；运费需等待订单数据关联。">* 根据站内已追踪订单事件统计，非财务对账结果。</p>
    </section>
   </div>
   {dialog==="sources"&&<Dialog title="全部流量来源" onClose={()=>setDialog(null)}>{sourcesTable(true)}</Dialog>}
   {dialog==="products"&&<Dialog title="全部商品表现" onClose={()=>setDialog(null)}><ProductTable items={products} traffic={productTraffic}/></Dialog>}
-  {dialog==="finance"&&<Dialog title="经营趋势详情" onClose={()=>setDialog(null)}><table className="w-full text-sm"><thead><tr>{["时间","地区","币种","总销售额","退款","净销售额"].map(t=><th className="p-2 text-left" key={t}>{t}</th>)}</tr></thead><tbody>{finance.map(f=><tr className="border-b border-border/50" key={f.bucket}><td className="p-2">{f.bucket}</td><td>{f.country}</td><td>{f.currency}</td><td>{money(f.gross,f.currency)}</td><td>{money(f.refunds,f.currency)}</td><td>{money(f.gross-f.refunds,f.currency)}</td></tr>)}</tbody></table></Dialog>}
+  {dialog==="finance"&&<Dialog title="经营趋势详情" onClose={()=>setDialog(null)}><FinanceComparisonChart rows={finances} country={region} currency={selectedCurrency||""} bucket={financeBucket}/><table className="w-full text-sm"><thead><tr>{["时间","地区","币种","总销售额","退款","净销售额"].map(t=><th className="p-2 text-left" key={t}>{t}</th>)}</tr></thead><tbody>{finance.map(f=><tr className="border-b border-border/50" key={f.bucket}><td className="p-2">{f.bucket}</td><td>{f.country}</td><td>{f.currency}</td><td>{money(f.gross,f.currency)}</td><td>{money(f.refunds,f.currency)}</td><td>{money(f.gross-f.refunds,f.currency)}</td></tr>)}</tbody></table></Dialog>}
   <div className="flex flex-wrap gap-3 border-t border-border pt-4 text-xs text-muted-foreground"><span>扩展分析：</span><Link href="/ops/analytics/traffic" className="underline">流量趋势与地区对比</Link><Link href="/ops/analytics/checkout" className="underline">支付健康度</Link><Link href="/ops/analytics/realtime" className="underline">实时数据</Link></div>
  </div>;
 }
