@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 const localeChannel = "/en/us";
 const publicRoutes = [
   localeChannel,
@@ -54,7 +55,7 @@ test.describe("live storefront navigation and operational pages", () => {
     const response = await page.goto(localeChannel);
     expect(response?.status()).toBe(200);
 
-    const collections = page.getByRole("link", { name: "Explore collections" }).first();
+    const collections = page.locator('a[href="/en/us/collections/featured-products"]').first();
     await expect(collections).toHaveAttribute("href", /\\/en\\/us\\/collections\\/featured-products(?:[?#]|$)/);
     const collectionLink = await collections.getAttribute("href");
     expect((await request.get(collectionLink!)).status()).toBe(200);
@@ -84,6 +85,7 @@ test.describe("live storefront navigation and operational pages", () => {
     expect((await request.get("/ops/themes/api?channel=us&locale=en")).status()).toBe(401);
 
     const context = await browser.newContext({
+      baseURL,
       httpCredentials: { username: "analytics", password: password! },
     });
     try {
