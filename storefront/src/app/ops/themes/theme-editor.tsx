@@ -163,8 +163,13 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
             空白页面
           </button>
           <button disabled={saving || loading || !document || !storageReady} onClick={()=>{void persist("draft",documentRef.current).catch(()=>{});}}
-            className="rounded-lg bg-stone-900 px-4 py-2 text-sm text-white disabled:opacity-40">
+            className="rounded-lg border border-stone-200 px-4 py-2 text-sm text-stone-900 hover:bg-stone-50 disabled:opacity-40">
             {saving?"保存中…":"保存草稿"}
+          </button>
+          <button type="button" disabled={saving || loading || !document || !storageReady}
+            onClick={()=>{void persist("publish",documentRef.current).catch(()=>{});}}
+            className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+            {saving?"发布中…":"发布上线"}
           </button>
           <a target="_blank" rel="noopener noreferrer" href={"/"+locale+"/"+channel}
             className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">查看线上页面 ↗</a>

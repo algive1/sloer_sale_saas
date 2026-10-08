@@ -34,12 +34,12 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
     });
     page.on("requestfailed", request => browserErrors.push("Request failed: " + request.url() + " " + (request.failure()?.errorText || "")));
     async function requirePuckPublishButton() {
-      const publish = page.getByRole("button", { name: "Publish", exact: true }).first();
+      const publish = page.getByRole("button", { name: "发布上线", exact: true }).first();
       try {
         await expect(publish).toBeVisible({ timeout: 30_000 });
       } catch (error) {
         throw new Error(
-          "Puck Publish control did not mount. " + String(error) +
+          "Our accessible Publish button did not mount. " + String(error) +
           "\\nCurrent URL: " + page.url() +
           "\\nPage content: " + (await page.locator("body").innerText().catch(() => "")).slice(0, 3500) +
           "\\nBrowser errors: " + browserErrors.join("\\n").slice(0, 3500),
@@ -62,6 +62,8 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       await expect(page.getByRole("heading", { name: "店铺可视化装修" })).toBeVisible();
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
+      // Confirm the actual Puck block sidebar mounted, not just our server shell.
+      await expect(page.getByText("Saleor product collection", {exact:true}).first()).toBeVisible({timeout:30_000});
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";
@@ -112,7 +114,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       });
       expect(foreign.status()).toBe(403);
 
-      // Use the real Puck UI for publishing rather than bypassing the editor.
+      // Publish through our accessible toolbar connected to the real Puck document state.
       // Reload first so it picks up the persisted draft and revision #1.
       await page.goto("/ops/themes");
       await requirePuckPublishButton();
