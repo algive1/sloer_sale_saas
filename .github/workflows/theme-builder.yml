@@ -7,6 +7,7 @@ on:
       - "storefront/src/plugins/system/**"
       - "storefront/src/app/ops/plugins/**"
       - "storefront/src/app/ops/analytics/analytics-nav.tsx"
+      - "storefront/e2e/theme-builder-live.spec.ts"
       - "storefront/src/plugins/payment-reminders/**"
       - "storefront/src/lib/storage/**"
       - "storefront/src/lib/analytics/libsql-http.ts"
@@ -27,6 +28,7 @@ on:
       - "storefront/src/plugins/system/**"
       - "storefront/src/app/ops/plugins/**"
       - "storefront/src/app/ops/analytics/analytics-nav.tsx"
+      - "storefront/e2e/theme-builder-live.spec.ts"
       - "storefront/src/plugins/payment-reminders/**"
       - "storefront/src/lib/storage/**"
       - "storefront/src/lib/analytics/libsql-http.ts"
@@ -67,5 +69,13 @@ jobs:
         run: pnpm --dir storefront generate:all
       - name: TypeScript check
         run: pnpm --dir storefront exec tsc --noEmit
+      - name: Reject old theme module import paths
+        shell: bash
+        run: |
+          if git grep -n -E 'src/lib/theme-builder|@/lib/theme-builder' -- storefront/src storefront/e2e storefront/scripts; then
+            echo "Legacy theme-builder imports must use src/plugins/theme-builder."
+            exit 1
+          fi
+
       - name: Theme builder tests
         run: pnpm --dir storefront exec vitest run src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts
