@@ -1,6 +1,8 @@
-export type ReminderTarget = {status:string;isPaid:boolean;email:string;authorizeStatus?:string;hasRefund?:boolean};
+export type ReminderTarget = {status:string;isPaid:boolean;email:string;authorizeStatus?:string;paymentStatus?:string;hasRefund?:boolean};
 export function reminderSkipReason(order:ReminderTarget):string|null {
  if(order.isPaid)return "already_paid";
+ // Fail closed on unknown / completed payment states, not just isPaid.
+ if(!["NOT_CHARGED","PENDING"].includes((order.paymentStatus??"UNKNOWN").toUpperCase()))return "payment_status_not_eligible";
  if(order.hasRefund)return "refunded_order";
  if(["DRAFT","UNCONFIRMED","CANCELED","FULFILLED","PARTIALLY_FULFILLED","RETURNED"].includes(order.status.toUpperCase()))return "closed_order";
  if(["FULL","PARTIAL"].includes((order.authorizeStatus??"").toUpperCase()))return "payment_authorized";
