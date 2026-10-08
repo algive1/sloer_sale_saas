@@ -1,4 +1,8 @@
 import { Suspense } from "react";
+import { readTrafficReport } from "@/lib/analytics/traffic-report";
+import { readProductReport } from "@/lib/analytics/product-report";
+import { readOverviewDetails, readOverviewFinances } from "@/lib/analytics/overview-details";
+import { OperationsOverviewV3 } from "./operations-overview-v3";
 import Link from "next/link";
 import { io } from "next/cache";
 import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
@@ -42,7 +46,7 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 	await io();
 	const query = await searchParams;
 	const requested = Number(query.days ?? "30");
-	const days = [7, 30, 90].includes(requested) ? requested : 30;
+	const days = [1, 7, 15, 30, 90].includes(requested) ? requested : 30;
 
 	if (!analyticsDatabaseConfigured()) {
 		return (
@@ -60,6 +64,12 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 	}
 
 	const summary = await readAnalyticsSummary(days);
+	const to = new Date();
+	const from = new Date(to.getTime() - days * 86_400_000);
+	const range = { from, to, bucket: (days === 1 ? "hour" : "day") as "hour" | "day" };
+	const [traffic, product, detail, finances] = await Promise.all([
+		readTrafficReport(range), readProductReport(range), readOverviewDetails(range), readOverviewFinances(range),
+	]);
 	if (!summary) return null;
 	const conversion = summary.sessions > 0 ? (summary.purchases / summary.sessions) * 100 : 0;
 	const funnel = new Map(summary.funnel.map((row) => [row.name, row.count]));
@@ -119,6 +129,9 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 				))}
 				{summary.revenueByCurrency.length === 0 ? <Metric label="Revenue" value="—" /> : null}
 			</section>
+
+			<OperationsOverviewV3 sources={detail.sources} finances={finances} products={product.products}
+				productTraffic={detail.products} />
 
 			<section className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
 				<div className="rounded-xl border border-border bg-card p-6">
