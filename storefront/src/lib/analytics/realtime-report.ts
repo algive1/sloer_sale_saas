@@ -20,6 +20,8 @@ export type RealtimeAnalytics = {
 	countries: Array<{ countryCode: string; sessions: number }>;
 	topProducts: Array<{
 		itemKey: string;
+        categoryName:string;
+        thumbnailUrl:string;
 		itemName: string;
 		sku: string;
 		viewSessions: number;
@@ -28,6 +30,8 @@ export type RealtimeAnalytics = {
 	}>;
 	recentOrders: Array<{
 		occurredAt: string;
+        productName:string;
+        thumbnailUrl:string;
 		transactionId: string;
 		countryCode: string;
 		source: string;
@@ -36,6 +40,9 @@ export type RealtimeAnalytics = {
 	}>;
 	recentEvents: Array<{
 		occurredAt: string;
+        method:string;
+        errorCode:string;
+        thumbnailUrl:string;
 		name: string;
 		countryCode: string;
 		source: string;
@@ -135,8 +142,10 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 		},
 		{
 			sql: `SELECT
-				COALESCE(NULLIF(ai.variant_id, ''), ai.item_id) AS item_key,
-				COALESCE(MAX(NULLIF(ai.item_name, '')), COALESCE(NULLIF(ai.variant_id, ''), ai.item_id)) AS item_name,
+				COALESCE(NULLIF(ai.product_id, ''),NULLIF(ai.item_id, ''),NULLIF(ai.variant_id, '')) AS item_key,
+				COALESCE(MAX(NULLIF(ai.item_name, '')), COALESCE(NULLIF(ai.product_id, ''),ai.item_id)) AS item_name,
+                COALESCE(MAX(NULLIF(ai.category_name, '')), '') AS category_name,
+                COALESCE(MAX(NULLIF(ai.image_url, '')), '') AS image_url,
 				COALESCE(MAX(NULLIF(ai.sku, '')), '') AS sku,
 				COUNT(DISTINCT CASE WHEN ae.event_name = 'product_viewed' THEN ${sessionAeExpr} END) AS view_sessions,
 				COUNT(DISTINCT CASE WHEN ae.event_name = 'product_added_to_cart' THEN ${sessionAeExpr} END) AS add_to_cart_sessions,
@@ -146,7 +155,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				ON ae.event_name = ai.event_name AND ae.event_id = ai.event_id
 			WHERE ae.occurred_at >= ? AND ae.occurred_at <= ?
 				AND COALESCE(ae.device_type, '') != 'bot'
-			GROUP BY COALESCE(NULLIF(ai.variant_id, ''), ai.item_id)
+			GROUP BY COALESCE(NULLIF(ai.product_id, ''),NULLIF(ai.item_id, ''),NULLIF(ai.variant_id, ''))
 			ORDER BY view_sessions DESC, add_to_cart_sessions DESC, purchase_sessions DESC
 			LIMIT 10`,
 			args: [windowFrom, to],
@@ -159,7 +168,13 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				COALESCE(NULLIF(country_code, ''), 'UNKNOWN') AS country_code,
 				${sourceExpr} AS source,
 				COALESCE(value, 0) AS value,
-				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency
+				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
+                COALESCE((SELECT NULLIF(ai.item_name,'') FROM analytics_event_items ai
+                  WHERE ai.event_name=analytics_events.event_name AND ai.event_id=analytics_events.event_id
+                  ORDER BY ai.item_index LIMIT 1),'') AS product_name,
+                COALESCE((SELECT NULLIF(ai.image_url,'') FROM analytics_event_items ai
+                  WHERE ai.event_name=analytics_events.event_name AND ai.event_id=analytics_events.event_id
+                  ORDER BY ai.item_index LIMIT 1),'') AS image_url
 			FROM analytics_events
 			WHERE occurred_at >= ? AND occurred_at <= ?
 				AND COALESCE(device_type, '') != 'bot'
@@ -178,6 +193,10 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				COALESCE(ae.channel, '') AS channel,
 				COALESCE(ae.value, 0) AS value,
 				COALESCE(ae.currency, '') AS currency,
+                COALESCE(ae.method,'') AS method,
+                COALESCE(ae.error_code,'') AS error_code,
+                COALESCE((SELECT NULLIF(ai.image_url,'') FROM analytics_event_items ai
+                  WHERE ai.event_name=ae.event_name AND ai.event_id=ae.event_id ORDER BY ai.item_index LIMIT 1),'') AS image_url,
 				COALESCE((
 					SELECT NULLIF(ai.item_name, '')
 					FROM analytics_event_items ai
@@ -244,6 +263,8 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 		})),
 		topProducts: hranaRowsToObjects(productResult).map((row) => ({
 			itemKey: String(row.item_key ?? ""),
+            categoryName:String(row.category_name??""),
+            thumbnailUrl:String(row.image_url??""),
 			itemName: String(row.item_name ?? ""),
 			sku: String(row.sku ?? ""),
 			viewSessions: Number(row.view_sessions ?? 0),
@@ -253,6 +274,8 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 		recentOrders: hranaRowsToObjects(ordersResult).map((row) => ({
 			occurredAt: String(row.occurred_at ?? ""),
 			transactionId: String(row.transaction_id ?? ""),
+            productName:String(row.product_name??""),
+            thumbnailUrl:String(row.image_url??""),
 			countryCode: String(row.country_code ?? "UNKNOWN"),
 			source: String(row.source ?? "direct"),
 			value: Number(row.value ?? 0),
@@ -261,6 +284,9 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 		recentEvents: hranaRowsToObjects(eventsResult).map((row) => ({
 			occurredAt: String(row.occurred_at ?? ""),
 			name: String(row.event_name ?? ""),
+            method:String(row.method??""),
+            errorCode:String(row.error_code??""),
+            thumbnailUrl:String(row.image_url??""),
 			countryCode: String(row.country_code ?? "UNKNOWN"),
 			source: String(row.source ?? "direct"),
 			channel: String(row.channel ?? ""),
