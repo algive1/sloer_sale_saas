@@ -122,6 +122,13 @@ jobs:
           set -euo pipefail
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api             python3 manage.py shell < infra/saleor/bootstrap_us.py
 
+      - name: Seed published featured collection for theme builder E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
+            python3 manage.py shell < infra/saleor/bootstrap_theme_collection.py
+
       - name: Start vendored Saleor API and worker
         shell: bash
         run: |
