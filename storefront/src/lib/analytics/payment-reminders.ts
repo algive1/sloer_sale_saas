@@ -47,7 +47,7 @@ async function sendEmail(order:OpsOrder):Promise<string>{
   url,
   "If you have already paid, please disregard this message.",
   "Thank you.",
- ].join("\\n\\n");
+ ].join("\n\n");
  const response=await fetch("https://api.resend.com/emails",{
   method:"POST",signal:AbortSignal.timeout(10000),
   headers:{"authorization":"Bearer "+apiKey,"content-type":"application/json"},
