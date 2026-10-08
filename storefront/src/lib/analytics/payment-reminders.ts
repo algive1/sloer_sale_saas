@@ -41,17 +41,17 @@ async function sendEmail(order:OpsOrder):Promise<string>{
  if(!apiKey||!base||!fromEmail())throw new Error("email_not_configured");
  const url=new URL("/order/find",base).toString();
  const body=[
-  "您好，",
-  "我们的记录显示，您的订单 #"+order.number+" 尚未完成付款。",
-  "如果您仍希望购买，可打开订单查询页面，通过订单号及下单邮箱查看付款状态：",
+  "Hello,",
+  "Our records indicate that payment for order #"+order.number+" is still pending.",
+  "If you would like to complete your purchase, you can check your order using your order number and email address:",
   url,
-  "若您已经付款，请忽略此邮件；系统以最终订单支付状态为准。",
-  "谢谢。",
- ].join("\n\n");
+  "If you have already paid, please disregard this message.",
+  "Thank you.",
+ ].join("\\n\\n");
  const response=await fetch("https://api.resend.com/emails",{
   method:"POST",signal:AbortSignal.timeout(10000),
   headers:{"authorization":"Bearer "+apiKey,"content-type":"application/json"},
-  body:JSON.stringify({from:fromEmail(),to:[order.email],subject:"订单 #"+order.number+" 付款提醒",text:body}),
+  body:JSON.stringify({from:fromEmail(),to:[order.email],subject:"Payment reminder for order #"+order.number,text:body}),
  });
  if(!response.ok)throw new Error("email_delivery_http_"+response.status);
  const result=await response.json() as {id?:string};
