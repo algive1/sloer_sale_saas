@@ -20,6 +20,17 @@ import { Logo } from "./shared/logo";
 
 import { buildStorefrontPath } from "@/lib/storefront-path";
 
+/**
+ * Legal documents are merchant-owned Saleor CMS pages.
+ * Do not advertise broken root URLs or fabricate legal prose when unpublished.
+ * Deployment must configure and verify both slugs before accepting live traffic.
+ */
+function legalPageUrl(slug: string | undefined, locale: string, channel: string): string | null {
+  const normalized = slug?.trim();
+  if (!normalized || !/^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/.test(normalized)) return null;
+  return buildStorefrontPath(locale, channel, `/pages/${encodeURIComponent(normalized)}`);
+}
+
 export async function Footer({ locale, channel }: { locale: string; channel: string }) {
 	const resolvedSlugs = needsAsyncChannelDiscovery()
 		? await getStorefrontChannelSlugs()
@@ -32,6 +43,8 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 	]);
 
 	const footerMenuItems = menuItems ?? [];
+	const privacyHref = legalPageUrl(process.env.STOREFRONT_PRIVACY_PAGE_SLUG, locale, channel);
+	const termsHref = legalPageUrl(process.env.STOREFRONT_TERMS_PAGE_SLUG, locale, channel);
 	const localeOptions = getStorefrontLocaleOptions();
 	const selectorChannels =
 		channels?.channels && resolvedSlugs.length > 0
@@ -70,22 +83,12 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 						<FooterAttribution />
 						<FooterPhotoCredits credits={content.surfaces.homepage.photoCredits} />
 					</div>
-					<div className="flex items-center gap-6">
-						<Link
-							href="/privacy"
-							prefetch={false}
-							className="text-xs text-inverse-muted transition-colors hover:text-inverse-subtle"
-						>
-							Privacy Policy
-						</Link>
-						<Link
-							href="/terms"
-							prefetch={false}
-							className="text-xs text-inverse-muted transition-colors hover:text-inverse-subtle"
-						>
-							Terms of Service
-						</Link>
-					</div>
+					{(privacyHref || termsHref) && (
+            <div className="flex items-center gap-6">
+              {privacyHref && <Link href={privacyHref} prefetch={false} className="text-xs text-inverse-muted transition-colors hover:text-inverse-subtle">Privacy Policy</Link>}
+              {termsHref && <Link href={termsHref} prefetch={false} className="text-xs text-inverse-muted transition-colors hover:text-inverse-subtle">Terms of Service</Link>}
+            </div>
+          )}
 				</div>
 			</div>
 		</footer>

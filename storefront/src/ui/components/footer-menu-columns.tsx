@@ -4,20 +4,34 @@ import { getMenuItemHref, getMenuItemLabel } from "@/lib/menus/menu-item-utils";
 import { LinkWithChannel } from "@/ui/atoms/link-with-channel";
 import { NavHrefLink } from "@/ui/atoms/nav-href-link";
 
+/** Every fallback link must resolve without optional CMS Pages or menu fixtures. */
 const defaultFooterLinks = {
-	support: [
-		{ label: "Contact Us", href: "/contact" },
-		{ label: "FAQs", href: "/faq" },
-		{ label: "Shipping", href: "/shipping" },
-		{ label: "Returns", href: "/returns" },
-	],
-	company: [
-		{ label: "About", href: "/about" },
-		{ label: "Sustainability", href: "/sustainability" },
-		{ label: "Careers", href: "/careers" },
-		{ label: "Press", href: "/press" },
-	],
-};
+  support: [
+    { label: "Track Your Order", href: "/order/find", global: true },
+    { label: "View Cart", href: "/cart", global: false },
+    { label: "Sign In", href: "/login", global: false },
+    { label: "Create Account", href: "/signup", global: false },
+  ],
+  explore: [
+    { label: "Shop All Products", href: "/products", global: false },
+    { label: "Search Products", href: "/search", global: false },
+    { label: "My Wishlist", href: "/wishlist", global: false },
+    { label: "My Account", href: "/account", global: false },
+  ],
+} as const;
+
+type FallbackLink = { label: string; href: string; global: boolean };
+
+function FallbackLinkItem({ link }: { link: FallbackLink }) {
+  const className = "text-sm text-inverse-subtle transition-colors hover:text-inverse";
+  return (
+    <li>
+      {link.global
+        ? <Link href={link.href} prefetch={false} className={className}>{link.label}</Link>
+        : <LinkWithChannel href={link.href} prefetch={false} className={className}>{link.label}</LinkWithChannel>}
+    </li>
+  );
+}
 
 function FooterMenuChildLink({ child }: { child: MenuItem }) {
 	const href = getMenuItemHref(child);
@@ -54,33 +68,13 @@ export function FooterMenuColumns({ items }: { items: MenuItem[] }) {
 				<div>
 					<h4 className="mb-4 text-sm font-medium text-inverse">Support</h4>
 					<ul className="space-y-3">
-						{defaultFooterLinks.support.map((link) => (
-							<li key={link.href}>
-								<Link
-									href={link.href}
-									prefetch={false}
-									className="text-sm text-inverse-subtle transition-colors hover:text-inverse"
-								>
-									{link.label}
-								</Link>
-							</li>
-						))}
+						{defaultFooterLinks.support.map((link) => <FallbackLinkItem key={link.href} link={link} />)}
 					</ul>
 				</div>
 				<div>
-					<h4 className="mb-4 text-sm font-medium text-inverse">Company</h4>
+					<h4 className="mb-4 text-sm font-medium text-inverse">Explore</h4>
 					<ul className="space-y-3">
-						{defaultFooterLinks.company.map((link) => (
-							<li key={link.href}>
-								<Link
-									href={link.href}
-									prefetch={false}
-									className="text-sm text-inverse-subtle transition-colors hover:text-inverse"
-								>
-									{link.label}
-								</Link>
-							</li>
-						))}
+						{defaultFooterLinks.explore.map((link) => <FallbackLinkItem key={link.href} link={link} />)}
 					</ul>
 				</div>
 			</>
