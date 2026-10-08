@@ -19,7 +19,7 @@ type GqlOrder = {
  lines?:Array<{productName?:string|null;thumbnail?:{url?:string|null}|null}>;
  payments?:Array<{gateway?:string|null;created?:string|null}>|null;
 };
-const query=String.raw\`query OpsRecentOrders($first:Int!){
+const query=`query OpsRecentOrders($first:Int!){
  orders(first:$first,sortBy:{field:CREATED_AT,direction:DESC}) {
   edges { node {
    id number created status paymentStatus isPaid userEmail
