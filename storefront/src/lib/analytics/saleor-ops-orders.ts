@@ -30,7 +30,7 @@ const query=`query OpsRecentOrders($first:Int!){
    payments {gateway created}
   }}
  }
-}\`;
+}`;
 
 export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
  const endpoint=process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
