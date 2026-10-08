@@ -31,20 +31,6 @@ const stages = [
   ["checkout_completed","购买成功"],
 ] as const;
 
-const eventNames: Record<string,string> = {
-  page_viewed:"页面浏览",
-  product_viewed:"商品浏览",
-  wishlist_added:"加入收藏",
-  product_added_to_cart:"加入购物车",
-  cart_viewed:"查看购物车",
-  checkout_started:"开始结账",
-  payment_method_selected:"选择支付方式",
-  checkout_completed:"购买完成",
-  payment_failed:"支付失败",
-  checkout_failed:"结账失败",
-  refund_completed:"订单退款",
-};
-
 const money=(value:number,currency:string)=>{
   try {
     return currency==="UNKNOWN" ? value.toFixed(2)+" UNKNOWN" : new Intl.NumberFormat("en",{style:"currency",currency}).format(value);
