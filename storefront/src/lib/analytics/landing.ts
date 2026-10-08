@@ -14,6 +14,7 @@ export type LandingSnapshot = {
 	fbclid?: string;
 	ttclid?: string;
 	msclkid?: string;
+	referrerHost?: string;
 };
 
 const UTM_FIELDS = [
@@ -44,7 +45,11 @@ const MAX_UTM_CHARS = 200;
 const MAX_CLICK_ID_CHARS = 512;
 const MAX_LANDING_PATH_CHARS = 400;
 
-export function captureLandingSnapshot(href: string, now = new Date()): LandingSnapshot {
+export function captureLandingSnapshot(
+	href: string,
+	now = new Date(),
+	referrerHref?: string,
+): LandingSnapshot {
 	const snapshot: LandingSnapshot = {
 		capturedAt: now.toISOString(),
 		landingPath: landingPathFromHref(href),
@@ -52,6 +57,8 @@ export function captureLandingSnapshot(href: string, now = new Date()): LandingS
 
 	try {
 		const url = new URL(href);
+		const referrerHost = externalReferrerHost(url, referrerHref);
+		if (referrerHost) snapshot.referrerHost = referrerHost;
 		for (const [param, field] of UTM_FIELDS) {
 			const value = sanitizeToken(url.searchParams.get(param), MAX_UTM_CHARS);
 			if (value) snapshot[field] = value;
@@ -96,6 +103,8 @@ export function parseLandingSnapshot(raw: string): LandingSnapshot | null {
 		const value = sanitizeToken(typeof rawValue === "string" ? rawValue : null, MAX_CLICK_ID_CHARS);
 		if (value) snapshot[field] = value;
 	}
+	const referrerHost = sanitizeReferrerHost(record.referrerHost);
+	if (referrerHost) snapshot.referrerHost = referrerHost;
 	return snapshot;
 }
 
@@ -123,6 +132,25 @@ function clipLandingPath(path: string): string {
 	const queryAt = path.indexOf("?");
 	const pathname = queryAt === -1 ? path : path.slice(0, queryAt);
 	return pathname.length <= MAX_LANDING_PATH_CHARS ? pathname : pathname.slice(0, MAX_LANDING_PATH_CHARS);
+}
+
+function externalReferrerHost(landingUrl: URL, referrerHref?: string): string | undefined {
+	if (!referrerHref) return undefined;
+	try {
+		const referrer = new URL(referrerHref);
+		if (referrer.origin === landingUrl.origin) return undefined;
+		return sanitizeReferrerHost(referrer.hostname);
+	} catch {
+		return undefined;
+	}
+}
+
+function sanitizeReferrerHost(value: unknown): string | undefined {
+	if (typeof value !== "string") return undefined;
+	const host = value.trim().toLowerCase().replace(/^www\./, "");
+	if (!host || host.length > 253 || hasControlChars(host)) return undefined;
+	if (!/^[a-z0-9.-]+$/.test(host) || host.startsWith(".") || host.endsWith(".")) return undefined;
+	return host;
 }
 
 function hasControlChars(value: string): boolean {

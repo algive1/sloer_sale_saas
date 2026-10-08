@@ -84,7 +84,7 @@ export function persistFirstTouch(now = new Date()): void {
 		return;
 	}
 
-	const incoming = readPendingLanding() ?? captureLandingSnapshot(window.location.href, now);
+	const incoming = readPendingLanding() ?? captureLandingSnapshot(window.location.href, now, document.referrer);
 
 	if (!analyticsStorageAllowed(readConsentChoice())) {
 		if (!readPendingLanding()) writePendingLanding(incoming);

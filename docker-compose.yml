@@ -109,6 +109,8 @@ services:
       # Next.js server-side build fetches reach the published API port without
       # baking an internal Docker hostname into browser-facing NEXT_PUBLIC vars.
       network: host
+      entitlements:
+        - network.host
       args:
         SALEOR_INTERNAL_API_URL: ${SALEOR_BUILD_API_URL:-http://127.0.0.1:8000/graphql/}
         NEXT_PUBLIC_SALEOR_API_URL: ${NEXT_PUBLIC_SALEOR_API_URL:-http://localhost:8000/graphql/}
