@@ -1,5 +1,5 @@
 import { expect, test, request as playwrightRequest } from "@playwright/test";
-import { FASHION_TEMPLATE, type ThemeData } from "../src/lib/theme-builder/template";
+import { FASHION_TEMPLATE, type ThemeData } from "../src/plugins/theme-builder/template";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 const password = process.env.PLAYWRIGHT_THEME_EDITOR_SECRET;
