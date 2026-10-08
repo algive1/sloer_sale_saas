@@ -1,0 +1,106 @@
+import "server-only";
+import { hranaRowsToObjects, libsqlPipeline } from "@/lib/analytics/libsql-http";
+import { parseTheme, serializeTheme } from "./validate";
+import type { ThemeData } from "./template";
+
+type StoredTheme = {
+  draft: ThemeData | null;
+  published: ThemeData | null;
+  draftRevision: number;
+  publishedRevision: number;
+};
+const empty: StoredTheme = { draft: null, published: null, draftRevision: 0, publishedRevision: 0 };
+let schemaPromise: Promise<void> | undefined;
+
+function database() {
+  const url = process.env.THEME_LIBSQL_URL?.trim();
+  const token = process.env.THEME_LIBSQL_AUTH_TOKEN?.trim();
+  if (!url || !token) throw new Error("Theme storage is not configured");
+  return { url, token };
+}
+
+export function themeDatabaseConfigured(): boolean {
+  return Boolean(process.env.THEME_LIBSQL_URL?.trim() && process.env.THEME_LIBSQL_AUTH_TOKEN?.trim());
+}
+
+export function activeThemeSiteId(): string {
+  const siteId = process.env.STOREFRONT_SITE_ID?.trim() || "primary";
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(siteId)) throw new Error("Invalid STOREFRONT_SITE_ID");
+  return siteId;
+}
+
+async function ensureSchema(): Promise<void> {
+  if (!schemaPromise) {
+    schemaPromise = (async () => {
+      await libsqlPipeline([{
+        sql: `CREATE TABLE IF NOT EXISTS storefront_theme_homepages (
+          site_id TEXT NOT NULL,
+          channel TEXT NOT NULL,
+          locale TEXT NOT NULL,
+          draft_json TEXT,
+          published_json TEXT,
+          draft_revision INTEGER NOT NULL DEFAULT 0,
+          published_revision INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY (site_id, channel, locale)
+        )`,
+      }], database());
+    })().catch((error: unknown) => {
+      schemaPromise = undefined;
+      throw error;
+    });
+  }
+  await schemaPromise;
+}
+
+export async function readTheme(channel: string, locale: string): Promise<StoredTheme> {
+  if (!themeDatabaseConfigured()) return empty;
+  await ensureSchema();
+  const [result] = await libsqlPipeline([{
+    sql: "SELECT draft_json, published_json, draft_revision, published_revision FROM storefront_theme_homepages WHERE site_id = ? AND channel = ? AND locale = ? LIMIT 1",
+    args: [activeThemeSiteId(), channel, locale],
+    wantRows: true,
+  }], database());
+  const record = hranaRowsToObjects(result)[0];
+  if (!record) return empty;
+  return {
+    draft: parseTheme(record.draft_json),
+    published: parseTheme(record.published_json),
+    draftRevision: Number(record.draft_revision) || 0,
+    publishedRevision: Number(record.published_revision) || 0,
+  };
+}
+
+export async function saveTheme(
+  channel: string, locale: string, input: unknown, publish: boolean,
+): Promise<void> {
+  const json = serializeTheme(input);
+  await ensureSchema();
+  const siteId = activeThemeSiteId();
+  const now = new Date().toISOString();
+  if (publish) {
+    await libsqlPipeline([{
+      sql: `INSERT INTO storefront_theme_homepages
+        (site_id, channel, locale, draft_json, published_json, draft_revision, published_revision, updated_at)
+        VALUES (?, ?, ?, ?, ?, 1, 1, ?)
+        ON CONFLICT(site_id, channel, locale) DO UPDATE SET
+          draft_json = excluded.draft_json,
+          published_json = excluded.published_json,
+          draft_revision = draft_revision + 1,
+          published_revision = published_revision + 1,
+          updated_at = excluded.updated_at`,
+      args: [siteId, channel, locale, json, json, now],
+    }], database());
+  } else {
+    await libsqlPipeline([{
+      sql: `INSERT INTO storefront_theme_homepages
+        (site_id, channel, locale, draft_json, published_json, draft_revision, published_revision, updated_at)
+        VALUES (?, ?, ?, ?, NULL, 1, 0, ?)
+        ON CONFLICT(site_id, channel, locale) DO UPDATE SET
+          draft_json = excluded.draft_json,
+          draft_revision = draft_revision + 1,
+          updated_at = excluded.updated_at`,
+      args: [siteId, channel, locale, json, now],
+    }], database());
+  }
+}

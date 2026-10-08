@@ -1,4 +1,8 @@
 import { Suspense } from "react";
+import { io } from "next/cache";
+import { Render } from "@puckeditor/core";
+import { createPublishedThemeConfig } from "@/lib/theme-builder/config.server";
+import { readTheme, themeDatabaseConfigured } from "@/lib/theme-builder/store";
 import { brandConfig } from "@/config/brand";
 import { resolveLocaleFromSlug } from "@/config/locale";
 import { getFeaturedProducts } from "@/lib/catalog/get-featured-products";
@@ -106,6 +110,12 @@ function HomePageFallback() {
  */
 async function HomePageContent({ params }: { params: HomeParams }) {
 	const { locale, channel } = await params;
+	// The original Paper homepage remains the safe default until a theme is published.
+	if (themeDatabaseConfigured()) {
+		await io();
+		const { published } = await readTheme(channel, locale);
+		if (published) return <Render config={createPublishedThemeConfig(channel, locale)} data={published} />;
+	}
 	const content = await getStorefrontContent(channel, locale);
 	const { hero, featuredCollection, categories, brandStory, values, editorial } = content.surfaces.homepage;
 

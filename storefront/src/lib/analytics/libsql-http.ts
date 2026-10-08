@@ -26,9 +26,12 @@ export function analyticsDatabaseConfigured(): boolean {
 	return Boolean(process.env.ANALYTICS_LIBSQL_URL?.trim() && process.env.ANALYTICS_LIBSQL_AUTH_TOKEN?.trim());
 }
 
-export async function libsqlPipeline(statements: readonly Statement[]): Promise<HranaExecuteResult[]> {
-	const rawUrl = process.env.ANALYTICS_LIBSQL_URL?.trim();
-	const token = process.env.ANALYTICS_LIBSQL_AUTH_TOKEN?.trim();
+export async function libsqlPipeline(
+	statements: readonly Statement[],
+	connection?: { url: string; token: string },
+): Promise<HranaExecuteResult[]> {
+	const rawUrl = connection?.url ?? process.env.ANALYTICS_LIBSQL_URL?.trim();
+	const token = connection?.token ?? process.env.ANALYTICS_LIBSQL_AUTH_TOKEN?.trim();
 	if (!rawUrl || !token) return [];
 
 	const baseUrl = rawUrl.replace(/^libsql:/, "https:").replace(/\/$/, "");
