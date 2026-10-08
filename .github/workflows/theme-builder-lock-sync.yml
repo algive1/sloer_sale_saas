@@ -1,4 +1,5 @@
 name: Theme builder lockfile sync (temporary)
+# Regenerate after precise, reviewed provenance-policy exemption.
 
 on:
   push:

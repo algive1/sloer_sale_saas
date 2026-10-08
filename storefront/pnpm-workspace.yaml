@@ -15,6 +15,8 @@ minimumReleaseAgeExclude:
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - "semver@6.3.1"
+  # pnpm 10 date-based cross-version provenance false-positive (transitive of eslint-config-next).
+  - "eslint-import-resolver-typescript@3.10.1"
 overrides:
   graphql: 16.8.1
   dset: ">=3.1.4"
