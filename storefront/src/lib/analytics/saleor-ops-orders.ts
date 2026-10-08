@@ -17,6 +17,7 @@ type GqlOrder = {
  shippingAddress?:{country?:{code?:string|null}|null}|null;
  billingAddress?:{country?:{code?:string|null}|null}|null;
  total?:{gross?:{amount?:number|null;currency?:string|null}|null}|null;
+ totalRefunded?:{amount?:number|null}|null;
  lines?:Array<{productName?:string|null;thumbnail?:{url?:string|null}|null}>;
  payments?:Array<{gateway?:string|null;created?:string|null}>|null;
  transactions?:Array<{name:string;events:Array<{createdAt:string;type:string|null}>}>|null;
@@ -28,6 +29,7 @@ const query=`query OpsRecentOrders($first:Int!){
    shippingAddress {country {code}}
    billingAddress {country {code}}
    total {gross {amount currency}}
+   totalRefunded {amount}
    lines {productName thumbnail(size:64,format:WEBP){url}}
    payments {gateway created}
    transactions {name events {createdAt type}}
@@ -52,7 +54,7 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
   paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
   country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
   source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",authorizeStatus:o.authorizeStatus??"UNKNOWN",
-  isPaid:o.isPaid,hasRefund:(o.transactions??[]).some(t=>(t.events??[]).some(e=>e.type==="REFUND_SUCCESS")),amount:o.total?.gross?.amount??0,currency:o.total?.gross?.currency??"UNKNOWN",
+  isPaid:o.isPaid,hasRefund:(o.totalRefunded?.amount??0)>0||(o.transactions??[]).some(t=>(t.events??[]).some(e=>e.type==="REFUND_SUCCESS")),amount:o.total?.gross?.amount??0,currency:o.total?.gross?.currency??"UNKNOWN",
   paymentMethod:o.transactions?.[0]?.name??o.payments?.[0]?.gateway??"—",
   thumbnailUrl:o.lines?.[0]?.thumbnail?.url??"",
   productName:o.lines?.[0]?.productName??"—",
