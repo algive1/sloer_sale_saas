@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { FinanceComparisonChart } from "./finance-comparison-chart";
 import { useEffect } from "react";
 import type { OverviewSource, OverviewFinance, OverviewProductTraffic } from "@/lib/analytics/overview-details";
@@ -31,10 +32,44 @@ function ProductTable({items,traffic}:{items:ProductPerformanceRow[];traffic:Ove
  return <div className="overflow-x-auto"><table className="min-w-[790px] w-full text-xs">
  <thead><tr className="border-b border-border text-muted-foreground">{["商品","浏览","加购","订单","总转化率","付费转化率","自然转化率","成交商品金额"].map(t=><th key={t} className="p-2 text-left">{t}</th>)}</tr></thead>
  <tbody>{items.map(p=><tr className="border-b border-border/50" key={p.itemKey}>
- <td className="p-2"><div className="flex items-center gap-2"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span><div className="max-w-48"><span className="line-clamp-2" title={p.itemName}>{p.itemName}</span><small className="block text-muted-foreground">{p.sku||p.itemKey}</small></div></div></td>
+ <td className="p-2"><div className="flex items-center gap-2">{p.thumbnailUrl?<Image unoptimized src={p.thumbnailUrl} alt={p.itemName} width={40} height={40} className="h-10 w-10 shrink-0 rounded border border-border object-cover"/>:<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span>}<div className="max-w-48"><span className="line-clamp-2" title={p.itemName}>{p.itemName}</span><small className="block text-muted-foreground">{p.sku||p.itemKey}</small></div></div></td>
  <td>{fmt(p.productViews)}</td><td>{fmt(p.addToCarts)}</td><td>{fmt(p.purchaseSessions)}</td><td>{pct(p.purchaseSessions,p.productViews)}</td><td>{rate(p.itemKey,"paid")}</td><td>{rate(p.itemKey,"organic")}</td><td><MoneyCell values={p.purchasedItemValue}/></td></tr>)}</tbody></table>
  {!items.length&&<p className="p-6 text-center text-sm text-muted-foreground">暂无商品数据</p>}</div>;
 }
+
+type CategorySummary = {
+ key: string;
+ name: string;
+ products: number;
+ views: number;
+ carts: number;
+ orders: number;
+ paidViews: number;
+ paidPurchases: number;
+ organicViews: number;
+ organicPurchases: number;
+};
+function CategoryTable({items,traffic}:{items:ProductPerformanceRow[];traffic:OverviewProductTraffic[]}) {
+ const categories=new Map<string,CategorySummary>();
+ for(const item of items){
+   const key=item.categoryId||"UNCATEGORIZED";
+   const old=categories.get(key)??{key,name:item.categoryName||"未识别分类",products:0,views:0,carts:0,orders:0,paidViews:0,paidPurchases:0,organicViews:0,organicPurchases:0};
+   old.products++;old.views+=item.productViews;old.carts+=item.addToCarts;old.orders+=item.purchaseSessions;
+   for(const row of traffic.filter(t=>t.itemKey===item.itemKey)){
+     if(row.trafficType==="paid"){old.paidViews+=row.views;old.paidPurchases+=row.purchases;}
+     if(row.trafficType==="organic"){old.organicViews+=row.views;old.organicPurchases+=row.purchases;}
+   }
+   categories.set(key,old);
+ }
+ const data=[...categories.values()].sort((a,b)=>b.views-a.views);
+ return <div className="overflow-x-auto"><table className="min-w-[680px] w-full text-xs">
+   <thead><tr className="border-b border-border text-muted-foreground">{["分类","商品数","浏览","加购","订单","转化率","付费转化率","自然转化率"].map(t=><th className="p-2 text-left" key={t}>{t}</th>)}</tr></thead>
+   <tbody>{data.slice(0,6).map(c=><tr key={c.key} className="border-b border-border/50">
+     <td className="p-2 font-medium">{c.name}</td><td>{fmt(c.products)}</td><td>{fmt(c.views)}</td><td>{fmt(c.carts)}</td><td>{fmt(c.orders)}</td><td>{pct(c.orders,c.views)}</td><td>{pct(c.paidPurchases,c.paidViews)}</td><td>{pct(c.organicPurchases,c.organicViews)}</td>
+   </tr>)}</tbody>
+ </table>{!data.length&&<p className="p-6 text-center text-sm text-muted-foreground">暂无分类统计</p>}</div>;
+}
+
 export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo,financeBucket,financeStart,financeEnd,days}:Props) {
  const countries=useMemo(()=>["ALL",...new Set(sources.map(s=>s.country).filter(s=>s!=="ALL"))],[sources]);
  const financeCountries=useMemo(()=>["ALL",...new Set(finances.map(f=>f.country).filter(c=>c!=="ALL"))],[finances]);
@@ -87,7 +122,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
   <div className="grid gap-4 xl:grid-cols-[1.1fr_.9fr]">
    <section className="rounded-xl border border-border bg-card p-5">
     <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">商品表现</h2><div className="flex gap-2"><button type="button" className={selectClass} aria-pressed={mode==="categories"} onClick={()=>setMode("categories")}>商品分类</button><button type="button" className={selectClass} aria-pressed={mode==="products"} onClick={()=>setMode("products")}>具体商品</button><button type="button" className={selectClass} onClick={()=>setDialog("products")}>查看全部</button></div></header>
-    {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">暂无可用分类统计</div>}
+    {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<CategoryTable items={products} traffic={productTraffic}/>}
    </section>
    <section className="rounded-xl border border-border bg-card p-5">
     <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><div className="flex flex-wrap gap-1">{[["today","今日"],["7d","近7日"],["15d","近15日"],["month","本月"]].map(([value,label])=><Link key={value} href={"/ops/analytics?days="+days+"&finance="+value} aria-current={financeRange===value?"page":undefined} className={selectClass+(financeRange===value?" bg-foreground text-background":"")}>{label}</Link>)}<a href="#finance-custom" className={selectClass}>自定义</a><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></div></header>
