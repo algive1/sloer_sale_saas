@@ -1,6 +1,6 @@
 import "server-only";
 import { analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline } from "@/lib/analytics/libsql-http";
-import { fetchSaleorOrders, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
+import { fetchSaleorOrders, fetchSaleorOrder, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 import {reminderSkipReason,reminderDueStage,reminderCooldown} from "@/lib/analytics/reminder-policy";
 
 export type PaymentReminderRule = { enabled:boolean; firstAfterHours:number; secondAfterHours:number; dailyLimit:number };
@@ -60,7 +60,11 @@ async function sendEmail(order:OpsOrder):Promise<string>{
 }
 export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second"):Promise<ReminderResult>{
  if(!reminderEmailConfigured())return {status:"skipped",reason:"email_not_configured"};
- const invalid=reminderSkipReason(order);
+ // Re-read the authoritative order immediately before claiming a send slot.
+ // A stale analytics list can outlive a successful payment or cancellation.
+ const live=await fetchSaleorOrder(order.id);
+ if(!live)return {status:"skipped",reason:"order_not_found_or_saleor_unavailable"};
+ const invalid=reminderSkipReason(live);
  if(invalid)return {status:"skipped",reason:invalid};
  await schema();
  const rule=await getReminderRule();
@@ -79,7 +83,7 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
    WHERE order_id=? AND (status='sending' OR (status='sent' AND sent_at>=?)))`,args:[order.id,stage,now,new Date(Date.now()-86400000).toISOString(),rule.dailyLimit,order.id,new Date(Date.now()-86400000).toISOString()]}]);
  if(!claimed?.affected_row_count)return {status:"skipped",reason:"already_attempted"};
  try{
-  const providerId=await sendEmail(order);
+  const providerId=await sendEmail(live);
   await libsqlPipeline([{sql:"UPDATE ops_reminder_delivery SET status='sent',sent_at=?,provider_id=? WHERE order_id=? AND stage=?",args:[new Date().toISOString(),providerId,order.id,stage]}]);
   return {status:"sent"};
  }catch(error){
@@ -89,10 +93,8 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
 }
 export async function sendManualReminder(orderId:string):Promise<ReminderResult>{
  // Verify unpaid/eligible against Saleor immediately before making a side effect.
- const orders=await fetchSaleorOrders(100);
- if(!orders)return {status:"skipped",reason:"saleor_unavailable"};
- const order=orders.find(o=>o.id===orderId);
- if(!order)return {status:"skipped",reason:"order_not_in_recent_window"};
+ const order=await fetchSaleorOrder(orderId);
+ if(!order)return {status:"skipped",reason:"order_not_found_or_saleor_unavailable"};
  return sendReminder(order,"manual");
 }
 export async function runAutomaticReminders():Promise<{sent:number;skipped:number;failed:number}>{
