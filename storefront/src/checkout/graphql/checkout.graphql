@@ -140,7 +140,7 @@ fragment CheckoutLineFragment on CheckoutLine {
 		product {
 			id
 			name
-			category { name }
+			category { id name }
 			thumbnail(size: 64, format: WEBP) { url }
 			translation(languageCode: $languageCode) {
 				language {
