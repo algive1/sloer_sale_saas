@@ -148,7 +148,7 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic,f
         </div>
       </div>
       {regionCustom&&<form action="/ops/analytics" className="mb-3 flex flex-wrap gap-2 text-xs"><input type="hidden" name="days" value={days}/><input type="hidden" name="region" value="custom"/><label>从 <input required name="regionFrom" type="date" defaultValue={regionFrom} className={selectClass}/></label><label>至 <input required name="regionTo" type="date" defaultValue={regionTo} className={selectClass}/></label><button className={selectClass}>应用</button></form>}
-      <CountryTrendChart buckets={regionTrend.buckets} rows={regionTrend.rows} countries={regionTrend.countries} bucket={regionBucket}/>
+      <CountryTrendChart key={regionRange} buckets={regionTrend.buckets} rows={regionTrend.rows} countries={regionTrend.countries} bucket={regionBucket}/>
       <div className="mt-2 flex justify-end text-xs text-muted-foreground"><Link href="/ops/analytics/traffic" className="hover:underline">完整地区分析 →</Link></div>
     </section>
   </div>
