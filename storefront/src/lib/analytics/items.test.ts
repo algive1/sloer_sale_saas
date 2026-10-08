@@ -26,6 +26,7 @@ describe("commerceItemsFromLines", () => {
 				quantity: 2,
 			},
 		]);
+	});
 
     it("uses Saleor product ID for variant checkout attribution", () => {
         const result = commerceItemsFromLines([{
