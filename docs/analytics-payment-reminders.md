@@ -33,7 +33,7 @@
 set -a
 . /etc/commerce-reminder.env
 set +a
-curl --fail-with-body --silent --show-error --max-time 30 \
+curl --fail-with-body --silent --show-error --max-time 300 \
   -u "analytics:$ANALYTICS_DASHBOARD_SECRET" \
   -H "x-reminder-cron-secret: $PAYMENT_REMINDER_CRON_SECRET" \
   -X POST "$OPS_BASE_URL/ops/api/analytics/reminders/run"
