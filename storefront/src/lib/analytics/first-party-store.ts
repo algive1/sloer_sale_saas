@@ -182,8 +182,8 @@ export async function storeFirstPartyCommerceEvent(
 	for (const [itemIndex, item] of normalizedItems.entries()) {
 		statements.push({
 			sql: `INSERT OR IGNORE INTO analytics_event_items
-				(event_name, event_id, item_index, item_id, product_id, variant_id, sku, item_name, category_name, image_url, price, quantity)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				(event_name, event_id, item_index, item_id, product_id, variant_id, sku, item_name, category_id, category_name, image_url, price, quantity)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				event.name,
 				eventId,
@@ -193,6 +193,7 @@ export async function storeFirstPartyCommerceEvent(
 				item.variantId,
 				item.sku,
 				item.itemName,
+				item.categoryId,
 				item.categoryName,
 				item.imageUrl,
 				item.price,
@@ -391,6 +392,7 @@ async function ensureSchema(): Promise<void> {
 					variant_id TEXT,
 					sku TEXT,
 					item_name TEXT,
+					category_id TEXT,
 					category_name TEXT,
 					image_url TEXT,
 					price REAL,
@@ -434,6 +436,7 @@ async function ensureSchema(): Promise<void> {
         );
         const missingItemColumns = [
             ["product_id", "TEXT"],
+            ["category_id", "TEXT"],
             ["category_name", "TEXT"],
             ["image_url", "TEXT"],
         ] as const;
