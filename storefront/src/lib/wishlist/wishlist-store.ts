@@ -2,6 +2,7 @@ import "server-only";
 
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/analytics/libsql-http";
 import type { WishlistRecord } from "@/lib/wishlist/types";
+import { isValidWishlistRecord } from "@/lib/wishlist/validation";
 
 let schemaPromise: Promise<void> | null = null;
 
@@ -77,7 +78,7 @@ async function ensureSchema(): Promise<void> {
 function parseRecord(raw: string): WishlistRecord | null {
 	try {
 		const value = JSON.parse(raw) as WishlistRecord;
-		return value && typeof value.productId === "string" && typeof value.name === "string" ? value : null;
+		return isValidWishlistRecord(value) ? value : null;
 	} catch {
 		return null;
 	}

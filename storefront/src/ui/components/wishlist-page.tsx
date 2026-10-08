@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import Link from "next/link";
+import { LinkWithChannel } from "@/ui/atoms/link-with-channel";
 import { Heart } from "lucide-react";
 import {
 	subscribeWishlist,
@@ -32,9 +33,9 @@ export function WishlistPage() {
 					Save products here while you compare options. Your wishlist stays on this device and syncs to
 					your account when cloud analytics storage is configured.
 				</p>
-				<Link href="../products" className={buttonClassName({ asLink: true, className: "mt-8" })}>
+				<LinkWithChannel href="/products" className={buttonClassName({ asLink: true, className: "mt-8" })}>
 					Browse products
-				</Link>
+				</LinkWithChannel>
 			</div>
 		);
 	}

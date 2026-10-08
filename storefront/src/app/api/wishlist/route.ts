@@ -8,7 +8,7 @@ import {
 	upsertWishlist,
 	wishlistCloudConfigured,
 } from "@/lib/wishlist/wishlist-store";
-import type { WishlistRecord } from "@/lib/wishlist/types";
+import { isValidWishlistProductId, isValidWishlistRecord } from "@/lib/wishlist/validation";
 
 
 const OWNER_COOKIE = "paper_wishlist_owner";
@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
 	if (!wishlistCloudConfigured()) return new NextResponse(null, { status: 204 });
-	const item = (await request.json().catch(() => null)) as WishlistRecord | null;
-	if (!validItem(item)) return NextResponse.json({ error: "invalid_item" }, { status: 400 });
+	const item: unknown = await request.json().catch(() => null);
+	if (!isValidWishlistRecord(item)) return NextResponse.json({ error: "invalid_item" }, { status: 400 });
 	const owner = await resolveOwner(request);
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
 	await upsertWishlist(owner.key, item);
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
 	if (!wishlistCloudConfigured()) return new NextResponse(null, { status: 204 });
 	const body = (await request.json().catch(() => null)) as { productId?: string } | null;
-	if (!body?.productId) return NextResponse.json({ error: "invalid_product" }, { status: 400 });
+	if (!isValidWishlistProductId(body?.productId)) return NextResponse.json({ error: "invalid_product" }, { status: 400 });
 	const owner = await resolveOwner(request);
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
 	await removeWishlist(owner.key, body.productId);
@@ -71,15 +71,3 @@ function setGuestCookie(
 	});
 }
 
-function validItem(item: WishlistRecord | null): item is WishlistRecord {
-	return Boolean(
-		item &&
-			typeof item.productId === "string" &&
-			item.productId &&
-			typeof item.name === "string" &&
-			typeof item.href === "string" &&
-			typeof item.price === "number" &&
-			typeof item.currency === "string" &&
-			typeof item.channel === "string",
-	);
-}
