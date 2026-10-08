@@ -232,7 +232,9 @@ jobs:
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
         run: |
           set -euo pipefail
-          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml build dashboard storefront
+          # Compose's implicit Bake invocation omits the required explicit network.host grant.
+          # Pass only this declared entitlement so Next's build can reach the CI Saleor API.
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml build --print | docker buildx bake --allow=network.host -f - dashboard storefront
 
       - name: Build US storefront
         env:
