@@ -115,6 +115,13 @@ export async function runAutomaticReminders():Promise<AutomaticReminderRun>{
   const page=await fetchSaleorOrdersPage(100,cursor??undefined);
   if(!page)return result;
   let reachedCutoff=false;
+  // One read per 100-order page rather than one remote LibSQL round trip per order.
+  const pageIds=page.orders.map(o=>o.id);
+  const firstStatus=new Map<string,string>();
+  if(pageIds.length){
+   const [firstRows]=await libsqlPipeline([{sql:"SELECT order_id,status FROM ops_reminder_delivery WHERE stage='first' AND order_id IN ("+pageIds.map(()=>"?").join(",")+")",args:pageIds,wantRows:true}]);
+   for(const row of hranaRowsToObjects(firstRows))firstStatus.set(String(row.order_id),String(row.status));
+  }
   for(const order of page.orders){
    if(attempts>=limit)break;
    const created=Date.parse(order.createdAt);
@@ -122,8 +129,7 @@ export async function runAutomaticReminders():Promise<AutomaticReminderRun>{
    if(created<cutoff){reachedCutoff=true;break;}
    result.scanned++;
    if(reminderSkipReason(order)){result.skipped++;continue;}
-   const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
-   const stage=reminderDueStage({createdAt:order.createdAt,firstHours:rule.firstAfterHours,secondHours:rule.secondAfterHours,firstSent:hranaRowsToObjects(first)[0]?.status==="sent",now:Date.now()});
+   const stage=reminderDueStage({createdAt:order.createdAt,firstHours:rule.firstAfterHours,secondHours:rule.secondAfterHours,firstSent:firstStatus.get(order.id)==="sent",now:Date.now()});
    if(!stage){result.skipped++;continue;}
    const sent=await sendReminder(order,stage);
    if(sent.status==="sent"){result.sent++;attempts++;}
