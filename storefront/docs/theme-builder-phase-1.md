@@ -8,7 +8,10 @@ It reuses the existing `/ops/*` middleware authentication
 
 1. Install the pinned `@puckeditor/core@0.23.0` dependency with
    `pnpm --dir storefront install --frozen-lockfile` (the lockfile is committed).
-2. Reuse an existing private `ANALYTICS_LIBSQL_URL` / `ANALYTICS_LIBSQL_AUTH_TOKEN`\n   connection, or set **both** `THEME_LIBSQL_URL` and `THEME_LIBSQL_AUTH_TOKEN`\n   for a dedicated database. The editor creates its own\n   `storefront_theme_homepages` table; credentials stay server-side.
+2. Reuse an existing private `ANALYTICS_LIBSQL_URL` / `ANALYTICS_LIBSQL_AUTH_TOKEN`
+   connection, or set **both** `THEME_LIBSQL_URL` and `THEME_LIBSQL_AUTH_TOKEN`
+   for a dedicated database. The editor creates its own
+   `storefront_theme_homepages` table; credentials stay server-side.
 3. Set `STOREFRONT_SITE_ID` to a stable identifier for this storefront
    deployment, e.g. `fashion-us`. If different domains share a Next.js
    deployment, configure domain-to-site routing **before** enabling multi-site
