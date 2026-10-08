@@ -34,7 +34,7 @@ describe("Saleor order operations", () => {
     vi.stubEnv("SALEOR_INTERNAL_API_URL", "http://api:8000/graphql/");
     vi.stubEnv("NEXT_PUBLIC_SALEOR_API_URL", "https://shop.example.com/graphql/");
   });
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
   it("queries the exact order, including orders outside the recent list", async () => {
     const mockedFetch = vi.fn(async () => new Response(JSON.stringify({
