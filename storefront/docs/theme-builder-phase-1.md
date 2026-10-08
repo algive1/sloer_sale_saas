@@ -6,8 +6,8 @@ It reuses the existing `/ops/*` middleware authentication
 
 ## Setup
 
-1. Add `@puckeditor/core` to `storefront/package.json` and regenerate the
-   pnpm lockfile with `cd storefront && corepack pnpm install --lockfile-only`.
+1. Install the pinned `@puckeditor/core@0.23.0` dependency with
+   `pnpm --dir storefront install --frozen-lockfile` (the lockfile is committed).
 2. Set `THEME_LIBSQL_URL` and `THEME_LIBSQL_AUTH_TOKEN` to an isolated
    libSQL/Hrana database. The editor automatically creates the
    `storefront_theme_homepages` table. Do not reuse a public analytics token.
