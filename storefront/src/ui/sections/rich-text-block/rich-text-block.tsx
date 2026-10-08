@@ -11,6 +11,7 @@ export interface RichTextBlockCta {
 }
 
 export interface RichTextBlockProps {
+	id?: string;
 	heading?: string;
 	eyebrow?: string;
 	paragraphs: readonly string[];
@@ -28,6 +29,7 @@ const innerWidthClassName: Record<RichTextWidth, string> = {
 };
 
 export function RichTextBlock({
+	id = "rich-text-heading",
 	heading,
 	eyebrow,
 	paragraphs,
@@ -41,7 +43,7 @@ export function RichTextBlock({
 		return null;
 	}
 
-	const headingId = "rich-text-heading";
+	const headingId = id;
 	const isCenter = align === "center";
 	const isInverse = tone === "inverse";
 

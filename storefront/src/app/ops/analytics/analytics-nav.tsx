@@ -9,6 +9,7 @@ const entries = [
   {label:"流量分析", href:"/ops/analytics/traffic", glyph:"⌁"},
   {label:"结账分析", href:"/ops/analytics/checkout", glyph:"◇"},
   {label:"商品分析", href:"/ops/analytics/products", glyph:"▧"},
+  {label:"店铺装修", href:"/ops/themes", glyph:"▤"},
 ] as const;
 
 export function AnalyticsNavigation() {
