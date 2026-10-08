@@ -6,13 +6,13 @@ import {analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline} from "@/l
  * Analytics checkout_completed events are not proof that an order is paid.
  */
 export type OpsOrder = {
-  id:string; number:number; createdAt:string; paidAt:string|null;
+  id:string; number:string; createdAt:string; paidAt:string|null;
   country:string; source:string; status:string; paymentStatus:string; authorizeStatus:string;
   isPaid:boolean; hasRefund:boolean; amount:number; currency:string; paymentMethod:string;
   thumbnailUrl:string; productName:string; email:string;
 };
 type GqlOrder = {
- id:string; number:number; created:string; status:string; paymentStatus?:string|null;
+ id:string; number:string; created:string; status:string; paymentStatus?:string|null;
  isPaid:boolean; userEmail?:string|null; authorizeStatus?:string|null;
  shippingAddress?:{country?:{code?:string|null}|null}|null;
  billingAddress?:{country?:{code?:string|null}|null}|null;
