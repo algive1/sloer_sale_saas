@@ -138,7 +138,10 @@ fragment CheckoutLineFragment on CheckoutLine {
 			name
 		}
 		product {
+			id
 			name
+			category { name }
+			thumbnail(size: 64, format: WEBP) { url }
 			translation(languageCode: $languageCode) {
 				language {
 					code
