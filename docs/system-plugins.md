@@ -48,3 +48,20 @@ pnpm --dir storefront exec vitest run src/plugins/system/registry.test.ts src/pl
 ```
 
 CI is in `.github/workflows/theme-builder.yml`. A real storefront build and end-to-end checkout/theme publishing still need staging checks.
+
+## Navigation audit after PR #23
+
+The default Paper homepage editorial CTA now targets its actual featured Saleor
+collection (`/collections/<configured-slug>`) rather than a missing `/collections`
+index. Footer fallback menus no longer advertise sample marketing pages that are
+not implemented. The fallback instead links only to existing shop/account/order
+routes; real Support/About/FAQ pages remain possible through Saleor menu items
+and CMS Pages.
+
+The Privacy Policy and Terms of Service footer links are emitted only when
+`STOREFRONT_PRIVACY_PAGE_SLUG` / `STOREFRONT_TERMS_PAGE_SLUG` are configured.
+Each must be a **published, validated, merchant-written Saleor Page**. This is a
+**production launch blocker**, not an invitation to insert boilerplate legal
+text. A populated slug with no corresponding Page can still return 404; validate
+it before switching to production. There is no additional per-request SQL lookup
+or plugin registry discovery to render these URLs.
