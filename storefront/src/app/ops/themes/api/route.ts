@@ -7,7 +7,7 @@ import { buildStorefrontPath } from "@/lib/storefront-path";
 import { activeThemeSiteId, readTheme, saveTheme, themeDatabaseConfigured } from "@/lib/theme-builder/store";
 import { ThemeValidationError } from "@/lib/theme-builder/validate";
 
-export const dynamic = "force-dynamic";
+// This handler reads request data directly; Cache Components does not need route-level dynamic config.
 const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 
 async function validScope(channel: string, locale: string): Promise<boolean> {
