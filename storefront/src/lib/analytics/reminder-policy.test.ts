@@ -7,6 +7,7 @@ describe("payment reminder safeguards",()=>{
   expect(reminderSkipReason({isPaid:false,status:"CANCELED",email:"buyer@example.com"})).toBe("closed_order");
   expect(reminderSkipReason({isPaid:false,status:"FULFILLED",email:"buyer@example.com"})).toBe("closed_order");
   expect(reminderSkipReason({isPaid:false,status:"PARTIALLY_FULFILLED",email:"buyer@example.com"})).toBe("closed_order");
+  expect(reminderSkipReason({isPaid:false,status:"UNFULFILLED",hasRefund:true,email:"buyer@example.com"})).toBe("refunded_order");
   expect(reminderSkipReason({isPaid:false,status:"UNFULFILLED",authorizeStatus:"FULL",email:"buyer@example.com"})).toBe("payment_authorized");
   expect(reminderSkipReason({isPaid:false,status:"DRAFT",email:"buyer@example.com"})).toBe("closed_order");
   expect(reminderSkipReason({isPaid:false,status:"UNFULFILLED",email:"invalid"})).toBe("no_customer_email");
