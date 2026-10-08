@@ -13,6 +13,8 @@ export default function RealtimeAnalyticsPage() {
 }
 
 async function RealtimeAnalyticsContent() {
+	await connection();
+
 	if (!analyticsDatabaseConfigured()) {
 		return (
 			<main className="mx-auto max-w-7xl px-6 py-10">
@@ -24,7 +26,6 @@ async function RealtimeAnalyticsContent() {
 		);
 	}
 
-	await connection();
 	const initialData = await loadRealtimeAnalytics();
 	if (!initialData) {
 		return (
