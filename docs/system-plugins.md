@@ -17,7 +17,7 @@
 | payment-reminders | system/all stores | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved |
 | seo-merchant | system/all stores | `legacy-inline`: original SEO and feed routes remain operational |
 
-Registry: `storefront/src/plugins/system/registry.ts`. `legacy-inline` means the feature is **not yet extracted**; no capabilities have been deleted or silently turned off.
+Registry: `storefront/src/plugins/system/registry.ts`. Operations can inspect the system-wide catalog at `/ops/plugins` (read-only; no store-specific activation or customer-page I/O). `legacy-inline` means the feature is **not yet extracted**; no capabilities have been deleted or silently turned off.
 
 ## Performance and reliability
 
