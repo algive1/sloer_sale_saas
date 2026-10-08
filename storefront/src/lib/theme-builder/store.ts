@@ -12,15 +12,28 @@ type StoredTheme = {
 const empty: StoredTheme = { draft: null, published: null, draftRevision: 0, publishedRevision: 0 };
 let schemaPromise: Promise<void> | undefined;
 
+function themeConnection() {
+  const dedicatedUrl = process.env.THEME_LIBSQL_URL?.trim();
+  const dedicatedToken = process.env.THEME_LIBSQL_AUTH_TOKEN?.trim();
+  // Do not silently pair a dedicated URL with unrelated analytics credentials.
+  if (dedicatedUrl || dedicatedToken) {
+    return dedicatedUrl && dedicatedToken ? {url: dedicatedUrl, token: dedicatedToken} : null;
+  }
+  // Existing self-hosted deployments can reuse their configured analytics libSQL
+  // service: separate table, isolated site/channel/locale composite key.
+  const url = process.env.ANALYTICS_LIBSQL_URL?.trim();
+  const token = process.env.ANALYTICS_LIBSQL_AUTH_TOKEN?.trim();
+  return url && token ? {url, token} : null;
+}
+
 function database() {
-  const url = process.env.THEME_LIBSQL_URL?.trim();
-  const token = process.env.THEME_LIBSQL_AUTH_TOKEN?.trim();
-  if (!url || !token) throw new Error("Theme storage is not configured");
-  return { url, token };
+  const connection = themeConnection();
+  if (!connection) throw new Error("Theme storage is not configured");
+  return connection;
 }
 
 export function themeDatabaseConfigured(): boolean {
-  return Boolean(process.env.THEME_LIBSQL_URL?.trim() && process.env.THEME_LIBSQL_AUTH_TOKEN?.trim());
+  return themeConnection() !== null;
 }
 
 export function activeThemeSiteId(): string {

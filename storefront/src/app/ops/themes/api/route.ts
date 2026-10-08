@@ -24,7 +24,7 @@ function respond(body: object, status = 200) {
  * Basic Auth middleware. Keep the route under /ops: /api/* bypasses that guard.
  */
 export async function GET(request: NextRequest) {
-  if (!themeDatabaseConfigured()) return respond({error:"Configure THEME_LIBSQL_URL and THEME_LIBSQL_AUTH_TOKEN"}, 503);
+  if (!themeDatabaseConfigured()) return respond({error:"Configure analytics libSQL or dedicated THEME_LIBSQL_URL / THEME_LIBSQL_AUTH_TOKEN"}, 503);
   const channel = request.nextUrl.searchParams.get("channel") || "";
   const locale = request.nextUrl.searchParams.get("locale") || "";
   if (!(await validScope(channel, locale))) return respond({error:"Unknown store channel or locale"}, 400);
