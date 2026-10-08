@@ -1,10 +1,12 @@
-name: Storefront theme builder
+name: System storefront plugins
 
 on:
   pull_request:
     paths:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
+      - "storefront/src/app/ops/plugins/**"
+      - "storefront/src/app/ops/analytics/analytics-nav.tsx"
       - "storefront/src/plugins/payment-reminders/**"
       - "storefront/src/lib/storage/**"
       - "storefront/src/lib/analytics/libsql-http.ts"
@@ -23,6 +25,8 @@ on:
     paths:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
+      - "storefront/src/app/ops/plugins/**"
+      - "storefront/src/app/ops/analytics/analytics-nav.tsx"
       - "storefront/src/plugins/payment-reminders/**"
       - "storefront/src/lib/storage/**"
       - "storefront/src/lib/analytics/libsql-http.ts"
