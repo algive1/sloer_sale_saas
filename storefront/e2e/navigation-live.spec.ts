@@ -44,7 +44,7 @@ test.describe("live storefront navigation and operational pages", () => {
 
     const sitemap = await request.get("/sitemap.xml");
     expect(sitemap.ok()).toBe(true);
-    const locs = Array.from((await sitemap.text()).matchAll(/<loc>([^<]+)<\\/loc>/g), match => match[1]);
+    const locs = Array.from((await sitemap.text()).matchAll(/<loc>([^<]+)<\/loc>/g), match => match[1]);
     const productUrl = locs.find(url => url && url.includes(`${localeChannel}/products/`));
     expect(productUrl, "The live Saleor sitemap should contain a product detail URL").toBeTruthy();
     const product = await request.get(productUrl!);
@@ -56,7 +56,7 @@ test.describe("live storefront navigation and operational pages", () => {
     expect(response?.status()).toBe(200);
 
     const collections = page.locator('a[href="/en/us/collections/featured-products"]').first();
-    await expect(collections).toHaveAttribute("href", /\\/en\\/us\\/collections\\/featured-products(?:[?#]|$)/);
+    await expect(collections).toHaveAttribute("href", /\/en\/us\/collections\/featured-products(?:[?#]|$)/);
     const collectionLink = await collections.getAttribute("href");
     expect((await request.get(collectionLink!)).status()).toBe(200);
 
@@ -97,7 +97,7 @@ test.describe("live storefront navigation and operational pages", () => {
       const page = await context.newPage();
       await page.goto("/ops/analytics");
       await page.getByRole("link", { name: /系统插件/ }).click();
-      await expect(page).toHaveURL(/\\/ops\\/plugins$/);
+      await expect(page).toHaveURL(/\/ops\/plugins$/);
       await expect(page.getByRole("heading", { name: "系统插件" })).toBeVisible();
     } finally {
       await context.close();
