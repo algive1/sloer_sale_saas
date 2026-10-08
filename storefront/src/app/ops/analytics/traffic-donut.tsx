@@ -8,13 +8,12 @@ export function TrafficDonut({values,selected,onSelect}:{
  const [focus,setFocus]=useState<number|null>(null);
  const total=values.reduce((a,b)=>a+b,0);
  const r=43,c=2*Math.PI*r;
- let offset=0;
  const active=selected??focus;
  return <div className="relative mx-auto h-[126px] w-[126px] shrink-0">
   <svg viewBox="0 0 120 120" className="h-full w-full" aria-label="按来源划分流量，点击扇区高亮">
     <circle cx="60" cy="60" r={r} stroke="#e5e7eb" strokeWidth="17" fill="none"/>
     {values.map((value,i)=>{
-      const length=total?value/total*c:0;const start=offset;offset+=length;
+      const length=total?value/total*c:0;const start=total?values.slice(0,i).reduce((sum,x)=>sum+x,0)/total*c:0;
       return <circle key={i} role="button" tabIndex={0}
        aria-label={NAMES[i]+": "+(total?(100*value/total).toFixed(1)+"%":"无数据")}
        onClick={()=>onSelect(selected===i?null:i)}
