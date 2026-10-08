@@ -18,14 +18,17 @@ It reuses the existing `/ops/*` middleware authentication
    editing. This phase does not implement host-based routing.
 4. Set `STOREFRONT_CHANNELS` and `NEXT_PUBLIC_STOREFRONT_LOCALES`.
    Each theme is keyed by `site_id + channel + locale`.
-5. Start the storefront, open `/ops/themes` over HTTPS, choose a channel and
+5. Start the storefront, open **经营后台 → 店铺装修** (`/ops/themes`) over HTTPS,
+   choose a channel and
    locale, select the fashion template, reorder blocks, save draft, then publish.
 
 ## Scope
 
 - Four blocks: editorial hero, Saleor collection, image/text and brand statement.
 - Preconfigured fashion template plus blank canvas, desktop/mobile editor viewports.
-- Draft saving and explicit publish, separately stored in libSQL. Optimistic\n  version checks reject concurrent stale editor writes with HTTP 409; reload\n  the editor and reapply changes when that occurs.
+- Draft saving and explicit publish, separately stored in libSQL. Optimistic
+  version checks reject concurrent stale editor writes with HTTP 409; reload
+  the editor and reapply changes when that occurs.
 - Published product collections rendered using existing Saleor GraphQL and
   `FeaturedCollectionSection`; prices and variants remain owned by Saleor.
 - A missing or unpublished theme falls back to the existing Paper homepage.
