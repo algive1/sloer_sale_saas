@@ -87,7 +87,7 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
   const maxStage=Math.max(1,...stages.map(([key])=>stagesMap.get(key)??0));
 
   const dashboardBase=(process.env.SALEOR_DASHBOARD_URL??"").replace(/\/$/,"");
-  const funnelCard = (<article className="rounded-xl border border-border bg-card p-5">
+  const funnelCard = (<article className="h-full rounded-xl border border-border bg-card p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div><h2 className="font-semibold">转化漏斗</h2><p className="mt-1 text-xs text-muted-foreground">按各阶段去重会话统计</p></div>
           <Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">详情</Link>
