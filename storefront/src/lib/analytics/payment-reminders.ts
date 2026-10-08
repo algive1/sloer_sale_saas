@@ -70,7 +70,13 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
  const [recent] = await libsqlPipeline([{sql:"SELECT MAX(sent_at) AS last_sent FROM ops_reminder_delivery WHERE order_id=? AND status='sent'",args:[order.id],wantRows:true}]);
  const lastSent=hranaRowsToObjects(recent)[0]?.last_sent;
  if(reminderCooldown(typeof lastSent==="string"?lastSent:null,Date.now()))return {status:"skipped",reason:"24_hour_cooldown"};
- const [claimed]=await libsqlPipeline([{sql:"INSERT OR IGNORE INTO ops_reminder_delivery(order_id,stage,status,claimed_at) VALUES(?,?,'sending',?)",args:[order.id,stage,now]}]);
+ // Claim and enforce the global daily cap/order cooldown in one atomic SQLite write.
+ // The earlier reads are advisory only; concurrent manual and Cron calls must not bypass limits.
+ const [claimed]=await libsqlPipeline([{sql:`INSERT OR IGNORE INTO ops_reminder_delivery(order_id,stage,status,claimed_at)
+ SELECT ?,?,'sending',?
+ WHERE (SELECT COUNT(*) FROM ops_reminder_delivery WHERE claimed_at>=?) < ?
+ AND NOT EXISTS (SELECT 1 FROM ops_reminder_delivery
+   WHERE order_id=? AND (status='sending' OR (status='sent' AND sent_at>=?)))`,args:[order.id,stage,now,new Date(Date.now()-86400000).toISOString(),rule.dailyLimit,order.id,new Date(Date.now()-86400000).toISOString()]}]);
  if(!claimed?.affected_row_count)return {status:"skipped",reason:"already_attempted"};
  try{
   const providerId=await sendEmail(order);
