@@ -7,13 +7,13 @@ import {analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline} from "@/l
  */
 export type OpsOrder = {
   id:string; number:number; createdAt:string; paidAt:string|null;
-  country:string; source:string; status:string; paymentStatus:string;
+  country:string; source:string; status:string; paymentStatus:string; authorizeStatus:string;
   isPaid:boolean; amount:number; currency:string; paymentMethod:string;
   thumbnailUrl:string; productName:string; email:string;
 };
 type GqlOrder = {
  id:string; number:number; created:string; status:string; paymentStatus?:string|null;
- isPaid:boolean; userEmail?:string|null;
+ isPaid:boolean; userEmail?:string|null; authorizeStatus?:string|null;
  shippingAddress?:{country?:{code?:string|null}|null}|null;
  billingAddress?:{country?:{code?:string|null}|null}|null;
  total?:{gross?:{amount?:number|null;currency?:string|null}|null}|null;
@@ -24,7 +24,7 @@ type GqlOrder = {
 const query=`query OpsRecentOrders($first:Int!){
  orders(first:$first,sortBy:{field:CREATED_AT,direction:DESC}) {
   edges { node {
-   id number created status paymentStatus isPaid userEmail
+   id number created status paymentStatus authorizeStatus isPaid userEmail
    shippingAddress {country {code}}
    billingAddress {country {code}}
    total {gross {amount currency}}
@@ -51,7 +51,7 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
   id:o.id,number:o.number,createdAt:o.created,
   paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
   country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
-  source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",
+  source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",authorizeStatus:o.authorizeStatus??"UNKNOWN",
   isPaid:o.isPaid,amount:o.total?.gross?.amount??0,currency:o.total?.gross?.currency??"UNKNOWN",
   paymentMethod:o.transactions?.[0]?.name??o.payments?.[0]?.gateway??"—",
   thumbnailUrl:o.lines?.[0]?.thumbnail?.url??"",
