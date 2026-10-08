@@ -8,6 +8,10 @@ export type CheckoutStepSlug = "contact" | "shipping" | "payment";
 
 export type CommerceItem = {
 	itemId: string;
+	productId?: string;
+	categoryId?: string;
+	categoryName?: string;
+	imageUrl?: string;
 	itemName?: string;
 	variantId?: string;
 	sku?: string | null;

@@ -10,7 +10,12 @@ type CommerceLineLike = {
 		id?: string | null;
 		name?: string | null;
 		sku?: string | null;
-		product?: { name?: string | null } | null;
+		product?: {
+			id?: string | null;
+			name?: string | null;
+			category?: { id?: string | null; name?: string | null } | null;
+			thumbnail?: { url?: string | null } | null;
+		} | null;
 	} | null;
 };
 
@@ -23,7 +28,8 @@ export function commerceItemsFromLines(
 		.map((line): CommerceItem | null => {
 			const variantId = line.variant?.id?.trim() || "";
 			const fallbackId = line.id?.trim() || "";
-			const itemId = variantId || fallbackId;
+			const productId = line.variant?.product?.id?.trim() || "";
+			const itemId = productId || variantId || fallbackId;
 			if (!itemId) return null;
 
 			const productName = line.variant?.product?.name || line.productName || undefined;
@@ -32,6 +38,10 @@ export function commerceItemsFromLines(
 
 			return {
 				itemId,
+				productId: productId || undefined,
+				categoryId: line.variant?.product?.category?.id ?? undefined,
+				categoryName: line.variant?.product?.category?.name ?? undefined,
+				imageUrl: line.variant?.product?.thumbnail?.url ?? undefined,
 				variantId: variantId || undefined,
 				sku: line.variant?.sku ?? undefined,
 				itemName: productName

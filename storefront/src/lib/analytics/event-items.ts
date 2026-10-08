@@ -2,6 +2,10 @@ import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 
 export type AnalyticsEventItem = {
 	itemId: string;
+	productId: string | null;
+	categoryId: string | null;
+	categoryName: string | null;
+	imageUrl: string | null;
 	variantId: string | null;
 	sku: string | null;
 	itemName: string | null;
@@ -21,6 +25,10 @@ export function analyticsEventItems(event: PaperCommerceEvent): AnalyticsEventIt
 					: 1;
 			return {
 				itemId,
+				productId: clipText(item.productId, 300),
+				categoryId: clipText(item.categoryId, 300),
+				categoryName: clipText(item.categoryName, 200),
+				imageUrl: safeImageUrl(item.imageUrl),
 				variantId: clipText(item.variantId, 300),
 				sku: clipText(item.sku ?? undefined, 200),
 				itemName: clipText(item.itemName, 400),
@@ -41,4 +49,12 @@ function clipText(value: string | undefined, maxChars: number): string | null {
 		if (code >= 32 && code !== 127) safe += trimmed[index];
 	}
 	return safe || null;
+}
+
+function safeImageUrl(value: string | undefined): string | null {
+	if (!value || value.length > 2048) return null;
+	try {
+		const url = new URL(value);
+		return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+	} catch { return null; }
 }

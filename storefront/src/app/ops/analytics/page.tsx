@@ -1,227 +1,193 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
+import { readProductReport } from "@/lib/analytics/product-report";
+import { readOverviewDetails, readOverviewFinances } from "@/lib/analytics/overview-details";
 import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
+import { OperationsOverviewV3 } from "./operations-overview-v3";
 
-const FUNNEL_ORDER = [
-	"page_viewed",
-	"product_viewed",
-	"wishlist_added",
-	"product_added_to_cart",
-	"cart_viewed",
-	"checkout_started",
-	"payment_method_selected",
-	"checkout_completed",
-] as const;
-
-const LABELS: Record<string, string> = {
-	page_viewed: "Sessions / page views",
-	product_viewed: "Product views",
-	wishlist_added: "Wishlist",
-	product_added_to_cart: "Add to cart",
-	cart_viewed: "View cart",
-	checkout_started: "Checkout",
-	payment_method_selected: "Payment",
-	checkout_completed: "Purchase",
+type Params = {
+  days?: string;
+  finance?: string;
+  financeFrom?: string;
+  financeTo?: string;
 };
 
-export default function AnalyticsPage({
-	searchParams,
-}: {
-	searchParams: Promise<{ days?: string }>;
-}) {
-	return (
-		<Suspense fallback={<DashboardSkeleton />}>
-			<AnalyticsDashboard searchParams={searchParams} />
-		</Suspense>
-	);
+const stages = [
+  ["page_viewed","访问"],
+  ["product_viewed","商品浏览"],
+  ["product_added_to_cart","加入购物车"],
+  ["cart_viewed","查看购物车"],
+  ["checkout_started","开始结账"],
+  ["payment_method_selected","选择支付"],
+  ["checkout_completed","购买成功"],
+] as const;
+
+const eventNames: Record<string,string> = {
+  page_viewed:"页面浏览",
+  product_viewed:"商品浏览",
+  wishlist_added:"加入收藏",
+  product_added_to_cart:"加入购物车",
+  cart_viewed:"查看购物车",
+  checkout_started:"开始结账",
+  payment_method_selected:"选择支付方式",
+  checkout_completed:"购买完成",
+  payment_failed:"支付失败",
+  checkout_failed:"结账失败",
+  refund_completed:"订单退款",
+};
+
+const money=(value:number,currency:string)=>{
+  try {
+    return currency==="UNKNOWN" ? value.toFixed(2)+" UNKNOWN" : new Intl.NumberFormat("en",{style:"currency",currency}).format(value);
+  } catch { return value.toFixed(2)+" "+currency; }
+};
+export default function AnalyticsPage({searchParams}:{searchParams:Promise<Params>}) {
+  return <Suspense fallback={<div className="mx-auto mt-10 h-96 max-w-7xl animate-pulse rounded-xl bg-secondary"/>}>
+    <AnalyticsContent searchParams={searchParams}/>
+  </Suspense>;
+}
+async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
+  await io();
+  const query=await searchParams;
+  const requested=Number(query.days??"30");
+  const days=[7,30,90].includes(requested)?requested:30;
+  if(!analyticsDatabaseConfigured())return <main className="mx-auto max-w-6xl px-6 py-12"><h1 className="text-2xl font-bold">经营数据中心</h1><section className="mt-6 rounded-xl border border-border bg-card p-6"><h2 className="font-semibold">数据统计未启用</h2><p className="mt-2 text-sm text-muted-foreground">请先配置服务器的分析数据库连接，启用后将展示真实数据。</p></section></main>;
+
+  const now=new Date();
+  const range={from:new Date(now.getTime()-days*86_400_000),to:now,bucket:"day" as const};
+  const financeRange=resolveFinanceRange(query,now);
+  const [summary,products,details,finances]=await Promise.all([
+    readAnalyticsSummary(days),readProductReport(range),readOverviewDetails(range),readOverviewFinances(financeRange),
+  ]);
+  if(!summary)return <main className="mx-auto max-w-6xl px-6 py-10 text-sm text-muted-foreground">暂时无法加载数据，请稍后重试。</main>;
+
+  const stagesMap=new Map(summary.funnel.map(s=>[s.name,s.count]));
+  const visitors=summary.sessions;
+  const purchaseSessions=stagesMap.get("checkout_completed")??0;
+  const conversion=visitors>0?100*purchaseSessions/visitors:0;
+  const sameCurrency=summary.revenueByCurrency.length===1?summary.revenueByCurrency[0]:null;
+  const values=[
+    ["访问会话",visitors.toLocaleString()],
+    ["成交订单",summary.purchases.toLocaleString()],
+    ["转化率",conversion.toFixed(2)+"%"],
+    ["净成交额",sameCurrency?money(sameCurrency.value,sameCurrency.currency):"按币种查看"],
+    ["客单价",sameCurrency&&summary.purchases?money(sameCurrency.value/summary.purchases,sameCurrency.currency):"—"],
+    ["弃单结账",summary.abandonedCheckouts.toLocaleString()],
+  ];
+  const maxStage=Math.max(1,...stages.map(([key])=>stagesMap.get(key)??0));
+
+  return <main className="mx-auto max-w-[1560px] px-4 py-8 lg:px-8">
+    <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+      <div>
+        <p className="text-xs font-semibold tracking-widest text-muted-foreground">OPERATIONS / ANALYTICS</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">经营数据中心</h1>
+        <p className="mt-1 text-sm text-muted-foreground">销售、转化、流量与商品表现</p>
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs">
+        {[["实时数据","realtime"],["流量分析","traffic"],["结账分析","checkout"],["商品分析","products"]].map(([label,url])=>
+          <Link key={url} href={"/ops/analytics/"+url} className="rounded-lg border border-border bg-card px-3 py-2 hover:bg-secondary">{label}</Link>
+        )}
+        <nav className="flex gap-1 rounded-lg border border-border bg-card p-1" aria-label="总览时间范围">
+          {[7,30,90].map(day=><Link key={day} href={"/ops/analytics?days="+day} aria-current={days===day?"page":undefined} className={"rounded-md px-3 py-1.5 "+(days===day?"bg-foreground text-background":"hover:bg-secondary")}>{day}天</Link>)}
+        </nav>
+      </div>
+    </header>
+
+    <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="核心经营指标">
+      {values.map(([label,value])=><div key={label} className="rounded-xl border border-border bg-card p-4">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-2 text-xl font-bold tabular-nums">{value}</p>
+      </div>)}
+    </section>
+    {summary.revenueByCurrency.length>1&&<div className="mt-3 flex flex-wrap gap-2 text-xs">{summary.revenueByCurrency.map(r=>
+      <span key={r.currency} className="rounded-lg border border-border bg-card px-3 py-2">{r.currency}：{money(r.value,r.currency)}</span>
+    )}</div>}
+
+    <div className="mt-5">
+      <OperationsOverviewV3
+        sources={details.sources}
+        finances={finances}
+        products={products.products}
+        productTraffic={details.products}
+        financeRange={query.finance??"7d"}
+        financeFrom={query.financeFrom}
+        financeTo={query.financeTo}
+        financeBucket={financeRange.bucket}
+        financeStart={financeRange.from.toISOString()}
+        financeEnd={financeRange.to.toISOString()}
+        days={days}
+      />
+    </div>
+
+    <section className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
+      <article className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div><h2 className="font-semibold">转化漏斗</h2><p className="mt-1 text-xs text-muted-foreground">按各阶段去重会话统计</p></div>
+          <Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">详情</Link>
+        </div>
+        <div className="space-y-2.5">{stages.map(([key,label])=>{
+          const count=stagesMap.get(key)??0;
+          return <div key={key} className="grid grid-cols-[90px_1fr_70px_65px] items-center gap-2 text-xs">
+            <span>{label}</span><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-slate-600" style={{width:(count/maxStage*100)+"%"}}/></div>
+            <span className="text-right tabular-nums">{count.toLocaleString()}</span>
+            <span className="text-right text-muted-foreground">{visitors?(count/visitors*100).toFixed(1)+"%":"—"}</span>
+          </div>;
+        })}</div>
+      </article>
+      <article className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">结账健康度</h2><Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">查看原因</Link></div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            ["开始结账",stagesMap.get("checkout_started")??0],
+            ["选择支付",stagesMap.get("payment_method_selected")??0],
+            ["支付失败事件",summary.paymentFailures],
+            ["弃单会话",summary.abandonedCheckouts],
+          ].map(([label,value])=><div key={label} className="rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-xl font-semibold">{Number(value).toLocaleString()}</p>
+          </div>)}
+        </div>
+      </article>
+    </section>
+
+    <details className="mt-5 rounded-xl border border-border bg-card p-5">
+      <summary className="cursor-pointer text-sm font-semibold">最近事件 <span className="ml-1 font-normal text-muted-foreground">（点击展开）</span></summary>
+      <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs">
+        <thead><tr className="border-b border-border text-muted-foreground">{["时间 (UTC)","事件","渠道","来源","金额"].map(t=><th className="p-2" key={t}>{t}</th>)}</tr></thead>
+        <tbody>{summary.recent.slice(0,30).map((e,i)=><tr key={e.occurredAt+e.name+i} className="border-b border-border/50">
+          <td className="whitespace-nowrap p-2">{e.occurredAt.replace("T"," ").slice(0,19)}</td>
+          <td className="p-2">{eventNames[e.name]??e.name}</td>
+          <td className="p-2">{e.channel||"—"}</td>
+          <td className="p-2">{e.source}</td>
+          <td className="p-2 text-right">{e.currency?money(e.value,e.currency):"—"}</td>
+        </tr>)}</tbody>
+      </table></div>
+    </details>
+  </main>;
 }
 
-async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
-	await io();
-	const query = await searchParams;
-	const requested = Number(query.days ?? "30");
-	const days = [7, 30, 90].includes(requested) ? requested : 30;
-
-	if (!analyticsDatabaseConfigured()) {
-		return (
-			<main className="mx-auto max-w-5xl px-6 py-16">
-				<h1 className="text-h1">Marketing analytics</h1>
-				<div className="mt-8 rounded-xl border border-border bg-card p-6">
-					<h2 className="text-lg font-semibold">First-party analytics database is not configured</h2>
-					<p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-						Set ANALYTICS_LIBSQL_URL and ANALYTICS_LIBSQL_AUTH_TOKEN on the server. The storefront keeps
-						working without them, but first-party funnel history and cloud wishlist storage remain disabled.
-					</p>
-				</div>
-			</main>
-		);
-	}
-
-	const summary = await readAnalyticsSummary(days);
-	if (!summary) return null;
-	const conversion = summary.sessions > 0 ? (summary.purchases / summary.sessions) * 100 : 0;
-	const funnel = new Map(summary.funnel.map((row) => [row.name, row.count]));
-	const maxFunnel = Math.max(1, ...FUNNEL_ORDER.map((name) => funnel.get(name) ?? 0));
-
-	return (
-		<main className="mx-auto max-w-7xl px-6 py-10">
-			<header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<p className="text-sm font-medium text-muted-foreground">Operations</p>
-					<h1 className="mt-1 text-h1">Marketing analytics</h1>
-					<p className="mt-2 text-sm text-muted-foreground">First-party behavior and attributed commerce events.</p>
-				</div>
-				<div className="flex flex-wrap gap-2">
-					<Link href="/ops/analytics/realtime" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-						Realtime
-					</Link>
-					<Link href="/ops/analytics/traffic" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-						Traffic
-					</Link>
-					<Link href="/ops/analytics/checkout" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-						Checkout
-					</Link>
-					<Link href="/ops/analytics/products" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
-						Products
-					</Link>
-					<nav className="flex gap-2" aria-label="Date range">
-						{[7, 30, 90].map((range) => (
-							<a
-								key={range}
-								href={`/ops/analytics?days=${range}`}
-								className={`rounded-lg border px-3 py-2 text-sm ${range === days ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
-							>
-								{range}d
-							</a>
-						))}
-					</nav>
-				</div>
-			</header>
-
-			<section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-				<Metric label="Sessions" value={summary.sessions.toLocaleString()} />
-				<Metric label="Purchases" value={summary.purchases.toLocaleString()} />
-				<Metric label="Conversion" value={`${conversion.toFixed(2)}%`} />
-				<Metric label="Abandoned checkout" value={summary.abandonedCheckouts.toLocaleString()} />
-				<Metric label="Payment failures" value={summary.paymentFailures.toLocaleString()} />
-				<Metric label="Tracked events" value={summary.totalEvents.toLocaleString()} />
-			</section>
-
-			<section className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-				{summary.revenueByCurrency.map((row) => (
-					<Metric
-						key={row.currency}
-						label={`Revenue · ${row.currency}`}
-						value={formatMoney(row.value, row.currency)}
-					/>
-				))}
-				{summary.revenueByCurrency.length === 0 ? <Metric label="Revenue" value="—" /> : null}
-			</section>
-
-			<section className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-				<div className="rounded-xl border border-border bg-card p-6">
-					<h2 className="text-lg font-semibold">Conversion funnel</h2>
-					<p className="mt-1 text-sm text-muted-foreground">Distinct sessions that reached each stage.</p>
-					<div className="mt-6 space-y-4">
-						{FUNNEL_ORDER.map((name) => {
-							const count = funnel.get(name) ?? 0;
-							return (
-								<div key={name}>
-									<div className="mb-1.5 flex justify-between gap-4 text-sm">
-										<span>{LABELS[name]}</span>
-										<span className="tabular-nums text-muted-foreground">{count.toLocaleString()}</span>
-									</div>
-									<div className="h-2 overflow-hidden rounded-full bg-secondary">
-										<div className="h-full rounded-full bg-foreground" style={{ width: `${(count / maxFunnel) * 100}%` }} />
-									</div>
-								</div>
-							);
-						})}
-					</div>
-				</div>
-
-				<div className="rounded-xl border border-border bg-card p-6">
-					<h2 className="text-lg font-semibold">Traffic sources</h2>
-					<div className="mt-5 overflow-x-auto">
-						<table className="w-full text-left text-sm">
-							<thead className="text-muted-foreground">
-								<tr className="border-b border-border">
-									<th className="pb-2 font-medium">Source</th>
-									<th className="pb-2 text-right font-medium">Sessions</th>
-									<th className="pb-2 text-right font-medium">Orders</th>
-									<th className="pb-2 text-right font-medium">Revenue</th>
-								</tr>
-							</thead>
-							<tbody>
-								{summary.sources.map((row) => (
-									<tr key={row.source} className="border-b border-border/60 last:border-0">
-										<td className="py-3">{row.source}</td>
-										<td className="py-3 text-right tabular-nums">{row.sessions}</td>
-										<td className="py-3 text-right tabular-nums">{row.purchases}</td>
-										<td className="py-3 text-right tabular-nums">
-											{row.revenueByCurrency.length > 0
-												? row.revenueByCurrency.map((money) => formatMoney(money.value, money.currency)).join(" · ")
-												: "—"}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
-				</div>
-			</section>
-
-			<section className="mt-8 rounded-xl border border-border bg-card p-6">
-				<h2 className="text-lg font-semibold">Recent events</h2>
-				<div className="mt-5 overflow-x-auto">
-					<table className="w-full text-left text-sm">
-						<thead className="text-muted-foreground">
-							<tr className="border-b border-border">
-								<th className="pb-2 font-medium">Time</th>
-								<th className="pb-2 font-medium">Event</th>
-								<th className="pb-2 font-medium">Channel</th>
-								<th className="pb-2 font-medium">Source</th>
-								<th className="pb-2 text-right font-medium">Value</th>
-							</tr>
-						</thead>
-						<tbody>
-							{summary.recent.map((event, index) => (
-								<tr key={`${event.occurredAt}:${event.name}:${index}`} className="border-b border-border/60 last:border-0">
-									<td className="whitespace-nowrap py-3 text-muted-foreground">{new Date(event.occurredAt).toISOString().replace("T", " ").slice(0, 19)}</td>
-									<td className="py-3 font-medium">{event.name}</td>
-									<td className="py-3">{event.channel || "—"}</td>
-									<td className="py-3">{event.source}</td>
-									<td className="py-3 text-right tabular-nums">{event.currency ? formatMoney(event.value, event.currency) : "—"}</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
-			</section>
-		</main>
-	);
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="rounded-xl border border-border bg-card p-5">
-			<p className="text-sm text-muted-foreground">{label}</p>
-			<p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
-		</div>
-	);
-}
-
-function formatMoney(value: number, currency: string): string {
-	if (!currency || currency === "UNKNOWN") return value.toLocaleString();
-	try {
-		return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
-	} catch {
-		return `${value.toLocaleString()} ${currency}`;
-	}
-}
-
-function DashboardSkeleton() {
-	return <div className="mx-auto mt-10 h-96 max-w-7xl animate-pulse rounded-xl bg-secondary" />;
+function resolveFinanceRange(query:Params,now:Date) {
+  const dateOnly=(v?:string):Date|null=>{
+    if(!v||!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;
+    const d=new Date(v+"T00:00:00Z");
+    return Number.isFinite(d.getTime())&&d.toISOString().startsWith(v)?d:null;
+  };
+  if(query.finance==="custom"){
+    const from=dateOnly(query.financeFrom),last=dateOnly(query.financeTo);
+    if(from&&last&&from<=last&&from<=now&&last.getTime()-from.getTime()<=365*86_400_000){
+      const to=new Date(Math.min(now.getTime(),last.getTime()+86_400_000));
+      return {from,to,bucket:(to.getTime()-from.getTime()<=2*86_400_000?"hour":"day") as "hour"|"day"};
+    }
+  }
+  if(query.finance==="today")return {
+    from:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate())),
+    to:now,bucket:"hour" as const,
+  };
+  if(query.finance==="month")return {
+    from:new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1)),
+    to:now,bucket:"day" as const,
+  };
+  const days=query.finance==="15d"?15:7;
+  return {from:new Date(now.getTime()-days*86_400_000),to:now,bucket:"day" as const};
 }
