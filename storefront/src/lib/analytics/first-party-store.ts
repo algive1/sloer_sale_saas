@@ -182,16 +182,19 @@ export async function storeFirstPartyCommerceEvent(
 	for (const [itemIndex, item] of normalizedItems.entries()) {
 		statements.push({
 			sql: `INSERT OR IGNORE INTO analytics_event_items
-				(event_name, event_id, item_index, item_id, variant_id, sku, item_name, price, quantity)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				(event_name, event_id, item_index, item_id, product_id, variant_id, sku, item_name, category_name, image_url, price, quantity)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				event.name,
 				eventId,
 				itemIndex,
 				item.itemId,
+				item.productId,
 				item.variantId,
 				item.sku,
 				item.itemName,
+				item.categoryName,
+				item.imageUrl,
 				item.price,
 				item.quantity,
 			],
@@ -384,9 +387,12 @@ async function ensureSchema(): Promise<void> {
 					event_id TEXT NOT NULL,
 					item_index INTEGER NOT NULL,
 					item_id TEXT NOT NULL,
+					product_id TEXT,
 					variant_id TEXT,
 					sku TEXT,
 					item_name TEXT,
+					category_name TEXT,
+					image_url TEXT,
 					price REAL,
 					quantity INTEGER NOT NULL,
 					PRIMARY KEY(event_name, event_id, item_index)
@@ -419,6 +425,22 @@ async function ensureSchema(): Promise<void> {
 			.filter(([name]) => !columns.has(name))
 			.map(([name, type]) => ({ sql: `ALTER TABLE analytics_events ADD COLUMN ${name} ${type}` }));
 		if (migrations.length > 0) await libsqlPipeline(migrations);
+
+        const [itemColumnsResult] = await libsqlPipeline([
+            { sql: "PRAGMA table_info(analytics_event_items)", wantRows: true },
+        ]);
+        const itemColumns = new Set(
+            hranaRowsToObjects(itemColumnsResult).map((row) => String(row.name ?? "")),
+        );
+        const missingItemColumns = [
+            ["product_id", "TEXT"],
+            ["category_name", "TEXT"],
+            ["image_url", "TEXT"],
+        ] as const;
+        const itemMigrations = missingItemColumns
+            .filter(([name]) => !itemColumns.has(name))
+            .map(([name, type]) => ({ sql: "ALTER TABLE analytics_event_items ADD COLUMN " + name + " " + type }));
+        if (itemMigrations.length > 0) await libsqlPipeline(itemMigrations);
 
 		await libsqlPipeline([
 			{
