@@ -115,6 +115,7 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
         financeFrom={query.financeFrom}
         financeTo={query.financeTo}
         financeBucket={financeRange.bucket}
+        days={days}
       />
     </div>
 
