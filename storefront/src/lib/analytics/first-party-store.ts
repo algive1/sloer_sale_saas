@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
+import { checkoutAnalyticsDimensions } from "@/lib/analytics/checkout-dimensions";
 import { readAnalyticsRequestContext } from "@/lib/analytics/request-context";
 import { normalizeTrafficAttribution, type TrafficType } from "@/lib/analytics/traffic-source";
 import {
@@ -89,6 +90,8 @@ export async function storeFirstPartyCommerceEvent(
 	const value = "value" in event && typeof event.value === "number" ? event.value : null;
 	const currency = "currency" in event && typeof event.currency === "string" ? event.currency : null;
 	const channel = "channel" in event ? event.channel : "";
+	const { checkoutStage, method, provider, errorCode, failureReason } =
+		checkoutAnalyticsDimensions(event);
 	const eventId = event.eventId || randomId();
 
 	if (event.name === "refund_completed" && event.transactionId && !attribution) {
@@ -138,8 +141,9 @@ export async function storeFirstPartyCommerceEvent(
 			sql: `INSERT OR IGNORE INTO analytics_events
 				(id, occurred_at, event_name, channel, session_id, event_id, transaction_id, value, currency,
 				 source, medium, campaign, landing_path, traffic_type, source_group, referrer_host,
-				 country_code, region_code, device_type, click_ids_json, item_ids_json, payload_json)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				 country_code, region_code, device_type, checkout_stage, method, provider, error_code, failure_reason,
+				 click_ids_json, item_ids_json, payload_json)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			args: [
 				randomId(),
 				new Date().toISOString(),
@@ -160,6 +164,11 @@ export async function storeFirstPartyCommerceEvent(
 				requestContext.countryCode,
 				requestContext.regionCode,
 				requestContext.deviceType,
+				checkoutStage,
+				method,
+				provider,
+				errorCode,
+				failureReason,
 				JSON.stringify(traffic.clickIds),
 				JSON.stringify(itemIds),
 				safePayload(event),
@@ -327,6 +336,11 @@ async function ensureSchema(): Promise<void> {
 					country_code TEXT,
 					region_code TEXT,
 					device_type TEXT,
+					checkout_stage TEXT,
+					method TEXT,
+					provider TEXT,
+					error_code TEXT,
+					failure_reason TEXT,
 					click_ids_json TEXT NOT NULL DEFAULT '{}',
 					item_ids_json TEXT NOT NULL DEFAULT '[]',
 					payload_json TEXT NOT NULL
@@ -351,6 +365,11 @@ async function ensureSchema(): Promise<void> {
 			["country_code", "TEXT"],
 			["region_code", "TEXT"],
 			["device_type", "TEXT"],
+			["checkout_stage", "TEXT"],
+			["method", "TEXT"],
+			["provider", "TEXT"],
+			["error_code", "TEXT"],
+			["failure_reason", "TEXT"],
 		] as const;
 		const migrations = additions
 			.filter(([name]) => !columns.has(name))
@@ -400,6 +419,9 @@ async function ensureSchema(): Promise<void> {
 			},
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_geo_idx ON analytics_events(country_code, occurred_at)",
+			},
+			{
+				sql: "CREATE INDEX IF NOT EXISTS analytics_checkout_idx ON analytics_events(event_name, checkout_stage, occurred_at)",
 			},
 		]);
 	})();
