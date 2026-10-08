@@ -40,8 +40,8 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
 
       await page.goto("/ops/themes");
       await expect(page.getByRole("heading", { name: "店铺可视化装修" })).toBeVisible();
-      await expect(page.getByText("The art of effortless style.").first()).toBeVisible();
-      await expect(page.getByText("Storefront design" , { exact:false })).toHaveCount(0).catch(()=>{});
+      // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
+      await expect(page.getByRole("button", { name: "Publish", exact: true }).first()).toBeVisible();
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";
@@ -92,12 +92,12 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       });
       expect(foreign.status()).toBe(403);
 
-      const publish = await authorized.put("/ops/themes/api", {
-        headers: { Origin: baseURL },
-        data: { channel, locale, action: "publish", data: draft, expectedRevision: 1 },
-      });
-      expect(publish.status(), await publish.text()).toBe(200);
-      expect((await publish.json()).draftRevision).toBe(2);
+      // Use the real Puck UI for publishing rather than bypassing the editor.
+      // Reload first so it picks up the persisted draft and revision #1.
+      await page.goto("/ops/themes");
+      await expect(page.getByRole("button", { name: "Publish", exact: true }).first()).toBeVisible();
+      await page.getByRole("button", { name: "Publish", exact: true }).first().click();
+      await expect(page.getByRole("status")).toContainText("Published.", { timeout: 30_000 });
 
       const published = await authorized.get(scope);
       const after = await published.json() as {
