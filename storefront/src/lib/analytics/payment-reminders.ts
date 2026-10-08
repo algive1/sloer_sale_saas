@@ -68,6 +68,9 @@ export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second
  if(invalid)return {status:"skipped",reason:invalid};
  await schema();
  const now=new Date().toISOString();
+ const [recent] = await libsqlPipeline([{sql:"SELECT MAX(sent_at) AS last_sent FROM ops_reminder_delivery WHERE order_id=? AND status='sent'",args:[order.id],wantRows:true}]);
+ const lastSent=hranaRowsToObjects(recent)[0]?.last_sent;
+ if(typeof lastSent==="string"&&Date.now()-new Date(lastSent).getTime()<24*3600000)return {status:"skipped",reason:"24_hour_cooldown"};
  const [claimed]=await libsqlPipeline([{sql:"INSERT OR IGNORE INTO ops_reminder_delivery(order_id,stage,status,claimed_at) VALUES(?,?,'sending',?)",args:[order.id,stage,now]}]);
  if(!claimed?.affected_row_count)return {status:"skipped",reason:"already_attempted"};
  try{
@@ -94,7 +97,7 @@ export async function runAutomaticReminders():Promise<{sent:number;skipped:numbe
  const orders=await fetchSaleorOrders(100);
  if(!orders)return result;
  await schema();
- const [daily]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=? AND status IN ('sending','sent')",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
+ const [daily]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=? AND status IN ('sending','sent','failed')",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
  const count=Number(hranaRowsToObjects(daily)[0]?.count??0);
  const limit=Math.min(20,rule.dailyLimit);
  let attempts=count;
@@ -103,11 +106,11 @@ export async function runAutomaticReminders():Promise<{sent:number;skipped:numbe
   if(eligible(order)){result.skipped++;continue;}
   const ageHours=(Date.now()-new Date(order.createdAt).getTime())/3600000;
   if(!Number.isFinite(ageHours)||ageHours<rule.firstAfterHours){result.skipped++;continue;}
-  const stage=ageHours>=rule.secondAfterHours?"second":"first";
+  let stage:"first"|"second"=ageHours>=rule.secondAfterHours?"second":"first";
   // A second notice must never precede the first.
   if(stage==="second"){
     const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
-    if(hranaRowsToObjects(first)[0]?.status!=="sent"){result.skipped++;continue;}
+    if(hranaRowsToObjects(first)[0]?.status!=="sent")stage="first";
   }
   const sent=await sendReminder(order,stage);
   if(sent.status==="sent"){result.sent++;attempts++;}
