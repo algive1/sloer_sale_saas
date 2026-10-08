@@ -247,6 +247,7 @@ async function ProductShell({
 				channel={params.channel}
 				productId={product.id}
 				productName={product.name}
+				categoryId={product.category?.id}
 				categoryName={product.category?.name}
 				imageUrl={product.thumbnail?.url}
 				value={product.pricing?.priceRange?.start?.gross?.amount ?? 0}
