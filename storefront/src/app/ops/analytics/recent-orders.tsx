@@ -45,7 +45,7 @@ export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
     const canRemind=!o.isPaid&&!["CANCELED","FULFILLED","RETURNED"].includes(o.status);
     return <tr key={o.id} className="border-b border-border/50 last:border-0">
       <td className="py-2 pr-2"><div className="flex min-w-[174px] items-center gap-2">
-       {o.thumbnailUrl?<span className="relative h-10 w-10 shrink-0 overflow-hidden rounded border border-border"><SaleorImage src={o.thumbnailUrl} srcSet={o.thumbnailUrl+" 64w"} sizes="40px" alt={o.productName}/></span>:<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span>}
+       {o.thumbnailUrl?<span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border"><SaleorImage src={o.thumbnailUrl} srcSet={o.thumbnailUrl+" 64w"} sizes="40px" alt={o.productName}/></span>:<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span>}
        <div><span className="line-clamp-2 max-w-[175px] font-medium" title={o.productName}>{o.productName}</span><span className="block text-[10px] text-muted-foreground">#{o.number}</span></div></div></td>
       <td className="px-2">{o.country}</td><td className="px-2">{o.source}</td>
       <td className="whitespace-nowrap px-2 text-muted-foreground">{o.paidAt?new Date(o.paidAt).toLocaleString("zh-CN"):"—"}</td>
