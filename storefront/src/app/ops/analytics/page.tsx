@@ -2,6 +2,10 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
 import { readProductReport } from "@/lib/analytics/product-report";
+import { readTrafficReport } from "@/lib/analytics/traffic-report";
+import { fetchSaleorOrders } from "@/lib/analytics/saleor-ops-orders";
+import { reminderEmailConfigured } from "@/lib/analytics/payment-reminders";
+import { RecentOrdersTable } from "./recent-orders";
 import { readOverviewDetails, readOverviewFinances } from "@/lib/analytics/overview-details";
 import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
@@ -12,6 +16,9 @@ type Params = {
   finance?: string;
   financeFrom?: string;
   financeTo?: string;
+  region?: string;
+  regionFrom?: string;
+  regionTo?: string;
 };
 
 const stages = [
@@ -23,20 +30,6 @@ const stages = [
   ["payment_method_selected","选择支付"],
   ["checkout_completed","购买成功"],
 ] as const;
-
-const eventNames: Record<string,string> = {
-  page_viewed:"页面浏览",
-  product_viewed:"商品浏览",
-  wishlist_added:"加入收藏",
-  product_added_to_cart:"加入购物车",
-  cart_viewed:"查看购物车",
-  checkout_started:"开始结账",
-  payment_method_selected:"选择支付方式",
-  checkout_completed:"购买完成",
-  payment_failed:"支付失败",
-  checkout_failed:"结账失败",
-  refund_completed:"订单退款",
-};
 
 const money=(value:number,currency:string)=>{
   try {
@@ -58,8 +51,9 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
   const now=new Date();
   const range={from:new Date(now.getTime()-days*86_400_000),to:now,bucket:"day" as const};
   const financeRange=resolveFinanceRange(query,now);
-  const [summary,products,details,finances]=await Promise.all([
-    readAnalyticsSummary(days),readProductReport(range),readOverviewDetails(range),readOverviewFinances(financeRange),
+  const regionRange=resolveFinanceRange({finance:query.region,financeFrom:query.regionFrom,financeTo:query.regionTo},now);
+  const [summary,products,details,finances,regionReport,orders]=await Promise.all([
+    readAnalyticsSummary(days),readProductReport(range),readOverviewDetails(range),readOverviewFinances(financeRange),readTrafficReport(regionRange),fetchSaleorOrders(25).catch(()=>null),
   ]);
   if(!summary)return <main className="mx-auto max-w-6xl px-6 py-10 text-sm text-muted-foreground">暂时无法加载数据，请稍后重试。</main>;
 
@@ -77,6 +71,35 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
     ["弃单结账",summary.abandonedCheckouts.toLocaleString()],
   ];
   const maxStage=Math.max(1,...stages.map(([key])=>stagesMap.get(key)??0));
+
+  const dashboardBase=(process.env.SALEOR_DASHBOARD_URL??"").replace(/\/$/,"");
+  const funnelCard = (<article className="h-full rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div><h2 className="font-semibold">转化漏斗</h2><p className="mt-1 text-xs text-muted-foreground">按各阶段去重会话统计</p></div>
+          <Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">详情</Link>
+        </div>
+        <div className="space-y-2.5">{stages.map(([key,label])=>{
+          const count=stagesMap.get(key)??0;
+          return <div key={key} className="grid grid-cols-[90px_1fr_70px_65px] items-center gap-2 text-xs">
+            <span>{label}</span><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-slate-600" style={{width:(count/maxStage*100)+"%"}}/></div>
+            <span className="text-right tabular-nums">{count.toLocaleString()}</span>
+            <span className="text-right text-muted-foreground">{visitors?(count/visitors*100).toFixed(1)+"%":"—"}</span>
+          </div>;
+        })}</div>
+      </article>);
+  const healthCard = (<article className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">结账健康度</h2><Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">查看原因</Link></div>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            ["开始结账",stagesMap.get("checkout_started")??0],
+            ["选择支付",stagesMap.get("payment_method_selected")??0],
+            ["支付失败事件",summary.paymentFailures],
+            ["弃单会话",summary.abandonedCheckouts],
+          ].map(([label,value])=><div key={label} className="rounded-lg border border-border p-4">
+            <p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-xl font-semibold">{Number(value).toLocaleString()}</p>
+          </div>)}
+        </div>
+      </article>);
 
   return <main className="mx-auto max-w-[1560px] px-4 py-8 lg:px-8">
     <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -118,52 +141,19 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
         financeStart={financeRange.from.toISOString()}
         financeEnd={financeRange.to.toISOString()}
         days={days}
+        dashboardBase={dashboardBase}
+        funnel={funnelCard}
+        health={healthCard}
+        recentOrders={<RecentOrdersTable orders={orders} dashboardBase={dashboardBase} emailReady={reminderEmailConfigured()}/>}
+        regionRange={query.region??"7d"}
+        regionFrom={query.regionFrom}
+        regionTo={query.regionTo}
+        regionBucket={regionRange.bucket}
+        regionTrend={{buckets:regionReport.trend.map(x=>x.bucket),rows:regionReport.countryTrend,countries:regionReport.countries.map(x=>x.countryCode).filter(c=>c!=="UNKNOWN").slice(0,5)}}
       />
     </div>
 
-    <section className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
-      <article className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <div><h2 className="font-semibold">转化漏斗</h2><p className="mt-1 text-xs text-muted-foreground">按各阶段去重会话统计</p></div>
-          <Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">详情</Link>
-        </div>
-        <div className="space-y-2.5">{stages.map(([key,label])=>{
-          const count=stagesMap.get(key)??0;
-          return <div key={key} className="grid grid-cols-[90px_1fr_70px_65px] items-center gap-2 text-xs">
-            <span>{label}</span><div className="h-2.5 overflow-hidden rounded-full bg-secondary"><div className="h-full rounded-full bg-slate-600" style={{width:(count/maxStage*100)+"%"}}/></div>
-            <span className="text-right tabular-nums">{count.toLocaleString()}</span>
-            <span className="text-right text-muted-foreground">{visitors?(count/visitors*100).toFixed(1)+"%":"—"}</span>
-          </div>;
-        })}</div>
-      </article>
-      <article className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">结账健康度</h2><Link href="/ops/analytics/checkout" className="rounded-lg border border-border px-3 py-1.5 text-xs">查看原因</Link></div>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            ["开始结账",stagesMap.get("checkout_started")??0],
-            ["选择支付",stagesMap.get("payment_method_selected")??0],
-            ["支付失败事件",summary.paymentFailures],
-            ["弃单会话",summary.abandonedCheckouts],
-          ].map(([label,value])=><div key={label} className="rounded-lg border border-border p-4">
-            <p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-xl font-semibold">{Number(value).toLocaleString()}</p>
-          </div>)}
-        </div>
-      </article>
-    </section>
 
-    <details className="mt-5 rounded-xl border border-border bg-card p-5">
-      <summary className="cursor-pointer text-sm font-semibold">最近事件 <span className="ml-1 font-normal text-muted-foreground">（点击展开）</span></summary>
-      <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs">
-        <thead><tr className="border-b border-border text-muted-foreground">{["时间 (UTC)","事件","渠道","来源","金额"].map(t=><th className="p-2" key={t}>{t}</th>)}</tr></thead>
-        <tbody>{summary.recent.slice(0,30).map((e,i)=><tr key={e.occurredAt+e.name+i} className="border-b border-border/50">
-          <td className="whitespace-nowrap p-2">{e.occurredAt.replace("T"," ").slice(0,19)}</td>
-          <td className="p-2">{eventNames[e.name]??e.name}</td>
-          <td className="p-2">{e.channel||"—"}</td>
-          <td className="p-2">{e.source}</td>
-          <td className="p-2 text-right">{e.currency?money(e.value,e.currency):"—"}</td>
-        </tr>)}</tbody>
-      </table></div>
-    </details>
   </main>;
 }
 
