@@ -37,8 +37,22 @@ const query=`query OpsRecentOrders($first:Int!){
  }
 }`;
 
+function mapOrders(nodes:GqlOrder[]):OpsOrder[]{
+ return nodes.map(o=>({
+  id:o.id,number:o.number,createdAt:o.created,
+  paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
+  country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
+  source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",authorizeStatus:o.authorizeStatus??"UNKNOWN",
+  isPaid:o.isPaid,hasRefund:(o.totalRefunded?.amount??0)>0||(o.transactions??[]).some(t=>(t.events??[]).some(e=>e.type==="REFUND_SUCCESS")),amount:o.total?.gross?.amount??0,currency:o.total?.gross?.currency??"UNKNOWN",
+  paymentMethod:o.transactions?.[0]?.name??o.payments?.[0]?.gateway??"—",
+  thumbnailUrl:o.lines?.[0]?.thumbnail?.url??"",
+  productName:o.lines?.[0]?.productName??"—",
+  email:o.userEmail??"",
+ }))
+}
+
 export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
- const endpoint=process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
+ const endpoint=process.env.SALEOR_INTERNAL_API_URL?.trim()||process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
  const token=process.env.SALEOR_APP_TOKEN?.trim();
  if(!endpoint||!token)return null;
  const response=await fetch(endpoint,{
@@ -49,17 +63,9 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
  if(!response.ok)throw new Error("Saleor order API HTTP "+response.status);
  const body=await response.json() as {data?:{orders?:{edges:Array<{node:GqlOrder}>}|null};errors?:Array<{message:string}>};
  if(body.errors?.length)throw new Error("Saleor order query failed: "+body.errors[0]?.message);
- const orders=(body.data?.orders?.edges??[]).map(({node:o})=>({
-  id:o.id,number:o.number,createdAt:o.created,
-  paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
-  country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
-  source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",authorizeStatus:o.authorizeStatus??"UNKNOWN",
-  isPaid:o.isPaid,hasRefund:(o.totalRefunded?.amount??0)>0||(o.transactions??[]).some(t=>(t.events??[]).some(e=>e.type==="REFUND_SUCCESS")),amount:o.total?.gross?.amount??0,currency:o.total?.gross?.currency??"UNKNOWN",
-  paymentMethod:o.transactions?.[0]?.name??o.payments?.[0]?.gateway??"—",
-  thumbnailUrl:o.lines?.[0]?.thumbnail?.url??"",
-  productName:o.lines?.[0]?.productName??"—",
-  email:o.userEmail??"",
- }));
+ const orders=mapOrders((body.data?.orders?.edges??[]).map(edge=>edge.node));
+
+
  if(analyticsDatabaseConfigured()&&orders.length){
   try{
    const ids=orders.map(o=>o.id);
@@ -80,6 +86,23 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
 
 export async function fetchSaleorOrder(id:string):Promise<OpsOrder|null>{
  if(!id||id.length>300)return null;
- const orders=await fetchSaleorOrders(100);
- return orders?.find(o=>o.id===id)??null;
+ const endpoint=process.env.SALEOR_INTERNAL_API_URL?.trim()||process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
+ const token=process.env.SALEOR_APP_TOKEN?.trim();
+ if(!endpoint||!token)return null;
+ const response=await fetch(endpoint,{
+  method:"POST",cache:"no-store",signal:AbortSignal.timeout(8000),
+  headers:{"content-type":"application/json",authorization:"Bearer "+token},
+  body:JSON.stringify({query:`query OpsOrderById($id:ID!){order(id:$id){id number created status paymentStatus authorizeStatus isPaid userEmail
+   shippingAddress {country {code}}
+   billingAddress {country {code}}
+   total {gross {amount currency}}
+   totalRefunded {amount}
+   lines {productName thumbnail(size:64,format:WEBP){url}}
+   payments {gateway created}
+   transactions {name events {createdAt type}}}}`,variables:{id}}),
+ });
+ if(!response.ok)throw new Error("Saleor order lookup HTTP "+response.status);
+ const body=await response.json() as {data?:{order?:GqlOrder|null};errors?:Array<{message:string}>};
+ if(body.errors?.length)throw new Error("Saleor order lookup failed: "+body.errors[0]?.message);
+ return body.data?.order?mapOrders([body.data.order])[0]??null:null;
 }
