@@ -33,7 +33,7 @@ const LABELS: Record<string, string> = {
 export default function AnalyticsPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ days?: string }>;
+	searchParams: Promise<{ days?: string; finance?: string; financeFrom?: string; financeTo?: string }>;
 }) {
 	return (
 		<Suspense fallback={<DashboardSkeleton />}>
@@ -42,7 +42,7 @@ export default function AnalyticsPage({
 	);
 }
 
-async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ days?: string; finance?: string; financeFrom?: string; financeTo?: string }> }) {
 	await io();
 	const query = await searchParams;
 	const requested = Number(query.days ?? "30");
@@ -67,8 +67,9 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 	const to = new Date();
 	const from = new Date(to.getTime() - days * 86_400_000);
 	const range = { from, to, bucket: (days === 1 ? "hour" : "day") as "hour" | "day" };
+	const financeRange = resolveFinanceRange(query, to);
 	const [traffic, product, detail, finances] = await Promise.all([
-		readTrafficReport(range), readProductReport(range), readOverviewDetails(range), readOverviewFinances(range),
+		readTrafficReport(range), readProductReport(range), readOverviewDetails(range), readOverviewFinances(financeRange),
 	]);
 	if (!summary) return null;
 	const conversion = summary.sessions > 0 ? (summary.purchases / summary.sessions) * 100 : 0;
@@ -131,7 +132,7 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 			</section>
 
 			<OperationsOverviewV3 sources={detail.sources} finances={finances} products={product.products}
-				productTraffic={detail.products} />
+				productTraffic={detail.products} financeRange={query.finance ?? "7d"} financeFrom={query.financeFrom} financeTo={query.financeTo} />
 
 			<section className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
 				<div className="rounded-xl border border-border bg-card p-6">
@@ -237,4 +238,30 @@ function formatMoney(value: number, currency: string): string {
 
 function DashboardSkeleton() {
 	return <div className="mx-auto mt-10 h-96 max-w-7xl animate-pulse rounded-xl bg-secondary" />;
+}
+
+function resolveFinanceRange(query: { finance?: string; financeFrom?: string; financeTo?: string }, now: Date) {
+  const dateOnly = (raw: string | undefined): Date | null => {
+    if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const parsed = new Date(raw + "T00:00:00Z");
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().startsWith(raw) ? parsed : null;
+  };
+  if (query.finance === "custom") {
+    const from = dateOnly(query.financeFrom);
+    const end = dateOnly(query.financeTo);
+    if (from && end && from <= end && end.getTime() - from.getTime() <= 365 * 86400000 && from <= now) {
+      const to = new Date(Math.min(now.getTime(), end.getTime() + 86400000));
+      return { from, to, bucket: (to.getTime() - from.getTime() <= 2 * 86400000 ? "hour" : "day") as "hour" | "day" };
+    }
+  }
+  if (query.finance === "today") {
+    const from = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()));
+    return { from, to:now, bucket:"hour" as const };
+  }
+  if (query.finance === "month") {
+    const from = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),1));
+    return { from, to:now, bucket:"day" as const };
+  }
+  const days = query.finance === "15d" ? 15 : query.finance === "7d" ? 7 : 7;
+  return { from:new Date(now.getTime() - days * 86400000),to:now,bucket:"day" as const };
 }
