@@ -26,7 +26,7 @@ function validateField(field: string, value: unknown): string | number {
     return value as number;
   }
   const text = stringField(value, field === "body" ? 4000 : 1200);
-  if (field === "ctaHref" && (!text.startsWith("/") || text.startsWith("//") || text.includes("\\") || /[\u0000-\u001f]/.test(text))) {
+  if (field === "ctaHref" && text && (!text.startsWith("/") || text.startsWith("//") || text.includes("\\") || /[\u0000-\u001f]/.test(text))) {
     throw new ThemeValidationError("Links must be same-site absolute paths");
   }
   if (field === "imageUrl" && text && (!/^https:\/\/[\w.-]+(?::\d+)?(?:\/[^\s]*)?$/i.test(text) || text.includes("@"))) {

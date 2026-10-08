@@ -1,8 +1,9 @@
 "use client";
 
 import type { Config } from "@puckeditor/core";
+import type { ReactNode } from "react";
 
-const showcase = (title: string, imageUrl: string, children: React.ReactNode) => (
+const showcase = (title: string, imageUrl: string, children: ReactNode) => (
   <section className="relative overflow-hidden bg-[#eee9e0]">
     {imageUrl.startsWith("https://") ? (
       <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{backgroundImage: "url(" + JSON.stringify(imageUrl) + ")"}} />
