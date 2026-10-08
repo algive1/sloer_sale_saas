@@ -1,10 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useEffect } from "react";
 import type { OverviewSource, OverviewFinance, OverviewProductTraffic } from "@/lib/analytics/overview-details";
 import type { ProductPerformanceRow } from "@/lib/analytics/product-report";
 
-type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[] };
+type Props = { sources: OverviewSource[]; finances: OverviewFinance[]; products: ProductPerformanceRow[]; productTraffic: OverviewProductTraffic[]; financeRange: string; financeFrom?: string; financeTo?: string };
 const types = ["organic","paid","direct","referral","other"];
 const labels: Record<string,string> = { organic:"自然搜索",paid:"付费广告",direct:"Direct",referral:"Referral",other:"其他" };
 const colors = ["#424750","#858c95","#afb5bf","#d0d4da","#ebeef2"];
@@ -13,6 +14,7 @@ const pct=(n:number,d:number)=>d>0?(100*n/d).toFixed(1)+"%":"—";
 const selectClass="rounded-lg border border-border bg-card px-2 py-1.5 text-xs";
 const money=(v:number,c:string)=> c==="UNKNOWN" ? fmt(v)+" UNKNOWN" : new Intl.NumberFormat("en",{style:"currency",currency:c}).format(v);
 function Dialog({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}) {
+ useEffect(()=>{const handle=(event:KeyboardEvent)=>{if(event.key==="Escape")onClose();};document.addEventListener("keydown",handle);return ()=>document.removeEventListener("keydown",handle);},[onClose]);
  return <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onMouseDown={onClose}>
    <div role="dialog" aria-modal="true" aria-label={title} className="flex max-h-[92vh] w-full max-w-6xl flex-col rounded-xl bg-card" onMouseDown={e=>e.stopPropagation()}>
     <header className="flex items-center justify-between border-b border-border p-5"><h2 className="font-semibold">{title}</h2><button type="button" className={selectClass} onClick={onClose}>关闭 ×</button></header>
@@ -32,7 +34,7 @@ function ProductTable({items,traffic}:{items:ProductPerformanceRow[];traffic:Ove
  <td>{fmt(p.productViews)}</td><td>{fmt(p.addToCarts)}</td><td>{fmt(p.purchaseSessions)}</td><td>{pct(p.purchaseSessions,p.productViews)}</td><td>{rate(p.itemKey,"paid")}</td><td>{rate(p.itemKey,"organic")}</td><td><MoneyCell values={p.purchasedItemValue}/></td></tr>)}</tbody></table>
  {!items.length&&<p className="p-6 text-center text-sm text-muted-foreground">暂无商品数据</p>}</div>;
 }
-export function OperationsOverviewV3({sources,finances,products,productTraffic}:Props) {
+export function OperationsOverviewV3({sources,finances,products,productTraffic,financeRange,financeFrom,financeTo}:Props) {
  const countries=useMemo(()=>["ALL",...new Set(sources.map(s=>s.country).filter(s=>s!=="ALL"))],[sources]);
  const [country,setCountry]=useState("ALL");
  const [region,setRegion]=useState("ALL");
@@ -81,7 +83,8 @@ export function OperationsOverviewV3({sources,finances,products,productTraffic}:
     {mode==="products"?<ProductTable items={products.slice(0,5)} traffic={productTraffic}/>:<div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">商品分类需要 Saleor 分类数据关联，尚未具备可靠统计来源。</div>}
    </section>
    <section className="rounded-xl border border-border bg-card p-5">
-    <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></header>
+    <header className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">经营趋势</h2><div className="flex flex-wrap gap-1">{[["today","今日"],["7d","近7日"],["15d","近15日"],["month","本月"]].map(([value,label])=><Link key={value} href={"/ops/analytics?finance="+value} aria-current={financeRange===value?"page":undefined} className={selectClass+(financeRange===value?" bg-foreground text-background":"")}>{label}</Link>)}<a href="#finance-custom" className={selectClass}>自定义</a><button type="button" className={selectClass} onClick={()=>setDialog("finance")}>详情</button></div></header>
+    <form id="finance-custom" action="/ops/analytics" className="mb-3 flex flex-wrap items-center gap-2 text-xs"><input type="hidden" name="finance" value="custom"/><label>开始 <input className={selectClass} type="date" name="financeFrom" defaultValue={financeFrom} required/></label><label>结束 <input className={selectClass} type="date" name="financeTo" defaultValue={financeTo} required/></label><button className={selectClass} type="submit">应用</button></form>
     <label className="text-xs text-muted-foreground">地区 <select className={selectClass} value={region} onChange={e=>setRegion(e.target.value)}>{countries.map(c=><option value={c} key={c}>{c==="ALL"?"全站":c}</option>)}</select></label>
     <label className="ml-2 text-xs text-muted-foreground">币种 <select className={selectClass} value={selectedCurrency||""} onChange={e=>setCurrency(e.target.value)}>{currenciesInRegion.map(c=><option key={c}>{c}</option>)}</select></label>
     <div className="mt-4 flex h-36 items-end gap-1 rounded-lg border border-border p-3">{finance.map(f=><div key={f.bucket} title={f.bucket+" "+money(f.gross-f.refunds,f.currency)} className="min-w-1 flex-1 rounded-t bg-slate-500" style={{height:(Math.max(2,(f.gross-f.refunds)/Math.max(1,...finance.map(m=>m.gross-m.refunds))*100))+"%"}}/>)}</div>
