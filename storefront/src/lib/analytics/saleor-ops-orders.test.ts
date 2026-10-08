@@ -48,7 +48,7 @@ describe("Saleor order operations", () => {
     expect(result?.paymentMethod).toBe("Stripe");
     const [url, options] = mockedFetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("http://api:8000/graphql/");
-    const payload = JSON.parse(String(options.body));
+    const payload = JSON.parse(String(options.body)) as {variables:{id:string};query:string};
     expect(payload.variables.id).toBe(order.id);
     expect(payload.query).toContain("order(id:$id)");
   });
