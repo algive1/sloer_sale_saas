@@ -1,4 +1,5 @@
 import "server-only";
+import {analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline} from "@/lib/analytics/libsql-http";
 
 /**
  * Saleor is the sole authority for payment and fulfillment status.
@@ -46,7 +47,7 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
  if(!response.ok)throw new Error("Saleor order API HTTP "+response.status);
  const body=await response.json() as {data?:{orders?:{edges:Array<{node:GqlOrder}>}|null};errors?:Array<{message:string}>};
  if(body.errors?.length)throw new Error("Saleor order query failed: "+body.errors[0]?.message);
- return (body.data?.orders?.edges??[]).map(({node:o})=>({
+ const orders=(body.data?.orders?.edges??[]).map(({node:o})=>({
   id:o.id,number:o.number,createdAt:o.created,
   paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
   country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
@@ -57,6 +58,22 @@ export async function fetchSaleorOrders(first=24):Promise<OpsOrder[]|null>{
   productName:o.lines?.[0]?.productName??"—",
   email:o.userEmail??"",
  }));
+ if(analyticsDatabaseConfigured()&&orders.length){
+  try{
+   const ids=orders.map(o=>o.id);
+   const [eventRows]=await libsqlPipeline([{
+     sql:"SELECT transaction_id, COALESCE(NULLIF(source_group,''),NULLIF(source,''),'direct') AS source FROM analytics_events WHERE event_name='checkout_completed' AND transaction_id IN ("+ids.map(()=>"?").join(",")+") ORDER BY occurred_at DESC LIMIT 200",
+     args:ids,wantRows:true,
+   }]);
+   const attribution=new Map<string,string>();
+   for(const row of hranaRowsToObjects(eventRows)){
+    const id=String(row.transaction_id??"");
+    if(!attribution.has(id))attribution.set(id,String(row.source??"direct"));
+   }
+   for(const order of orders)order.source=attribution.get(order.id)??"—";
+  }catch{/* Saleor orders remain usable if analytics attribution is unavailable. */}
+ }
+ return orders;
 }
 
 export async function fetchSaleorOrder(id:string):Promise<OpsOrder|null>{
