@@ -51,6 +51,14 @@ test.describe("live storefront navigation and operational pages", () => {
     expect(product.status()).toBe(200);
   });
 
+  test("empty wishlist returns to products with the right locale and channel", async ({ page }) => {
+    await page.goto(localeChannel + "/wishlist");
+    const browse = page.getByRole("link", { name: "Browse products" });
+    await expect(browse).toHaveAttribute("href", localeChannel + "/products");
+    await browse.click();
+    await expect(page).toHaveURL(/\/en\/us\/products$/);
+  });
+
   test("homepage collection CTA and visible footer links resolve", async ({ page, request }) => {
     const response = await page.goto(localeChannel);
     expect(response?.status()).toBe(200);

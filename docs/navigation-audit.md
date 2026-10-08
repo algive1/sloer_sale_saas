@@ -62,3 +62,12 @@ pnpm --dir storefront exec playwright test e2e/navigation-live.spec.ts --workers
 
 The full end-to-end run also requires a working Saleor backend and seeded US
 channel/catalog. Pages not listed above require targeted future test fixtures.
+
+## Wishlist data and navigation review
+
+The empty wishlist previously used a relative `../products` URL that escaped
+the locale/channel path. It now uses a channel-aware absolute storefront path
+and the browser test checks the actual click. Wishlist records now require
+bounded, safe internal links, a valid price and currency before cloud/local
+storage. Sync skips rewriting identical cloud records. This does not yet solve
+shared-database tenant `site_id` isolation across unrelated merchants.
