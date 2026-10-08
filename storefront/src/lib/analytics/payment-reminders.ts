@@ -1,6 +1,7 @@
 import "server-only";
 import { analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline } from "@/lib/analytics/libsql-http";
 import { fetchSaleorOrders, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
+import {reminderSkipReason,reminderDueStage,reminderCooldown} from "@/lib/analytics/reminder-policy";
 
 export type PaymentReminderRule = { enabled:boolean; firstAfterHours:number; secondAfterHours:number; dailyLimit:number };
 export type ReminderResult = { status:"sent"|"skipped"|"failed"; reason?:string };
@@ -33,12 +34,7 @@ export async function setReminderRule(rule:PaymentReminderRule):Promise<PaymentR
  args:[rule.enabled?1:0,rule.firstAfterHours,rule.secondAfterHours,rule.dailyLimit,new Date().toISOString()]}]);
  return rule;
 }
-function eligible(order:OpsOrder):string|null{
- if(order.isPaid)return "already_paid";
- if(["CANCELED","FULFILLED","PARTIALLY_FULFILLED","RETURNED"].includes(order.status.toUpperCase()))return "closed_order";
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(order.email))return "no_customer_email";
- return null;
-}
+
 async function sendEmail(order:OpsOrder):Promise<string>{
  const apiKey=process.env.RESEND_API_KEY?.trim();
  const base=process.env.NEXT_PUBLIC_STOREFRONT_URL?.trim();
@@ -64,13 +60,13 @@ async function sendEmail(order:OpsOrder):Promise<string>{
 }
 export async function sendReminder(order:OpsOrder,stage:"manual"|"first"|"second"):Promise<ReminderResult>{
  if(!reminderEmailConfigured())return {status:"skipped",reason:"email_not_configured"};
- const invalid=eligible(order);
+ const invalid=reminderSkipReason(order);
  if(invalid)return {status:"skipped",reason:invalid};
  await schema();
  const now=new Date().toISOString();
  const [recent] = await libsqlPipeline([{sql:"SELECT MAX(sent_at) AS last_sent FROM ops_reminder_delivery WHERE order_id=? AND status='sent'",args:[order.id],wantRows:true}]);
  const lastSent=hranaRowsToObjects(recent)[0]?.last_sent;
- if(typeof lastSent==="string"&&Date.now()-new Date(lastSent).getTime()<24*3600000)return {status:"skipped",reason:"24_hour_cooldown"};
+ if(reminderCooldown(typeof lastSent==="string"?lastSent:null,Date.now()))return {status:"skipped",reason:"24_hour_cooldown"};
  const [claimed]=await libsqlPipeline([{sql:"INSERT OR IGNORE INTO ops_reminder_delivery(order_id,stage,status,claimed_at) VALUES(?,?,'sending',?)",args:[order.id,stage,now]}]);
  if(!claimed?.affected_row_count)return {status:"skipped",reason:"already_attempted"};
  try{
@@ -103,15 +99,10 @@ export async function runAutomaticReminders():Promise<{sent:number;skipped:numbe
  let attempts=count;
  for(const order of orders){
   if(attempts>=limit)break;
-  if(eligible(order)){result.skipped++;continue;}
-  const ageHours=(Date.now()-new Date(order.createdAt).getTime())/3600000;
-  if(!Number.isFinite(ageHours)||ageHours<rule.firstAfterHours){result.skipped++;continue;}
-  let stage:"first"|"second"=ageHours>=rule.secondAfterHours?"second":"first";
-  // A second notice must never precede the first.
-  if(stage==="second"){
-    const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
-    if(hranaRowsToObjects(first)[0]?.status!=="sent")stage="first";
-  }
+  if(reminderSkipReason(order)){result.skipped++;continue;}
+  const [first]=await libsqlPipeline([{sql:"SELECT status FROM ops_reminder_delivery WHERE order_id=? AND stage='first'",args:[order.id],wantRows:true}]);
+  const stage=reminderDueStage({createdAt:order.createdAt,firstHours:rule.firstAfterHours,secondHours:rule.secondAfterHours,firstSent:hranaRowsToObjects(first)[0]?.status==="sent",now:Date.now()});
+  if(!stage){result.skipped++;continue;}
   const sent=await sendReminder(order,stage);
   if(sent.status==="sent"){result.sent++;attempts++;}
   else if(sent.status==="failed"){result.failed++;attempts++;}
