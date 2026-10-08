@@ -13,7 +13,7 @@ type CommerceLineLike = {
 		product?: {
 			id?: string | null;
 			name?: string | null;
-			category?: { name?: string | null } | null;
+			category?: { id?: string | null; name?: string | null } | null;
 			thumbnail?: { url?: string | null } | null;
 		} | null;
 	} | null;
@@ -39,6 +39,7 @@ export function commerceItemsFromLines(
 			return {
 				itemId,
 				productId: productId || undefined,
+				categoryId: line.variant?.product?.category?.id ?? undefined,
 				categoryName: line.variant?.product?.category?.name ?? undefined,
 				imageUrl: line.variant?.product?.thumbnail?.url ?? undefined,
 				variantId: variantId || undefined,
