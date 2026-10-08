@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { analyticsConsentMode } from "@/lib/analytics/consent";
-import { gaMeasurementId } from "@/lib/analytics/ga4";
+import { gaMeasurementId } from "@/plugins/ads-tracking/ga4-config";
 import { AnalyticsPathnameViews } from "@/ui/components/analytics-pathname-views";
 import { AnalyticsRuntime } from "@/ui/components/analytics-runtime";
 import { GoogleAnalytics } from "@/ui/components/google-analytics";

@@ -2,11 +2,11 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import Script from "next/script";
-import { browserAdsConfigured, googleAdsId, metaPixelId, tiktokPixelId } from "@/lib/analytics/ad-platforms";
+import { browserAdsConfigured, googleAdsId, metaPixelId, tiktokPixelId } from "@/plugins/ads-tracking/config";
 import { ANALYTICS_CONSENT_EVENT, adsStorageAllowed } from "@/lib/analytics/consent";
 import { readConsentChoice } from "@/lib/analytics/browser";
-import { flushBrowserAdEvents, sendAdPageView } from "@/lib/analytics/browser-ads";
-import { ga4Enabled } from "@/lib/analytics/ga4";
+import { flushBrowserAdEvents, sendAdPageView } from "@/plugins/ads-tracking/browser-ads";
+import { ga4Enabled } from "@/plugins/ads-tracking/ga4-config";
 
 type AdWindow = Window & {
 	fbq?: (...args: unknown[]) => void;

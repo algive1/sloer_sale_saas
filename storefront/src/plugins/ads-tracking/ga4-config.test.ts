@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ga4Enabled, gaMeasurementId } from "./ga4";
+import { ga4Enabled, gaMeasurementId } from "./ga4-config";
 
 const ENV_KEY = "NEXT_PUBLIC_GA_MEASUREMENT_ID";
 let saved: string | undefined;

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { CommerceItem, PaperCommerceEvent } from "@/lib/analytics/catalog";
-import { deliverGa4ServerEvent } from "@/lib/analytics/destinations/server-ads";
+import { deliverGa4ServerEvent } from "@/plugins/ads-tracking/server-ads";
 import {
 	recordRefundTotal,
 	storeFirstPartyCommerceEvent,
