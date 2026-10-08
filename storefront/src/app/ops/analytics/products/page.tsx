@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { io } from "next/cache";
+import { Suspense } from "react";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 import { readProductReport, type ProductBucket } from "@/lib/analytics/product-report";
 import { ProductTrendChart } from "./product-trend-chart";
@@ -10,8 +10,15 @@ type SearchParams = Promise<{
 	to?: string;
 }>;
 
-export default async function ProductAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
-	await io();
+export default function ProductAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
+	return (
+		<Suspense fallback={<ProductAnalyticsLoading />}>
+			<ProductAnalyticsContent searchParams={searchParams} />
+		</Suspense>
+	);
+}
+
+async function ProductAnalyticsContent({ searchParams }: { searchParams: SearchParams }) {
 	const query = await searchParams;
 
 	if (!analyticsDatabaseConfigured()) {
@@ -150,6 +157,21 @@ export default async function ProductAnalyticsPage({ searchParams }: { searchPar
 			</section>
 
 			<CustomRangeForm from={formatInputDate(range.from)} to={formatInputDate(new Date(range.to.getTime() - 1))} />
+		</main>
+	);
+}
+
+function ProductAnalyticsLoading() {
+	return (
+		<main className="mx-auto max-w-7xl px-6 py-10">
+			<div className="h-4 w-36 animate-pulse rounded bg-secondary" />
+			<div className="mt-3 h-9 w-64 animate-pulse rounded bg-secondary" />
+			<div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+				{Array.from({ length: 6 }).map((_, index) => (
+					<div key={index} className="h-24 animate-pulse rounded-xl border border-border bg-card" />
+				))}
+			</div>
+			<div className="mt-8 h-80 animate-pulse rounded-xl border border-border bg-card" />
 		</main>
 	);
 }
