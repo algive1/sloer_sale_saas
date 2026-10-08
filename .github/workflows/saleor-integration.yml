@@ -236,6 +236,25 @@ jobs:
           # Pass only this declared entitlement so Next's build can reach the CI Saleor API.
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml build --print | docker buildx bake --allow=network.host -f - dashboard storefront
 
+      - name: Start isolated theme libSQL (SQLite-backed Hrana) for editor E2E
+        shell: bash
+        env:
+          CI_THEME_LIBSQL_TOKEN: ci-theme-secret-only-for-testing
+        run: |
+          set -euo pipefail
+          nohup python3 scripts/mock-theme-hrana.py > /tmp/theme-hrana.log 2>&1 &
+          echo "$!" > /tmp/theme-hrana.pid
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3789/health; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              cat /tmp/theme-hrana.log
+              exit 1
+            fi
+            sleep 1
+          done
+
       - name: Build US storefront
         env:
           NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
@@ -253,6 +272,9 @@ jobs:
           NEXT_PUBLIC_TIKTOK_PIXEL_ID: "E2EPIXEL123"
           NEXT_PUBLIC_GOOGLE_ADS_ID: "AW-123456789"
           NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: "E2E_TEST"
+          THEME_LIBSQL_URL: http://127.0.0.1:3789
+          THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          STOREFRONT_SITE_ID: fashion-ci
         run: pnpm --dir storefront build
 
       - name: Verify sitemap and Google Merchant feed
@@ -274,6 +296,10 @@ jobs:
           NEXT_PUBLIC_TIKTOK_PIXEL_ID: "E2EPIXEL123"
           NEXT_PUBLIC_GOOGLE_ADS_ID: "AW-123456789"
           NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL: "E2E_TEST"
+          THEME_LIBSQL_URL: http://127.0.0.1:3789
+          THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          STOREFRONT_SITE_ID: fashion-ci
+          ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
         run: |
           set -euo pipefail
           nohup pnpm --dir storefront exec next start -p 3100 > /tmp/storefront.log 2>&1 &
@@ -308,6 +334,12 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3100
         run: pnpm --dir storefront exec playwright test e2e/checkout-live.spec.ts --workers=1
 
+      - name: Storefront theme editor draft and published homepage E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3100
+          PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
+        run: pnpm --dir storefront exec playwright test e2e/theme-builder-live.spec.ts --workers=1
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
@@ -319,6 +351,10 @@ jobs:
           if [ -f /tmp/dummy-payment.log ]; then
             echo "===== Dummy Payment App ====="
             tail -n 300 /tmp/dummy-payment.log || true
+          fi
+          if [ -f /tmp/theme-hrana.log ]; then
+            echo "===== Theme Hrana CI ====="
+            tail -n 120 /tmp/theme-hrana.log || true
           fi
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml ps || true
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml             logs --tail=300 api worker db cache || true
@@ -332,5 +368,8 @@ jobs:
           fi
           if [ -f /tmp/dummy-payment.pid ]; then
             kill "$(cat /tmp/dummy-payment.pid)" || true
+          fi
+          if [ -f /tmp/theme-hrana.pid ]; then
+            kill "$(cat /tmp/theme-hrana.pid)" || true
           fi
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml down -v || true
