@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
 import { readRealtimeAnalytics } from "@/lib/analytics/realtime-report";
 
-export const dynamic = "force-dynamic";
 
 export async function GET() {
+	await connection();
 	if (!analyticsDatabaseConfigured()) {
 		return NextResponse.json({ error: "analytics_not_configured" }, { status: 503 });
 	}
