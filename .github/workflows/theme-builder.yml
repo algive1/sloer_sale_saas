@@ -5,6 +5,13 @@ on:
     paths:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
+      - "storefront/src/plugins/payment-reminders/**"
+      - "storefront/src/lib/storage/**"
+      - "storefront/src/lib/analytics/libsql-http.ts"
+      - "storefront/src/app/ops/api/analytics/reminders/**"
+      - "storefront/src/app/ops/analytics/reminders/**"
+      - "docker-compose.yml"
+      - ".env.example"
       - "storefront/src/app/ops/themes/**"
       - "storefront/src/app/(storefront)/**/page.tsx"
       - "storefront/package.json"
@@ -16,6 +23,13 @@ on:
     paths:
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
+      - "storefront/src/plugins/payment-reminders/**"
+      - "storefront/src/lib/storage/**"
+      - "storefront/src/lib/analytics/libsql-http.ts"
+      - "storefront/src/app/ops/api/analytics/reminders/**"
+      - "storefront/src/app/ops/analytics/reminders/**"
+      - "docker-compose.yml"
+      - ".env.example"
       - "storefront/src/app/ops/themes/**"
       - "storefront/src/app/(storefront)/**/page.tsx"
       - "storefront/package.json"
@@ -50,4 +64,4 @@ jobs:
       - name: TypeScript check
         run: pnpm --dir storefront exec tsc --noEmit
       - name: Theme builder tests
-        run: pnpm --dir storefront exec vitest run src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts
+        run: pnpm --dir storefront exec vitest run src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts

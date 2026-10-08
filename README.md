@@ -77,8 +77,8 @@ The repository owns a copy of the Saleor Core source for reproducible self-hosti
 ## System-wide business plugins
 
 Custom features are available platform-wide. Store data isolation is separate from
-plugin availability. The first extracted module is Puck theme builder; analytics,
-advertising, reminders and SEO remain active while awaiting migration.
+plugin availability. The Puck theme builder and payment reminders are now system
+modules; analytics, advertising and SEO remain active while awaiting migration.
 See [docs/system-plugins.md](docs/system-plugins.md).
 
 ## Transaction milestone

@@ -1,5 +1,5 @@
 import "server-only";
-import { hranaRowsToObjects, libsqlPipeline } from "@/lib/analytics/libsql-http";
+import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import { parseTheme, serializeTheme } from "./validate";
 import type { ThemeData } from "./template";
 

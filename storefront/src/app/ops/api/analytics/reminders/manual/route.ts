@@ -1,5 +1,5 @@
 import { NextRequest,NextResponse } from "next/server";
-import { sendManualReminder } from "@/lib/analytics/payment-reminders";
+import { sendManualReminder } from "@/plugins/payment-reminders/service";
 export async function POST(request:NextRequest){
  if(request.headers.get("x-requested-with")!=="analytics"||request.headers.get("sec-fetch-site")==="cross-site")return NextResponse.json({error:"forbidden"},{status:403});
  let body:unknown;try{body=await request.json();}catch{return NextResponse.json({error:"invalid_json"},{status:400});}

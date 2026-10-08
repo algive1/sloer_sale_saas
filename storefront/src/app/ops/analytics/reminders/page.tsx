@@ -1,5 +1,5 @@
 import Link from "next/link";
-import {getReminderRule,reminderEmailConfigured} from "@/lib/analytics/payment-reminders";
+import {getReminderRule,reminderEmailConfigured} from "@/plugins/payment-reminders/service";
 import {analyticsDatabaseConfigured} from "@/lib/analytics/libsql-http";
 import {ReminderSettings} from "./reminder-settings";
 export default async function ReminderPage(){

@@ -42,7 +42,7 @@ export const SYSTEM_PLUGINS = {
     apiVersion: 1,
     scope: "system",
     availability: "all-stores",
-    integration: "legacy-inline",
+    integration: "storefront-module",
     capabilities: ["ops.manual-reminders", "ops.automatic-reminders"],
   },
   "seo-merchant": {

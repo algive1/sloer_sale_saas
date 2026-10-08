@@ -5,15 +5,15 @@ vi.mock("@/lib/analytics/saleor-ops-orders", () => ({
   fetchSaleorOrder: vi.fn(),
   fetchSaleorOrdersPage: vi.fn(),
 }));
-vi.mock("@/lib/analytics/libsql-http", () => ({
+vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => false,
   libsqlPipeline: vi.fn(),
   hranaRowsToObjects: () => [],
 }));
 
-import { fetchSaleorOrder } from "./saleor-ops-orders";
-import { sendManualReminder, sendReminder } from "./payment-reminders";
-import type { OpsOrder } from "./saleor-ops-orders";
+import { fetchSaleorOrder } from "@/lib/analytics/saleor-ops-orders";
+import { sendManualReminder, sendReminder } from "./service";
+import type { OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 
 const pending: OpsOrder = {
   id: "T3JkZXI6MQ==",

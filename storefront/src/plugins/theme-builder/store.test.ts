@@ -3,7 +3,7 @@ import { FASHION_TEMPLATE } from "./template";
 
 const { pipeline } = vi.hoisted(() => ({ pipeline: vi.fn() }));
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/analytics/libsql-http", () => ({
+vi.mock("@/lib/storage/libsql-http", () => ({
   libsqlPipeline: pipeline,
   hranaRowsToObjects: () => [],
 }));

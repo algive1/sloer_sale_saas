@@ -1,5 +1,5 @@
 import { NextRequest,NextResponse } from "next/server";
-import { getReminderRule,setReminderRule,reminderEmailConfigured } from "@/lib/analytics/payment-reminders";
+import { getReminderRule,setReminderRule,reminderEmailConfigured } from "@/plugins/payment-reminders/service";
 export async function GET(){
  try{return NextResponse.json({rule:await getReminderRule(),emailReady:reminderEmailConfigured()});}
  catch{return NextResponse.json({error:"reminder_unavailable"},{status:503});}
