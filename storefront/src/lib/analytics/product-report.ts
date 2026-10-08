@@ -9,6 +9,8 @@ export type ProductMoney = { currency: string; value: number };
 export type ProductPerformanceRow = {
 	itemKey: string;
 	itemName: string;
+	categoryName: string;
+	thumbnailUrl: string;
 	sku: string;
 	productViews: number;
 	wishlists: number;
@@ -45,7 +47,7 @@ export async function readProductReport(input: {
 	await ensureAnalyticsSchema();
 	const from = input.from.toISOString();
 	const to = input.to.toISOString();
-	const itemKey = "COALESCE(NULLIF(ai.variant_id, ''), ai.item_id)";
+	const itemKey = "COALESCE(NULLIF(ai.product_id, ''), NULLIF(ai.item_id, ''), NULLIF(ai.variant_id, ''))";
 	const sessionKey = "COALESCE(ae.session_id, ae.event_id)";
 	const bucketExpr =
 		input.bucket === "hour"
@@ -72,6 +74,8 @@ export async function readProductReport(input: {
 			sql: `SELECT
 				${itemKey} AS item_key,
 				COALESCE(MAX(NULLIF(ai.item_name, '')), ${itemKey}) AS item_name,
+				COALESCE(MAX(NULLIF(ai.category_name, '')), '') AS category_name,
+				COALESCE(MAX(NULLIF(ai.image_url, '')), '') AS thumbnail_url,
 				COALESCE(MAX(NULLIF(ai.sku, '')), '') AS sku,
 				COUNT(DISTINCT CASE WHEN ae.event_name = 'product_viewed' THEN ${sessionKey} END) AS product_views,
 				COUNT(DISTINCT CASE WHEN ae.event_name = 'wishlist_added' THEN ${sessionKey} END) AS wishlists,
@@ -154,6 +158,8 @@ export async function readProductReport(input: {
 		return {
 			itemKey: key,
 			itemName: String(row.item_name ?? key),
+			categoryName: String(row.category_name ?? ""),
+			thumbnailUrl: String(row.thumbnail_url ?? ""),
 			sku: String(row.sku ?? ""),
 			productViews: Number(row.product_views ?? 0),
 			wishlists: Number(row.wishlists ?? 0),
