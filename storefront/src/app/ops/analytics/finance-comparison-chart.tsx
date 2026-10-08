@@ -9,12 +9,14 @@ const PLOT_H = HEIGHT - TOP - BOTTOM;
 const number = (n: number) => n.toLocaleString("en", { maximumFractionDigits: 2 });
 
 export function FinanceComparisonChart({
-  rows, country, currency, bucket,
+  rows, country, currency, bucket, from, to,
 }:{
   rows: OverviewFinance[];
   country: string;
   currency: string;
   bucket: "hour"|"day";
+  from: string;
+  to: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<number|null>(null);
@@ -30,8 +32,19 @@ export function FinanceComparisonChart({
       else if(row.country===country)item.region+=value;
       map.set(row.bucket,item);
     }
-    return [...map.values()].sort((a,b)=>a.time.localeCompare(b.time));
-  },[rows,country,currency]);
+    const start=new Date(from), end=new Date(to);
+    const cursor=new Date(start.getTime());
+    if(bucket==="hour") cursor.setUTCMinutes(0,0,0);
+    else cursor.setUTCHours(0,0,0,0);
+    const points: Array<{time:string;all:number;region:number}>=[];
+    while(cursor.getTime()<end.getTime() && points.length<500){
+      const time=bucket==="hour"?cursor.toISOString().slice(0,13)+":00":cursor.toISOString().slice(0,10);
+      points.push(map.get(time)??{time,all:0,region:0});
+      if(bucket==="hour")cursor.setUTCHours(cursor.getUTCHours()+1);
+      else cursor.setUTCDate(cursor.getUTCDate()+1);
+    }
+    return points;
+  },[rows,country,currency,from,to,bucket]);
   const max=Math.max(1,...all.map(p=>Math.max(p.all,country==="ALL"?0:p.region)));
   const min=Math.min(0,...all.map(p=>Math.min(p.all,country==="ALL"?0:p.region)));
   const denominator=max-min||1;
@@ -55,8 +68,8 @@ export function FinanceComparisonChart({
       </button>}
       <span className="ml-auto text-[11px]">单位：{currency} · {bucket==="hour"?"小时":"日"}</span>
     </div>
-    <div ref={ref} className="relative touch-pan-y" onPointerMove={e=>{if(pinned===null)setHover(pointerIndex(e));}} onPointerLeave={()=>setHover(null)} onPointerDown={e=>{const idx=pointerIndex(e);if(idx!==null){setPinned(v=>v===idx?null:idx);setHover(idx);}}} aria-label="全站与选中地区成交趋势，指向数据点可查看数值，点击可固定">
-      <svg viewBox={"0 0 "+WIDTH+" "+HEIGHT} className="h-[245px] w-full" role="img">
+    <div ref={ref} className="relative touch-pan-y"  aria-label="全站与选中地区成交趋势，指向数据点可查看数值，点击可固定">
+      <svg viewBox={"0 0 "+WIDTH+" "+HEIGHT} className="h-[245px] w-full" role="img" onPointerMove={e=>{if(pinned===null)setHover(pointerIndex(e));}} onPointerLeave={()=>setHover(null)} onPointerDown={e=>{const idx=pointerIndex(e);if(idx!==null){setPinned(v=>v===idx?null:idx);setHover(idx);}}}>
         <title>全站与选中地区净成交趋势</title>
         {[0,1,2,3,4].map(i=>{
           const value=max-(max-min)*i/4, yy=y(value);
