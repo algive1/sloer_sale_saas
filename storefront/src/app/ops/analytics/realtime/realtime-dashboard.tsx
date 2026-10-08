@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import {useEffect,useState} from "react";
 import {SaleorImage} from "@/ui/atoms/saleor-image";
 import type {RealtimeAnalytics} from "@/lib/analytics/realtime-report";
