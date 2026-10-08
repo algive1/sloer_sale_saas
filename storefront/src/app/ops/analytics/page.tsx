@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { io } from "next/cache";
 import { readAnalyticsSummary } from "@/lib/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/analytics/libsql-http";
@@ -72,17 +73,25 @@ async function AnalyticsDashboard({ searchParams }: { searchParams: Promise<{ da
 					<h1 className="mt-1 text-h1">Marketing analytics</h1>
 					<p className="mt-2 text-sm text-muted-foreground">First-party behavior and attributed commerce events.</p>
 				</div>
-				<nav className="flex gap-2" aria-label="Date range">
-					{[7, 30, 90].map((range) => (
-						<a
-							key={range}
-							href={`/ops/analytics?days=${range}`}
-							className={`rounded-lg border px-3 py-2 text-sm ${range === days ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
-						>
-							{range}d
-						</a>
-					))}
-				</nav>
+				<div className="flex flex-wrap gap-2">
+					<Link href="/ops/analytics/traffic" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Traffic
+					</Link>
+					<Link href="/ops/analytics/checkout" className="rounded-lg border border-border bg-card px-3 py-2 text-sm hover:bg-secondary">
+						Checkout
+					</Link>
+					<nav className="flex gap-2" aria-label="Date range">
+						{[7, 30, 90].map((range) => (
+							<a
+								key={range}
+								href={`/ops/analytics?days=${range}`}
+								className={`rounded-lg border px-3 py-2 text-sm ${range === days ? "border-foreground bg-foreground text-background" : "border-border hover:bg-secondary"}`}
+							>
+								{range}d
+							</a>
+						))}
+					</nav>
+				</div>
 			</header>
 
 			<section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
