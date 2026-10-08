@@ -10,6 +10,7 @@ type StoredTheme = {
   publishedRevision: number;
 };
 const empty: StoredTheme = { draft: null, published: null, draftRevision: 0, publishedRevision: 0 };
+export class ThemeConflictError extends Error {}
 let schemaPromise: Promise<void> | undefined;
 
 function themeConnection() {
@@ -84,36 +85,48 @@ export async function readTheme(channel: string, locale: string): Promise<Stored
   };
 }
 
+/**
+ * Compare-and-swap prevents concurrent editors from silently replacing one
+ * another's draft or publishing an outdated copy.
+ */
 export async function saveTheme(
-  channel: string, locale: string, input: unknown, publish: boolean,
-): Promise<void> {
+  channel: string,
+  locale: string,
+  input: unknown,
+  publish: boolean,
+  expectedRevision: number,
+): Promise<number> {
+  if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
+    throw new ThemeConflictError("Invalid revision; reload the editor.");
+  }
   const json = serializeTheme(input);
   await ensureSchema();
   const siteId = activeThemeSiteId();
   const now = new Date().toISOString();
-  if (publish) {
-    await libsqlPipeline([{
-      sql: `INSERT INTO storefront_theme_homepages
+  const statement = expectedRevision === 0
+    ? {
+      sql: `INSERT OR IGNORE INTO storefront_theme_homepages
         (site_id, channel, locale, draft_json, published_json, draft_revision, published_revision, updated_at)
-        VALUES (?, ?, ?, ?, ?, 1, 1, ?)
-        ON CONFLICT(site_id, channel, locale) DO UPDATE SET
-          draft_json = excluded.draft_json,
-          published_json = excluded.published_json,
-          draft_revision = draft_revision + 1,
-          published_revision = published_revision + 1,
-          updated_at = excluded.updated_at`,
-      args: [siteId, channel, locale, json, json, now],
-    }], database());
-  } else {
-    await libsqlPipeline([{
-      sql: `INSERT INTO storefront_theme_homepages
-        (site_id, channel, locale, draft_json, published_json, draft_revision, published_revision, updated_at)
-        VALUES (?, ?, ?, ?, NULL, 1, 0, ?)
-        ON CONFLICT(site_id, channel, locale) DO UPDATE SET
-          draft_json = excluded.draft_json,
-          draft_revision = draft_revision + 1,
-          updated_at = excluded.updated_at`,
-      args: [siteId, channel, locale, json, now],
-    }], database());
+        VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+      args: [siteId, channel, locale, json, publish ? json : null, publish ? 1 : 0, now],
+    }
+    : {
+      sql: publish
+        ? `UPDATE storefront_theme_homepages
+           SET draft_json = ?, published_json = ?, draft_revision = draft_revision + 1,
+               published_revision = published_revision + 1, updated_at = ?
+           WHERE site_id = ? AND channel = ? AND locale = ? AND draft_revision = ?`
+        : `UPDATE storefront_theme_homepages
+           SET draft_json = ?, draft_revision = draft_revision + 1, updated_at = ?
+           WHERE site_id = ? AND channel = ? AND locale = ? AND draft_revision = ?`,
+      args: publish
+        ? [json, json, now, siteId, channel, locale, expectedRevision]
+        : [json, now, siteId, channel, locale, expectedRevision],
+    };
+
+  const [result] = await libsqlPipeline([statement], database());
+  if (result?.affected_row_count !== 1) {
+    throw new ThemeConflictError("This draft changed elsewhere. Reload before saving.");
   }
+  return expectedRevision + 1;
 }

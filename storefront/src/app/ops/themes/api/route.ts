@@ -4,7 +4,7 @@ import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { isStorefrontLocaleSlug } from "@/config/locale";
 import { isAllowedStorefrontChannel } from "@/config/channels";
 import { buildStorefrontPath } from "@/lib/storefront-path";
-import { activeThemeSiteId, readTheme, saveTheme, themeDatabaseConfigured } from "@/lib/theme-builder/store";
+import { activeThemeSiteId, readTheme, saveTheme, themeDatabaseConfigured, ThemeConflictError } from "@/lib/theme-builder/store";
 import { ThemeValidationError } from "@/lib/theme-builder/validate";
 
 // This handler reads request data directly; Cache Components does not need route-level dynamic config.
@@ -56,12 +56,16 @@ export async function PUT(request: NextRequest) {
     const locale = typeof body.locale === "string" ? body.locale : "";
     if (!(await validScope(channel, locale))) return respond({error:"Unknown channel or locale"},400);
     if (body.action !== "draft" && body.action !== "publish") return respond({error:"Invalid action"},400);
-    await saveTheme(channel, locale, body.data, body.action === "publish");
+    if (!Number.isSafeInteger(body.expectedRevision) || (body.expectedRevision as number) < 0) {
+      return respond({error:"Invalid expected draft revision"},400);
+    }
+    const nextRevision = await saveTheme(channel, locale, body.data, body.action === "publish", body.expectedRevision as number);
     if (body.action === "publish") {
       revalidatePath(buildStorefrontPath(locale,channel));
     }
-    return respond({ok:true,action:body.action});
+    return respond({ok:true,action:body.action,draftRevision:nextRevision});
   } catch (error) {
+    if (error instanceof ThemeConflictError) return respond({error:error.message},409);
     if (error instanceof ThemeValidationError || error instanceof SyntaxError) {
       return respond({error:error.message},400);
     }

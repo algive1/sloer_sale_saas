@@ -24,6 +24,8 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
   const [document,setDocument] = useState<ThemeData | null>(null);
   const documentRef = useRef<Data>(BLANK_TEMPLATE);
   const savedRef = useRef<Data>(BLANK_TEMPLATE);
+  const revisionRef = useRef(0);
+  const savingRef = useRef(false);
   const [generation,setGeneration] = useState(0);
   const [loading,setLoading] = useState(false);
   const [saving,setSaving] = useState(false);
@@ -51,7 +53,8 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
         documentRef.current = loaded;
         savedRef.current = loaded;
         setDocument(loaded);
-        setRevision({draft:result.draftRevision || 0,published:result.publishedRevision || 0});
+        revisionRef.current=result.draftRevision || 0;
+        setRevision({draft:revisionRef.current,published:result.publishedRevision || 0});
         setGeneration(current=>current+1);
       })
 .catch(error=>{
@@ -85,21 +88,24 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
 
   const persist = useCallback(async (action:"draft"|"publish", data:Data)=>{
     if(!storageReady) throw new Error("Please configure the theme database before saving.");
+    if (savingRef.current) return;
+    savingRef.current=true;
     setSaving(true);
     try {
       const response=await fetch(api,{
         method:"PUT",
         credentials:"same-origin",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({channel,locale,action,data}),
+        body:JSON.stringify({channel,locale,action,data,expectedRevision:revisionRef.current}),
       });
       const body=await response.json() as APIResponse;
       if(!response.ok) throw new Error(body.error || "Save failed");
+      revisionRef.current=body.draftRevision ?? revisionRef.current+1;
       savedRef.current=data;
       setDirty(JSON.stringify(documentRef.current.content)!==JSON.stringify(data.content));
       setStatus(action==="publish"?"Published. Open your storefront to view the new homepage.":"Draft saved. Your live storefront is unchanged.");
       setRevision(prev=>({
-        draft:prev.draft+1,
+        draft:revisionRef.current,
         published:prev.published+(action==="publish"?1:0),
       }));
     } catch(error){
@@ -107,6 +113,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
       setStatus(message);
       throw error;
     } finally {
+      savingRef.current=false;
       setSaving(false);
     }
   },[channel,locale,storageReady]);
