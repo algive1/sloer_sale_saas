@@ -75,7 +75,7 @@ const sourceRevenueSql = [
 ].join(" ");
 
 const productSql = [
-  "SELECT COALESCE(NULLIF(ai.variant_id, ''), ai.item_id) AS item_key,",
+  "SELECT COALESCE(NULLIF(ai.product_id, ''),NULLIF(ai.item_id, ''),NULLIF(ai.variant_id,'')) AS item_key,",
   "COALESCE(NULLIF(ae.traffic_type, ''), 'other') AS traffic_type,",
   "COUNT(DISTINCT CASE WHEN ae.event_name = 'product_viewed'",
   "THEN COALESCE(ae.session_id, ae.event_id) END) AS views,",
