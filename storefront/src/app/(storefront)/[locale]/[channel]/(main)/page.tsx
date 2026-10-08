@@ -111,15 +111,18 @@ function HomePageFallback() {
 async function HomePageContent({ params }: { params: HomeParams }) {
 	const { locale, channel } = await params;
 	// The original Paper homepage remains the safe default until a theme is published.
+	let publishedTheme: Awaited<ReturnType<typeof readTheme>>["published"] = null;
 	if (themeDatabaseConfigured()) {
 		await io();
 		try {
-			const { published } = await readTheme(channel, locale);
-			if (published) return <Render config={createPublishedThemeConfig(channel, locale)} data={published} />;
+			publishedTheme = (await readTheme(channel, locale)).published;
 		} catch (error) {
 			// A theme-storage outage must not take the existing checkout storefront offline.
 			console.error("[theme-builder] Falling back to Paper homepage", error);
 		}
+	}
+	if (publishedTheme) {
+		return <Render config={createPublishedThemeConfig(channel, locale)} data={publishedTheme} />;
 	}
 	const content = await getStorefrontContent(channel, locale);
 	const { hero, featuredCollection, categories, brandStory, values, editorial } = content.surfaces.homepage;

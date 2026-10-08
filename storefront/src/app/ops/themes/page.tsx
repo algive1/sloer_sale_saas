@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { getStorefrontLocaleSlugs } from "@/config/locale";
 import { activeThemeSiteId, themeDatabaseConfigured } from "@/lib/theme-builder/store";
@@ -20,9 +21,9 @@ export default async function ThemeEditorPage() {
           <h1 className="mt-1 text-xl font-semibold">店铺可视化装修</h1>
           <p className="mt-1 text-xs text-stone-500">Puck · Shopify 风格区块编辑 · 首期支持服饰首页</p>
         </div>
-        <a href="/ops/analytics" className="rounded-lg border border-stone-200 px-4 py-2 text-sm hover:bg-stone-50">
+        <Link href="/ops/analytics" className="rounded-lg border border-stone-200 px-4 py-2 text-sm hover:bg-stone-50">
           返回经营后台
-        </a>
+        </Link>
       </header>
       <ThemeEditor channels={channels} locales={locales} siteId={activeThemeSiteId()}
         storageReady={themeDatabaseConfigured()} />
