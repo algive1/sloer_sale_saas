@@ -1,0 +1,51 @@
+name: Storefront theme builder
+
+on:
+  pull_request:
+    paths:
+      - "storefront/src/lib/theme-builder/**"
+      - "storefront/src/app/ops/themes/**"
+      - "storefront/src/app/(storefront)/**/page.tsx"
+      - "storefront/package.json"
+      - "storefront/pnpm-lock.yaml"
+      - ".github/workflows/theme-builder.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "storefront/src/lib/theme-builder/**"
+      - "storefront/src/app/ops/themes/**"
+      - "storefront/src/app/(storefront)/**/page.tsx"
+      - "storefront/package.json"
+      - "storefront/pnpm-lock.yaml"
+      - ".github/workflows/theme-builder.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  editor-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HUSKY: "0"
+      NEXT_PUBLIC_SALEOR_API_URL: https://storefront1.saleor.cloud/graphql/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: storefront/.nvmrc
+          cache: pnpm
+          cache-dependency-path: storefront/pnpm-lock.yaml
+      - name: Install frozen dependencies
+        run: pnpm --dir storefront install --frozen-lockfile
+      - name: Generate GraphQL types
+        run: pnpm --dir storefront generate:all
+      - name: TypeScript check
+        run: pnpm --dir storefront exec tsc --noEmit
+      - name: Theme builder tests
+        run: pnpm --dir storefront exec vitest run src/lib/theme-builder/validate.test.ts src/lib/theme-builder/store.test.ts
