@@ -1,7 +1,7 @@
 import "server-only";
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import type { AIConfig, BotBinding, PublishedFaq } from "./bot-config";
-import { extractSelectedFaq, requiresHuman, type IncomingBotMessage } from "./bot-policy";
+import { extractSelectedFaq, faqCandidates, requiresHuman, type IncomingBotMessage } from "./bot-policy";
 
 let schemaPromise: Promise<void> | null = null;
 async function ensureSchema(): Promise<void> {
@@ -175,7 +175,8 @@ async function processOne(config: AIConfig, row: PendingRow): Promise<void> {
 
     let faq: PublishedFaq | null = null;
     try {
-      faq = await askModel(config,question,config.faqs.filter((f)=>f.siteId===row.siteId).slice(0,12));
+      const candidates = faqCandidates(config.faqs,row.siteId,question);
+      faq = candidates.length ? await askModel(config,question,candidates) : null;
     } catch { /* model unavailable: human handoff, not a fabricated reply */ }
     const current = await conversationDetails(config,bot,row);
     if (!current || !currentCustomerQuestion(current,row.messageId)) {
