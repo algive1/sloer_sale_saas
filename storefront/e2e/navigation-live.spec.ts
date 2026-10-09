@@ -112,6 +112,10 @@ test.describe("live storefront navigation and operational pages", () => {
       await page.getByRole("link", { name: /品牌站点/ }).click();
       await expect(page).toHaveURL(/\/ops\/sites$/);
       await expect(page.getByRole("heading", { name: "品牌站点" })).toBeVisible();
+      await page.getByRole("link", { name: /装修此品牌首页/ }).click();
+      await expect(page).toHaveURL(/\/ops\/themes\?channel=us&locale=en$/);
+      await expect(page.getByRole("heading", { name: "品牌网站首页装修" })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "选择市场" })).toHaveValue("us");
     } finally {
       await context.close();
     }
