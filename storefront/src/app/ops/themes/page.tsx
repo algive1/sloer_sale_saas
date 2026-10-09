@@ -25,7 +25,7 @@ export default async function ThemeEditorPage() {
           返回经营后台
         </Link>
       </header>
-      <ThemeEditor channels={channels} locales={locales} siteId={activeThemeSiteId()}
+      <ThemeEditor channels={channels} locales={locales} siteId={channels[0] ? activeThemeSiteId(channels[0]) : "unconfigured"}
         storageReady={themeDatabaseConfigured()} />
     </main>
   );
