@@ -115,6 +115,8 @@ curl --fail --silent --show-error --max-time 30 --request POST \
   "http://127.0.0.1:3000/api/plugins/customer-support/agent-bot-worker"
 ```
 
+Start the worker **before** binding the Chatwoot Agent Bot. The worker writes a heartbeat on every poll. If no heartbeat has been recorded in the last 60 seconds, incoming callbacks fail closed instead of silently accumulating unserved conversations. Verify that the pinned Chatwoot release opens the conversation on bot webhook errors; the Chatwoot account's `keep_pending_on_bot_failure` setting can alter this behavior.
+
 Configure short Chatwoot/model network timeouts, a restricted internal endpoint, HTTPS for external networking, queue health alarms, and a reconciliation procedure for stale processing/failed claims. A worker outage must be visible to operators; it does not affect storefront browsing or payment.
 
 Chatwoot v4.18.0 `lib/webhooks/trigger.rb` defaults to a 5-second delivery timeout. Do not move AI inference back into the incoming Webhook route.
