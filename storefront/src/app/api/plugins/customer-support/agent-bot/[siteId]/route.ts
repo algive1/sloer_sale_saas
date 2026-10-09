@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { loadAIConfig } from "@/plugins/customer-support/ai/bot-config";
 import { incomingBotMessage, verifyChatwootSignature } from "@/plugins/customer-support/ai/bot-policy";
-import { processAIBotMessage } from "@/plugins/customer-support/ai/bot-runtime";
+import { enqueueAIBotMessage } from "@/plugins/customer-support/ai/bot-runtime";
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 
 export const runtime = "nodejs";
@@ -64,7 +64,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ sit
   }
 
   try {
-    await processAIBotMessage(config, bot, event);
+    await enqueueAIBotMessage(bot, event);
     return new NextResponse(null, { status: 204 });
   } catch {
     // No conversation/customer PII in HTTP errors or logs. Failed claims are retained for audit.
