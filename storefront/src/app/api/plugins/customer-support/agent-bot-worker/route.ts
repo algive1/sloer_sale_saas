@@ -4,8 +4,6 @@ import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 import { loadAIConfig } from "@/plugins/customer-support/ai/bot-config";
 import { runQueuedAIBot } from "@/plugins/customer-support/ai/bot-runtime";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 function authorized(request: Request, secret: string): boolean {
   const header = request.headers.get("authorization");
