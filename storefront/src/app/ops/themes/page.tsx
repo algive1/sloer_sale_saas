@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { getStorefrontLocaleSlugs } from "@/config/locale";
+import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
 import { activeThemeSiteId, themeDatabaseConfigured } from "@/plugins/theme-builder/store";
 import { ThemeEditor } from "./theme-editor";
 import { getBrandSites } from "@/config/brand-sites";
@@ -19,11 +20,19 @@ type PageProps = {
 export default async function ThemeEditorPage({ searchParams }: PageProps) {
   const [availableChannels, query] = await Promise.all([getStorefrontChannelSlugs(), searchParams]);
   const sites = getBrandSites();
-  // Do not offer unmapped Channels when several brands share Saleor Core.
-  const channels = sites
-    ? availableChannels.filter((channel) => sites.some((site) => site.channels.includes(channel)))
-    : availableChannels;
+  const pairs = getConfiguredLocaleChannelPairs();
+  // Only offer Channels that are assigned to a brand and serve at least one
+  // published locale when an explicit market-language matrix is configured.
+  const channels = availableChannels.filter((channel) =>
+    (!sites || sites.some((site) => site.channels.includes(channel))) &&
+    (!pairs || pairs.some((pair) => pair.channel === channel)),
+  );
   const locales = [...getStorefrontLocaleSlugs()];
+  const localesByChannel: Record<string, string[]> = Object.fromEntries(
+    channels.map((channel) => [channel, pairs
+      ? locales.filter((locale) => pairs.some((pair) => pair.channel === channel && pair.locale === locale))
+      : locales]),
+  );
   const siteByChannel = Object.fromEntries((sites ?? []).flatMap((site) =>
     site.channels.filter((channel) => channels.includes(channel)).map((channel) => [
       channel,
@@ -33,12 +42,14 @@ export default async function ThemeEditorPage({ searchParams }: PageProps) {
   const initialChannel = query.channel ?? (sites?.[0]?.defaultChannel && channels.includes(sites[0].defaultChannel)
     ? sites[0].defaultChannel : channels[0] ?? "");
   const selectedSite = sites?.find((site) => site.channels.includes(initialChannel));
-  const initialLocale = query.locale ?? (selectedSite?.defaultLocale && locales.includes(selectedSite.defaultLocale)
-    ? selectedSite.defaultLocale : locales[0] ?? "en");
+  const allowedLocales = localesByChannel[initialChannel] ?? locales;
+  const initialLocale = query.locale ?? (selectedSite?.defaultLocale && allowedLocales.includes(selectedSite.defaultLocale)
+    ? selectedSite.defaultLocale : allowedLocales[0] ?? locales[0] ?? "en");
 
-  // Invalid/deep-linked channel and locale must not silently edit another brand.
+  // Invalid/deep-linked channel+locale pairs must never edit an unrelated
+  // brand or create an unreachable market-language homepage.
   if ((query.channel && !channels.includes(query.channel)) ||
-      (query.locale && !locales.includes(query.locale))) notFound();
+      (query.locale && !allowedLocales.includes(query.locale))) notFound();
 
   return (
     <main className="min-h-screen bg-[#f6f7f9] text-[#171717]">
@@ -58,6 +69,7 @@ export default async function ThemeEditorPage({ searchParams }: PageProps) {
         siteId={initialChannel ? activeThemeSiteId(initialChannel) : "unconfigured"}
         initialChannel={initialChannel}
         initialLocale={initialLocale}
+        localesByChannel={localesByChannel}
         storageReady={themeDatabaseConfigured()}
         siteByChannel={siteByChannel}
       />
