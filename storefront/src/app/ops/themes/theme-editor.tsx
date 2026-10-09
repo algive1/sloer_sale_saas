@@ -115,8 +115,8 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
       if(!response.ok) throw new Error(body.error || "Save failed");
       revisionRef.current=body.draftRevision ?? revisionRef.current+1;
       savedRef.current=data;
-      setDirty(JSON.stringify(documentRef.current.content)!==JSON.stringify(data.content));
-      setStatus(action==="publish"?"Published. Open your storefront to view the new homepage.":"Draft saved. Your live storefront is unchanged.");
+      setDirty(JSON.stringify(documentRef.current)!==JSON.stringify(data));
+      setStatus(action==="publish"?"发布成功，可打开当前品牌网站查看页面。":"草稿已保存，线上页面未改变。");
       setRevision(prev=>({
         draft:revisionRef.current,
         published:prev.published+(action==="publish"?1:0),
@@ -152,7 +152,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
   }
   function changeBrand(id:string) {
     if(saving || id===selectedSite?.id || !confirmNavigation())return;
-    const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id && slug===siteByChannel[slug].defaultChannel)
+    const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id && slug===siteByChannel[slug]?.defaultChannel)
       ?? channels.find((slug)=>siteByChannel[slug]?.id===id);
     if(!firstChannel)return;
     const nextLocale = siteByChannel[firstChannel]?.defaultLocale;
@@ -231,7 +231,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
           headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"} headerPath={"/"+locale+"/"+channel}
           height="calc(100vh - 215px)"
           viewports={[{width:1440,height:"auto",label:"Desktop"},{width:390,height:"auto",label:"Mobile"}]}
-          onChange={data=>{documentRef.current=data;setDirty(JSON.stringify(data.content)!==JSON.stringify(savedRef.current.content));}}
+          onChange={data=>{documentRef.current=data;setDirty(JSON.stringify(data)!==JSON.stringify(savedRef.current));}}
           onPublish={async data=>{if(confirmPublish())await persist("publish",data);}}
         />
       )}
