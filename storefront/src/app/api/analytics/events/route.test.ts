@@ -41,6 +41,29 @@ describe("public first-party analytics event ingress", () => {
     expect(mocks.storeEvent.mock.calls[0]?.[0]).toEqual(VALID);
   });
 
+  it("accepts only events whose Channel belongs to the request Host in multi-brand mode", async () => {
+    vi.stubEnv("STOREFRONT_SITES_JSON", JSON.stringify([
+      { id: "fashion", name: "Fashion", domains: ["shop.example"],
+        channels: ["us"], defaultChannel: "us" },
+      { id: "jewelry", name: "Jewelry", domains: ["jewelry.example"],
+        channels: ["jewelry-us"], defaultChannel: "jewelry-us" },
+    ]));
+    const sameHost = eventRequest(VALID);
+    sameHost.headers.set("host", "shop.example");
+    expect((await POST(sameHost)).status).toBe(204);
+    expect(mocks.storeEvent).toHaveBeenCalledTimes(1);
+    const wrongHost = eventRequest({ ...VALID, channel: "jewelry-us" });
+    wrongHost.headers.set("host", "shop.example");
+    expect((await POST(wrongHost)).status).toBe(403);
+    const unknownHost = eventRequest(VALID);
+    unknownHost.headers.set("host", "unrecognized.example");
+    expect((await POST(unknownHost)).status).toBe(403);
+    const missingChannel = eventRequest({ ...VALID, channel: "" });
+    missingChannel.headers.set("host", "shop.example");
+    expect((await POST(missingChannel)).status).toBe(403);
+    expect(mocks.storeEvent).toHaveBeenCalledTimes(1);
+  });
+
   it("never accepts forged refunds from the public browser endpoint", async () => {
     const response = await POST(eventRequest({
       name: "refund_completed", eventId: "fake-refund", channel: "us",
