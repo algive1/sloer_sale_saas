@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { MapPin, CreditCard } from "lucide-react";
 import { getTranslations } from "next-intl/server";
-import { OrderByNumberDocument, CurrentBrandOrderAccessDocument } from "@/gql/graphql";
+import { OrderByNumberDocument, CurrentBrandOrderDetailDocument } from "@/gql/graphql";
 import { brandSitesConfigured } from "@/config/brand-sites";
 import { currentBrandOrderFilter, orderFilterForNumber } from "@/lib/brand/customer-orders.server";
 import { executeAuthenticatedGraphQL } from "@/lib/graphql";
@@ -41,19 +41,26 @@ async function OrderDetailContent({ params }: Props) {
 		return <p className="text-sm text-muted-foreground">{t("signInRequired")}</p>;
 	}
 
-  const brandWhere = brandSitesConfigured() ? await currentBrandOrderFilter() : null;
-  if (brandSitesConfigured()) {
-    if (!brandWhere || !/^[1-9][0-9]*$/.test(number) || !Number.isSafeInteger(Number(number))) notFound();
-    const access = await executeAuthenticatedGraphQL(CurrentBrandOrderAccessDocument, {
-      variables: { where: orderFilterForNumber(brandWhere, Number(number)) },
-      cache: "no-cache",
-    });
-    if (!access.ok || !access.data.me?.orders?.edges.length) notFound();
-  }
-	const result = await executeAuthenticatedGraphQL(OrderByNumberDocument, {
-		variables: { first: 100, ...graphqlLanguageCodeVariables(locale) },
-		cache: "no-cache",
-	});
+  const multibrand = brandSitesConfigured();
+  const brandWhere = multibrand ? await currentBrandOrderFilter() : null;
+  if (multibrand && (!brandWhere || !/^[1-9][0-9]*$/.test(number)
+    || !Number.isSafeInteger(Number(number)))) notFound();
+
+  // In multi-brand mode, query only the specified order in owned Channels.
+  // Never fetch the first 100 global orders as a second step: that would hide
+  // historical orders and needlessly read the customer's other brand orders.
+  const result = brandWhere
+    ? await executeAuthenticatedGraphQL(CurrentBrandOrderDetailDocument, {
+        variables: {
+          where: orderFilterForNumber(brandWhere, Number(number)),
+          ...graphqlLanguageCodeVariables(locale),
+        },
+        cache: "no-cache",
+      })
+    : await executeAuthenticatedGraphQL(OrderByNumberDocument, {
+        variables: { first: 100, ...graphqlLanguageCodeVariables(locale) },
+        cache: "no-cache",
+      });
 
 	if (!result.ok) {
 		return <p className="text-sm text-muted-foreground">{t("loadFailed")}</p>;
