@@ -32,7 +32,7 @@ export default function SupportPage() {
   let aiStatus = "未启用";
   if (process.env.SUPPORT_AI_BOTS_JSON?.trim()) {
     try {
-      if (!analyticsDatabaseConfigured()) throw new Error("no ledger");
+      if (!analyticsDatabaseConfigured() || (process.env.SUPPORT_AI_WORKER_SECRET?.trim().length ?? 0) < 32) throw new Error("no worker/ledger");
       const ai = loadAIConfig();
       aiBrands = ai?.bots.map((bot) => bot.siteId) ?? [];
       aiStatus = "配置有效（待真实服务验证）";
