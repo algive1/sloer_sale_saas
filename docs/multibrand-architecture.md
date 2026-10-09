@@ -1,3 +1,44 @@
+## Architecture decision — Option A (approved 2026-10-09)
+
+**Decision:** One self-hosted Saleor Core and one primary operations plane,
+with one **exclusive set of Saleor Channels per brand site**. Each brand may
+own several channels (e.g. US/EU) to serve its regional markets. System plugins
+are deployed once, while site configuration and first-party records must be
+scoped by the verified brand.
+
+This matches Saleor's documented Channel capability (regional, brand and
+business-model storefronts), while preserving independent public domains and
+Puck themes. The app may eventually be served from one Next instance with
+Host routing, provided each tenant boundary below is enforced.
+
+**Important limitation:** A Channel is *not a separate Saleor customer tenant*.
+Customer account identity remains global, and knowing a Checkout UUID is enough
+to access some fields or mutate a checkout through Saleor's public GraphQL
+endpoint. Staff order permissions can be restricted by Channel, but global user
+identity, browser-direct GraphQL, and cross-brand account order lists are
+distinct boundaries.
+
+**Required launch conditions for Option A:**
+1. Enforce exclusive Channel-to-brand ownership and test negative Host/channel
+   combinations throughout storefront, checkout, cart, order lookup and API.
+2. Restrict staff permissions to allowed Channels, reserve all-brand platform
+   access for platform administrators, and use API-level authorization for any
+   sensitive cross-brand customer information. Don't rely on the page router.
+3. Make shopper order lists and order detail lookup brand-scoped at query and
+   response boundaries; no unfiltered global account order views.
+4. Partition site-specific analytics, pixel credentials, email reminders,
+   content, cookies, feeds and canonical URLs, including asynchronous webhooks.
+5. Test at least two hosts and two disjoint brand Channels with the same
+   customer email, checkout URL and order lookup (positive and negative cases).
+6. Keep global ad destinations disabled until per-brand targets are configured,
+   tested and confirmed not to cross-report.
+
+**Explicit non-goal:** Do not clone the Saleor Core or fork its data schema
+per brand. If an essential upstream identity authorization boundary cannot
+be made safe while sharing Core, the affected route/feature must remain
+disabled rather than pretending that frontend Channel filtering provides
+strong tenant authorization.
+
 # Multi-brand storefront design and rollout
 
 ## Terms and non-negotiable rules
