@@ -522,6 +522,9 @@ async function ensureSchema(): Promise<void> {
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_occurred_idx ON analytics_events(occurred_at)",
 			},
+            {
+                sql: "CREATE INDEX IF NOT EXISTS analytics_channel_occurred_idx ON analytics_events(channel, occurred_at)",
+            },
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_traffic_idx ON analytics_events(traffic_type, source_group, occurred_at)",
 			},
