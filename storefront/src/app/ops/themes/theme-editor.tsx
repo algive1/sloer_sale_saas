@@ -11,6 +11,7 @@ type EditorProps = {
   locales: readonly string[];
   siteId: string;
   storageReady: boolean;
+  siteByChannel?: Record<string, { id: string; name: string; domain: string }>;
 };
 type APIResponse = {
   error?: string; draft?: ThemeData | null; published?: ThemeData | null;
@@ -18,7 +19,7 @@ type APIResponse = {
 };
 const api = "/ops/themes/api";
 
-export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) {
+export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel={}}:EditorProps) {
   const [channel,setChannel] = useState(channels[0] || "");
   const [locale,setLocale] = useState(locales[0] || "en");
   const [document,setDocument] = useState<ThemeData | null>(null);
@@ -32,6 +33,10 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
   const [dirty,setDirty] = useState(false);
   const [status,setStatus] = useState("");
   const [revision,setRevision] = useState({draft:0,published:0});
+  const selectedSite = siteByChannel[channel];
+  const sitePreview = selectedSite
+    ? `https://${selectedSite.domain}/${locale}/${channel}`
+    : `/${locale}/${channel}`;
   const scope = "?channel=" + encodeURIComponent(channel) + "&locale=" + encodeURIComponent(locale);
 
   useEffect(()=>{
@@ -139,7 +144,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
       <section className="flex flex-wrap items-end gap-3 border-b border-stone-200 bg-white px-5 py-4 md:px-8">
         <label className="block text-xs font-medium text-stone-600">
           店铺 / Site ID
-          <span className="mt-1 block rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">{siteId}</span>
+          <span className="mt-1 block rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">{selectedSite ? `${selectedSite.name} (${selectedSite.id})` : siteId}</span>
         </label>
         <label className="block text-xs font-medium text-stone-600">
           销售渠道
@@ -171,7 +176,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady}:EditorProps) 
             className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
             {saving?"发布中…":"发布上线"}
           </button>
-          <a target="_blank" rel="noopener noreferrer" href={"/"+locale+"/"+channel}
+          <a target="_blank" rel="noopener noreferrer" href={sitePreview}
             className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">查看线上页面 ↗</a>
         </div>
       </section>
