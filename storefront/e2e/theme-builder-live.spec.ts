@@ -131,6 +131,20 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       // Reload first so it picks up the persisted draft and revision #1.
       await page.goto("/ops/themes");
       await requirePuckPublishButton();
+      // Publishing is a business-impacting action. Cancel must never change
+      // the live homepage or the pending draft revision.
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain("us / en");
+        await dialog.dismiss();
+      });
+      await (await requirePuckPublishButton()).click();
+      expect((await (await authorized.get(scope)).json()).published).toBeNull();
+
+      // Explicit merchant confirmation publishes the selected site/market/locale.
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain("us / en");
+        await dialog.accept();
+      });
       await (await requirePuckPublishButton()).click();
       await expect(page.locator('p[role="status"]')).toContainText("Published.", { timeout: 30_000 });
 
