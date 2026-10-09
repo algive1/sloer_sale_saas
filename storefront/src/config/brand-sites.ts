@@ -148,3 +148,10 @@ export function siteIdForChannel(channel: string): string {
   if (!SITE_ID.test(legacy)) throw new Error("Invalid STOREFRONT_SITE_ID");
   return legacy;
 }
+
+/** A user-supplied channel cannot authorize itself on a different Host. */
+export function channelBelongsToHost(channel: string, host: string | null): boolean {
+  if (!brandSitesConfigured()) return true;
+  const site = brandSiteForHost(host);
+  return Boolean(site?.channels.includes(channel));
+}
