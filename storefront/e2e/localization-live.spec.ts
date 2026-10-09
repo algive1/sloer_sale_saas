@@ -15,34 +15,34 @@ test.describe("localized storefront entry and brand-safe SEO", () => {
       });
     const f = await getEntry(fashion, { "Accept-Language": "de-DE,de;q=0.9,en;q=0.5" });
     expect(f.status()).toBe(307);
-    expect(new URL(f.headers().location).pathname).toBe("/de/us");
+    expect(new URL(f.headers().location, origin).pathname).toBe("/de/us");
     expect(f.headers()["cache-control"]).toMatch(/private.*no-store/);
     expect(f.headers()["set-cookie"]).toContain("browse-locale=de");
 
     const j = await getEntry(jewelry, { "Accept-Language": "fr-FR,fr;q=0.9" });
     expect(j.status()).toBe(307);
-    expect(new URL(j.headers().location).pathname).toBe("/fr/jewelry-us");
+    expect(new URL(j.headers().location, origin).pathname).toBe("/fr/jewelry-us");
 
     const fFallback = await getEntry(fashion, {
       Cookie: "browse-locale=fr", "Accept-Language": "fr-FR,fr;q=0.9",
     });
-    expect(new URL(fFallback.headers().location).pathname).toBe("/en/us");
+    expect(new URL(fFallback.headers().location, origin).pathname).toBe("/en/us");
 
     const jFallback = await getEntry(jewelry, {
       Cookie: "browse-locale=de", "Accept-Language": "de-DE",
     });
-    expect(new URL(jFallback.headers().location).pathname).toBe("/en/jewelry-us");
+    expect(new URL(jFallback.headers().location, origin).pathname).toBe("/en/jewelry-us");
 
     const saved = await getEntry(fashion, {
       Cookie: "browse-locale=en", "Accept-Language": "de-DE",
     });
-    expect(new URL(saved.headers().location).pathname).toBe("/en/us");
+    expect(new URL(saved.headers().location, origin).pathname).toBe("/en/us");
 
     const country = await getEntry(fashion, {
       "x-storefront-visitor-country": "DE",
       "Accept-Language": "de-DE",
     });
-    expect(new URL(country.headers().location).pathname).toBe("/de/us");
+    expect(new URL(country.headers().location, origin).pathname).toBe("/de/us");
 
     const untrusted = await request.get(origin + "/", {
       headers: { Host: "unregistered.example.test", "Accept-Language": "de-DE" },
