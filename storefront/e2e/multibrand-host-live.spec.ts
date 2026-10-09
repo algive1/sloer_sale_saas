@@ -19,6 +19,11 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     ]);
     expect(f.status(), "Fashion has a valid storefront").toBe(200);
     expect(j.status(), "Jewelry has a valid storefront").toBe(200);
+    const [fashionHtml, jewelryHtml] = await Promise.all([f.text(), j.text()]);
+    // A runtime Host allowlist is not enough if the HTML was built in
+    // single-brand mode; merchant tracking and site chrome can be prerendered.
+    expect(fashionHtml).toContain('data-multibrand="true"');
+    expect(jewelryHtml).toContain('data-multibrand="true"');
     expect(wrongFashion.status(), "Jewelry host must not render fashion Channel").toBe(404);
     expect(wrongJewelry.status(), "Fashion host must not render jewelry Channel").toBe(404);
     expect(unknownHost.status(), "An unknown domain cannot fall through to the first brand").toBe(404);
