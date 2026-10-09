@@ -43,7 +43,9 @@ export function incomingBotMessage(payload: unknown): IncomingBotMessage | null 
   const messageId = intId(event.id);
   const accountId = intId(account.id);
   const inboxId = intId(conversation.inbox_id ?? inbox.id);
-  const conversationId = intId(conversation.display_id);
+  // Chatwoot v4.18 webhook conversation.webhook_data uses `id`, not `display_id`.
+  // `id` is the per-Account display ID expected by /conversations/:id.
+  const conversationId = intId(conversation.id);
   const question = event.content;
   if (!messageId || !accountId || !inboxId || !conversationId ||
       typeof question !== "string" || !question.trim() || question.length > 1000) return null;
