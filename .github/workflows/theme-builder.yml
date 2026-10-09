@@ -3,7 +3,10 @@ name: System storefront plugins
 on:
   pull_request:
     paths:
-      - "storefront/src/config/brand-sites*" 
+      - "storefront/src/config/brand-sites*"
+      - "storefront/src/lib/wishlist/**"
+      - "storefront/src/checkout/lib/server/require-checkout-site*"
+      - "storefront/src/lib/brand/**"
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
       - "storefront/src/plugins/analytics/**"
@@ -37,7 +40,10 @@ on:
     branches:
       - main
     paths:
-      - "storefront/src/config/brand-sites*" 
+      - "storefront/src/config/brand-sites*"
+      - "storefront/src/lib/wishlist/**"
+      - "storefront/src/checkout/lib/server/require-checkout-site*"
+      - "storefront/src/lib/brand/**"
       - "storefront/src/plugins/theme-builder/**"
       - "storefront/src/plugins/system/**"
       - "storefront/src/plugins/analytics/**"
@@ -104,4 +110,4 @@ jobs:
           fi
 
       - name: Theme builder tests
-        run: pnpm --dir storefront exec vitest run src/config/brand-sites.test.ts src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts src/plugins/ads-tracking/config.test.ts src/plugins/ads-tracking/ga4-config.test.ts src/app/api/analytics/events/route.test.ts
+        run: pnpm --dir storefront exec vitest run src/config/brand-sites.test.ts src/lib/wishlist/site-scope.test.ts src/checkout/lib/server/require-checkout-site.test.ts src/plugins/theme-builder/validate.test.ts src/plugins/theme-builder/store.test.ts src/plugins/theme-builder/entry.server.test.ts src/plugins/system/registry.test.ts src/plugins/payment-reminders/service.test.ts src/plugins/payment-reminders/policy.test.ts src/plugins/analytics/compatibility.test.ts src/plugins/ads-tracking/config.test.ts src/plugins/ads-tracking/ga4-config.test.ts src/app/api/analytics/events/route.test.ts
