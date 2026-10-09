@@ -46,7 +46,7 @@ describe("Chatwoot system-level brand bindings", () => {
       "https://support.example.com/redirect", "https://support.example.com/?site=other",
       "javascript:alert(1)", "https://support.example.com/#foo",
     ]) expect(() => parse(mapping, url)).toThrow();
-    expect(() => parseChatwootSupportConfig("http://localhost:3001", mapping, sites, true)?.baseUrl)
+    expect(parseChatwootSupportConfig("http://localhost:3001", mapping, sites, true)?.baseUrl)
       .toBe("http://localhost:3001");
     expect(() => parseChatwootSupportConfig("http://support.example.com", mapping, sites, true)).toThrow();
   });
