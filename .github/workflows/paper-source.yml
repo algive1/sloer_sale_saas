@@ -46,6 +46,11 @@ jobs:
       - name: Check Variant GraphQL rules
         run: pnpm --dir storefront lint:graphql-variants
 
+      - name: Verify locale coverage audit
+        run: |
+          pnpm --dir storefront locales:test
+          pnpm --dir storefront locales:check
+
       - name: ESLint source check
         env:
           # Same public Saleor schema endpoint used by upstream Paper lint CI.
