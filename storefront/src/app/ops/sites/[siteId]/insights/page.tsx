@@ -31,9 +31,10 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
   if (!site) notFound();
   const requested = Number(query.days);
   const days = [7, 30, 90].includes(requested) ? requested : 30;
+  const now = new Date();
   const range = {
-    from: new Date(Date.now() - days * 86_400_000),
-    to: new Date(),
+    from: new Date(now.getTime() - days * 86_400_000),
+    to: now,
     bucket: "day" as const,
     channels: site.channels,
   };
@@ -50,6 +51,8 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
       console.error("[brand-insights] Failed to query channel-scoped reports", error);
     }
   }
+
+  const reports = data;
 
   return <main className="mx-auto max-w-7xl px-4 py-8 text-[#171717] md:px-10">
     <div className="flex flex-wrap gap-4 text-sm">
@@ -74,7 +77,7 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
       </nav>
     </header>
 
-    {!data ? <section className="mt-7 rounded-xl border border-stone-200 bg-white p-6">
+    {!reports ? <section className="mt-7 rounded-xl border border-stone-200 bg-white p-6">
       <h2 className="font-semibold">无法读取当前品牌的详细数据</h2>
       <p className="mt-2 text-sm text-stone-600">{failed
         ? "数据查询出现错误，请检查服务器和统计数据库日志。"
@@ -82,10 +85,10 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
     </section> : <>
       <section className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="品牌经营分析核心指标">
         {[
-          ["访问会话", formatCount(data.traffic.sessions)],
-          ["商品浏览会话", formatCount(data.traffic.quality.productViews)],
-          ["加购会话", formatCount(data.traffic.quality.addToCarts)],
-          ["完成付款订单", formatCount(data.checkout.summary.orders)],
+          ["访问会话", formatCount(reports.traffic.sessions)],
+          ["商品浏览会话", formatCount(reports.traffic.quality.productViews)],
+          ["加购会话", formatCount(reports.traffic.quality.addToCarts)],
+          ["完成付款订单", formatCount(reports.checkout.summary.orders)],
         ].map(([label, value]) => <article key={label}
           className="rounded-xl border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">{label}</p>
@@ -98,20 +101,20 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
           <h2 className="font-semibold">流量构成</h2>
           <p className="mt-1 text-xs text-stone-500">自然、付费与直接访问按会话去重</p>
           <div className="mt-4 space-y-3">
-            {data.traffic.byType.map(row => <div key={row.trafficType} className="grid grid-cols-[80px_1fr_60px] items-center gap-3 text-sm">
+            {reports.traffic.byType.map(row => <div key={row.trafficType} className="grid grid-cols-[80px_1fr_60px] items-center gap-3 text-sm">
               <span>{row.trafficType}</span>
               <div className="h-2 overflow-hidden rounded bg-stone-100">
                 <div className="h-full rounded bg-stone-600" style={{
-                  width: `${data.traffic.sessions ? (row.sessions / data.traffic.sessions * 100) : 0}%`,
+                  width: `${reports.traffic.sessions ? (row.sessions / reports.traffic.sessions * 100) : 0}%`,
                 }}/>
               </div>
               <b className="text-right tabular-nums">{formatCount(row.sessions)}</b>
             </div>)}
-            {!data.traffic.byType.length && <p className="text-sm text-stone-500">暂无流量数据</p>}
+            {!reports.traffic.byType.length && <p className="text-sm text-stone-500">暂无流量数据</p>}
           </div>
           <h3 className="mt-6 text-sm font-semibold">来源 TOP 5</h3>
           <div className="mt-3 space-y-2">
-            {data.traffic.sources.slice(0,5).map((item,index) => <p key={index} className="flex justify-between gap-4 text-sm">
+            {reports.traffic.sources.slice(0,5).map((item,index) => <p key={index} className="flex justify-between gap-4 text-sm">
               <span className="truncate">{item.source} · {item.trafficType}</span>
               <span className="shrink-0 font-medium tabular-nums">{formatCount(item.sessions)}</span>
             </p>)}
@@ -122,10 +125,10 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
           <p className="mt-1 text-xs text-stone-500">仅当前品牌。失败事件可能不等于失败订单数量。</p>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {[
-              ["开始结账", data.checkout.summary.started],
-              ["成功购买会话", data.checkout.summary.purchaseSessions],
-              ["支付失败事件", data.checkout.summary.paymentFailures],
-              ["结账失败事件", data.checkout.summary.checkoutFailures],
+              ["开始结账", reports.checkout.summary.started],
+              ["成功购买会话", reports.checkout.summary.purchaseSessions],
+              ["支付失败事件", reports.checkout.summary.paymentFailures],
+              ["结账失败事件", reports.checkout.summary.checkoutFailures],
             ].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-stone-100 p-3">
               <p className="text-xs text-stone-500">{label}</p>
               <p className="mt-2 text-xl font-semibold tabular-nums">{formatCount(Number(value))}</p>
@@ -133,7 +136,7 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
           </div>
           <h3 className="mt-5 text-sm font-semibold">结账漏斗</h3>
           <div className="mt-3 space-y-2">
-            {data.checkout.funnel.map(stage => <div key={stage.key} className="flex justify-between gap-3 text-sm">
+            {reports.checkout.funnel.map(stage => <div key={stage.key} className="flex justify-between gap-3 text-sm">
               <span>{stage.label}</span><b className="tabular-nums">{formatCount(stage.count)}</b>
             </div>)}
           </div>
@@ -153,7 +156,7 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
                 <th className="pb-3 text-right font-medium">售出件数</th></tr>
             </thead>
             <tbody>
-              {data.products.products.slice(0,12).map(product => <tr key={product.itemKey} className="border-b border-stone-100">
+              {reports.products.products.slice(0,12).map(product => <tr key={product.itemKey} className="border-b border-stone-100">
                 <td className="max-w-[300px] py-3 pr-3">
                   <span className="block truncate font-medium">{product.itemName || product.itemKey}</span>
                   {product.sku && <span className="block truncate text-xs text-stone-500">SKU: {product.sku}</span>}
@@ -163,7 +166,7 @@ export default async function BrandInsightsPage({ params, searchParams }: Props)
                 <td className="py-3 text-right tabular-nums">{formatCount(product.purchaseSessions)}</td>
                 <td className="py-3 text-right tabular-nums">{formatCount(product.unitsSold)}</td>
               </tr>)}
-              {!data.products.products.length && <tr><td colSpan={5} className="py-5 text-center text-stone-500">暂无商品数据</td></tr>}
+              {!reports.products.products.length && <tr><td colSpan={5} className="py-5 text-center text-stone-500">暂无商品数据</td></tr>}
             </tbody>
           </table>
         </div>
