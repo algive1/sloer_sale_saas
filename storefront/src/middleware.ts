@@ -83,6 +83,19 @@ export function middleware(request: NextRequest) {
 
 	const [first, second, ...rest] = segments;
 
+  // Important: this MUST happen at the request boundary. Page/layout guards
+  // cannot reject an already-prerendered or cache-served foreign Channel page.
+  // In multi-brand mode an /{locale}/{channel}/... pathname is inaccessible
+  // unless the incoming verified Host explicitly owns that Channel.
+  if (brandSitesConfigured() && site) {
+    if (isLocaleSlug(first) && second && !site.channels.includes(second)) {
+      return new NextResponse("Store channel not found", { status: 404 });
+    }
+    if (getStaticStorefrontChannelSlugs().includes(first) && !site.channels.includes(first)) {
+      return new NextResponse("Store channel not found", { status: 404 });
+    }
+  }
+
 	if (RESERVED_ROOT_SEGMENTS.has(first)) {
 		return NextResponse.next();
 	}
