@@ -27,7 +27,7 @@ export default async function ThemeEditorPage({ searchParams }: PageProps) {
   const siteByChannel = Object.fromEntries((sites ?? []).flatMap((site) =>
     site.channels.filter((channel) => channels.includes(channel)).map((channel) => [
       channel,
-      { id: site.id, name: site.name, domain: site.domains[0], defaultLocale: site.defaultLocale },
+      { id: site.id, name: site.name, domain: site.domains[0], defaultChannel: site.defaultChannel, defaultLocale: site.defaultLocale },
     ]),
   ));
   const initialChannel = query.channel ?? (sites?.[0]?.defaultChannel && channels.includes(sites[0].defaultChannel)
