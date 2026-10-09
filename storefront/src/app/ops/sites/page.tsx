@@ -4,6 +4,7 @@ import { brandConfig } from "@/config/brand";
 import { getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
 import { getStorefrontLocaleSlugs } from "@/config/locale";
+import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
 
 export const metadata: Metadata = {
   title: "品牌站点 | Commerce Ops",
@@ -18,6 +19,7 @@ export default function BrandSitesPage() {
   const configured = getBrandSites();
   const channels = getStaticStorefrontChannelSlugs();
   const locales = getStorefrontLocaleSlugs();
+  const localePairs = getConfiguredLocaleChannelPairs();
   const sites = configured ?? [{
     id: siteIdForChannel(channels[0] ?? ""),
     name: brandConfig.siteName,
@@ -27,10 +29,16 @@ export default function BrandSitesPage() {
     description: brandConfig.description,
   }];
 
+  const allowedLocalesFor = (site: (typeof sites)[number]) => localePairs
+    ? locales.filter((locale) => localePairs.some((pair) =>
+        pair.channel === site.defaultChannel && pair.locale === locale))
+    : [...locales];
+
   const defaultLocaleFor = (site: (typeof sites)[number]) => {
+    const allowed = allowedLocalesFor(site);
     const preferred = "defaultLocale" in site ? site.defaultLocale : undefined;
-    return typeof preferred === "string" && locales.includes(preferred)
-      ? preferred : locales[0] ?? "en";
+    return typeof preferred === "string" && allowed.includes(preferred)
+      ? preferred : allowed[0] ?? "en";
   };
 
   return (
@@ -61,6 +69,7 @@ export default function BrandSitesPage() {
         <section className="grid gap-4 md:grid-cols-2" aria-label="品牌站点列表">
           {sites.map((site) => {
             const locale = defaultLocaleFor(site);
+            const canEditHomepage = Boolean(site.defaultChannel && allowedLocalesFor(site).length);
             const editUrl = `/ops/themes?channel=${encodeURIComponent(site.defaultChannel)}&locale=${encodeURIComponent(locale)}`;
             const homeUrl = site.domains[0] && site.defaultChannel
               ? `https://${site.domains[0]}/${locale}/${site.defaultChannel}`
@@ -94,12 +103,12 @@ export default function BrandSitesPage() {
                   ))}
                 </div>
                 <div className="mt-6 flex flex-wrap gap-4 border-t border-stone-100 pt-4 text-sm">
-                  {site.defaultChannel ? (
+                  {canEditHomepage ? (
                     <Link href={editUrl} className="font-semibold underline underline-offset-4">
                       装修此品牌首页 →
                     </Link>
                   ) : (
-                    <span className="text-stone-500">请先配置默认市场，再装修首页</span>
+                    <span className="text-stone-500">请先为默认市场配置可用语言，再装修首页</span>
                   )}
                   {homeUrl && (
                     <a href={homeUrl} target="_blank" rel="noopener noreferrer"
