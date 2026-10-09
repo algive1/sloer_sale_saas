@@ -1,4 +1,5 @@
 import { claimOnce } from "@/lib/analytics/claim";
+import { globalMerchantTagsAllowed } from "@/lib/analytics/global-destinations-policy";
 import {
 	ANALYTICS_CONSENT_EVENT,
 	adsStorageAllowed,
@@ -101,13 +102,13 @@ export function persistFirstTouch(now = new Date()): void {
 }
 
 export function sendGa4Event(event: Ga4Event): void {
-	if (!ga4Enabled()) return;
+	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	if (!analyticsStorageAllowed(readConsentChoice())) return;
 	gtag("event", event.name, event.params);
 }
 
 export function applyConsentToGtag(): void {
-	if (!ga4Enabled()) return;
+	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	const choice = readConsentChoice();
 	const analyticsAllowed = analyticsStorageAllowed(choice);
 	const adsAllowed = adsStorageAllowed(choice);
@@ -146,7 +147,7 @@ export function pageViewClaimKey(href: string): string {
 }
 
 export function sendRedactedPageView(): void {
-	if (!ga4Enabled()) return;
+	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	if (!analyticsStorageAllowed(readConsentChoice())) return;
 	if (typeof window === "undefined") return;
 
