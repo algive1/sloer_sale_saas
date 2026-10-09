@@ -84,6 +84,9 @@ import { getStripePaymentGuardError, isStripePaymentEnabled } from "@/checkout/l
 import { buildMarketingConsentMetadata } from "@/checkout/lib/marketing-consent";
 import { enrichCheckoutCommerceContext } from "@/checkout/lib/server/enrich-commerce-context";
 import { fetchCheckoutOnServer } from "@/checkout/lib/server/fetch-checkout";
+import { requireCheckoutForCurrentHost, requireCheckoutVariablesForCurrentHost } from "@/checkout/lib/server/require-checkout-site";
+import { requireChannelForCurrentHost } from "@/lib/brand/request-scope";
+import { brandSitesConfigured } from "@/config/brand-sites";
 import { getCheckoutServerTranslations } from "@/checkout/lib/server/get-checkout-server-translations";
 import { toCheckoutActionResult } from "@/checkout/lib/server/mutation-result";
 import { toTypedDocument } from "@/checkout/lib/server/to-typed-document";
@@ -197,6 +200,7 @@ export async function syncCheckoutFromServer(checkoutId: string): Promise<Checko
 }
 
 export async function updateCheckoutEmail(checkoutId: string, email: string): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutEmailUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -218,6 +222,7 @@ export async function updateCheckoutMarketingConsent(
 	checkoutId: string,
 	optedIn: boolean,
 ): Promise<SimpleActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutMetadataUpdateDocument, {
 		variables: {
 			id: checkoutId,
@@ -247,6 +252,7 @@ export async function updateCheckoutShippingAddress(
 	shippingAddress: AddressInput,
 	saveAddress?: boolean,
 ): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutShippingAddressUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -265,6 +271,7 @@ export async function updateCheckoutShippingAddress(
 }
 
 export async function attachCustomerToCheckout(checkoutId: string): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutCustomerAttachDocument, {
 		variables: {
 			checkoutId,
@@ -286,6 +293,7 @@ export async function registerCheckoutAccount(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
+\tawait requireChannelForCurrentHost(input.channel);
 	// Confirmation emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
 		const { server: t } = await getCheckoutServerTranslations();
@@ -344,6 +352,7 @@ export async function recoverOrphanedCheckout(
 	channel: string,
 	lines: RecoverLine[],
 ): Promise<CheckoutActionResult & { checkoutId?: string }> {
+\tawait requireChannelForCurrentHost(channel);
 	const locale = await resolveCheckoutLocaleSlug();
 	const createResult = await executeAuthenticatedGraphQL(checkoutCreateDocument, {
 		variables: {
@@ -393,10 +402,12 @@ export async function recoverOrphanedCheckout(
 }
 
 export async function detachCheckoutCustomer(checkoutId: string): Promise<void> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	await Checkout.detachCustomer(checkoutId);
 }
 
 export async function calculateDeliveryOptions(checkoutId: string): Promise<DeliveryOptionsActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(deliveryOptionsCalculateDocument, {
 		variables: { id: checkoutId },
 		cache: "no-cache",
@@ -424,6 +435,7 @@ export async function updateCheckoutDeliveryMethod(
 	checkoutId: string,
 	deliveryMethodId: string,
 ): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutDeliveryMethodUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -445,6 +457,7 @@ export async function updateCheckoutBillingAddress(input: {
 	billingAddress: AddressInput;
 	saveAddress: boolean;
 }): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(input.checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutBillingAddressUpdateDocument, {
 		variables: {
 			checkoutId: input.checkoutId,
@@ -465,6 +478,7 @@ export async function updateCheckoutBillingAddress(input: {
 export async function initializePaymentGateways(
 	variables: PaymentGatewaysInitializeMutationVariables,
 ): Promise<PaymentGatewaysInitializeActionResult> {
+\tawait requireCheckoutVariablesForCurrentHost(variables);
 	const result = await executeAuthenticatedGraphQL(paymentGatewaysInitializeDocument, {
 		variables,
 		cache: "no-cache",
@@ -491,6 +505,7 @@ export async function initializePaymentGateways(
 export async function initializeCheckoutTransaction(
 	variables: TransactionInitializeMutationVariables,
 ): Promise<TransactionInitializeActionResult> {
+\tawait requireCheckoutVariablesForCurrentHost(variables);
 	const { server: t } = await getCheckoutServerTranslations();
 
 	const dummyGuardError = getDummyPaymentGuardError(variables.paymentGateway?.id);
@@ -544,6 +559,7 @@ export async function initializeCheckoutTransaction(
 export async function processCheckoutTransaction(
 	variables: TransactionProcessMutationVariables,
 ): Promise<TransactionProcessActionResult> {
+\tawait requireCheckoutVariablesForCurrentHost(variables);
 	// Mirror the initialize guards: when every integrated gateway is disabled for this
 	// environment, a direct call to this action must not drive transactions either.
 	// Forks adding gateways should extend this check alongside the initialize guards.
@@ -579,6 +595,10 @@ export async function runCheckoutComplete(checkoutId: string): Promise<CheckoutC
 	// Snapshot lines before completion so server-side conversion delivery can include
 	// product ids even though the compact checkoutComplete mutation returns only totals.
 	const checkoutBeforeComplete = await fetchCheckoutOnServer(checkoutId);
+  // Never complete a checkout from another brand using its leaked/guessed ID.
+  if (brandSitesConfigured() && (!checkoutBeforeComplete.ok || !checkoutBeforeComplete.checkout)) {
+    return { ok: false, error: "Checkout not available for this storefront" };
+  }
 
 	// Before complete — Saleor copies checkout public metadata onto the order.
 	await enrichCheckoutCommerceContext(checkoutId);
@@ -668,6 +688,7 @@ export async function getAddressValidationRules(
 }
 
 export async function removeCheckoutLine(checkoutId: string, lineId: string): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutLineDeleteDocument, {
 		variables: {
 			checkoutId,
@@ -688,6 +709,7 @@ export async function applyCheckoutPromoCode(
 	checkoutId: string,
 	promoCode: string,
 ): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutAddPromoCodeDocument, {
 		variables: {
 			checkoutId,
@@ -708,6 +730,7 @@ export async function removeCheckoutPromoCode(
 	checkoutId: string,
 	promoCode: string,
 ): Promise<CheckoutActionResult> {
+\tawait requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutRemovePromoCodeDocument, {
 		variables: {
 			checkoutId,
@@ -729,6 +752,7 @@ export async function requestCheckoutPasswordReset(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
+\tawait requireChannelForCurrentHost(input.channel);
 	// Reset emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
 		const { server: t } = await getCheckoutServerTranslations();
