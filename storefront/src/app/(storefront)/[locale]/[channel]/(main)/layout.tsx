@@ -2,6 +2,7 @@ import { type ReactNode, Suspense } from "react";
 import { type Metadata } from "next";
 import { StorefrontProviders } from "@/ui/components/storefront-providers";
 import { brandConfig } from "@/config/brand";
+import { brandSiteForChannel } from "@/config/brand-sites";
 import { AnnouncementBarSkeleton } from "@/ui/sections/announcement-bar/announcement-bar";
 import { ScrollToTopOnNavigate } from "@/ui/components/shared/scroll-to-top-on-navigate";
 import { AnnouncementBarSlot, CartDrawerSlot } from "./browse-chrome-slots";
@@ -9,10 +10,17 @@ import { MainChrome } from "./main-chrome";
 
 // Define the title template here so it cascades to every browse page (products, search,
 // categories, …) — a plain-string title would not propagate the brand suffix to children.
-export const metadata: Metadata = {
-	title: { default: brandConfig.siteName, template: brandConfig.titleTemplate },
-	description: brandConfig.description,
-};
+export async function generateMetadata({ params }: { params: LayoutProps["params"] }): Promise<Metadata> {
+	const { channel } = await params;
+	const site = brandSiteForChannel(channel);
+	return {
+		title: {
+			default: site?.name ?? brandConfig.siteName,
+			template: site ? `%s | ${site.name}` : brandConfig.titleTemplate,
+		},
+		description: site?.description ?? brandConfig.description,
+	};
+}
 
 type LayoutProps = {
 	children: ReactNode;
