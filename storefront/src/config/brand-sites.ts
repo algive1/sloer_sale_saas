@@ -93,12 +93,12 @@ export function parseBrandSites(raw: string | undefined): readonly BrandSite[] |
     return {
       id, name: row.name.trim(), domains: names, channels: markets,
       defaultChannel: row.defaultChannel,
-      ...(row.defaultLocale ? { defaultLocale: row.defaultLocale } : {}),
-      ...(row.description ? { description: row.description } : {}),
-      ...(row.logo ? { logo: row.logo } : {}),
-      ...(row.logoInverted ? { logoInverted: row.logoInverted } : {}),
-      ...(row.privacyPageSlug ? { privacyPageSlug: row.privacyPageSlug } : {}),
-      ...(row.termsPageSlug ? { termsPageSlug: row.termsPageSlug } : {}),
+      ...(typeof row.defaultLocale === "string" && row.defaultLocale ? { defaultLocale: row.defaultLocale } : {}),
+      ...(typeof row.description === "string" && row.description ? { description: row.description } : {}),
+      ...(typeof row.logo === "string" && row.logo ? { logo: row.logo } : {}),
+      ...(typeof row.logoInverted === "string" && row.logoInverted ? { logoInverted: row.logoInverted } : {}),
+      ...(typeof row.privacyPageSlug === "string" && row.privacyPageSlug ? { privacyPageSlug: row.privacyPageSlug } : {}),
+      ...(typeof row.termsPageSlug === "string" && row.termsPageSlug ? { termsPageSlug: row.termsPageSlug } : {}),
     };
   });
 }
