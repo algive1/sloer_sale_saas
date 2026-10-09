@@ -370,6 +370,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,en:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          GOOGLE_MERCHANT_FEED_ENABLED: "true"
           THEME_LIBSQL_URL: http://127.0.0.1:3789
           THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
           CONTENT_PROVIDER: saleor
