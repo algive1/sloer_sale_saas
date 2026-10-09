@@ -4,7 +4,7 @@ import { getSystemPlugin, listSystemPlugins, SYSTEM_PLUGINS } from "./registry";
 describe("system business plugin catalog", () => {
   it("enables all installed features for every shop without per-store settings", () => {
     const plugins = listSystemPlugins();
-    expect(plugins).toHaveLength(6);
+    expect(plugins).toHaveLength(7);
     for (const plugin of plugins) {
       expect(plugin.scope).toBe("system");
       expect(plugin.availability).toBe("all-stores");
@@ -21,11 +21,12 @@ describe("system business plugin catalog", () => {
     expect(getSystemPlugin("analytics").integration).toBe("partial");
     expect(getSystemPlugin("ads-tracking").integration).toBe("partial");
     expect(getSystemPlugin("customer-support").integration).toBe("storefront-module");
+    expect(getSystemPlugin("ai-translations").integration).toBe("partial");
     for (const id of ["seo-merchant"] as const) {
       expect(getSystemPlugin(id).integration).toBe("legacy-inline");
     }
     expect(Object.keys(SYSTEM_PLUGINS)).toEqual([
-      "theme-builder", "analytics", "ads-tracking", "payment-reminders", "customer-support", "seo-merchant",
+      "theme-builder", "analytics", "ads-tracking", "payment-reminders", "customer-support", "ai-translations", "seo-merchant",
     ]);
   });
 });

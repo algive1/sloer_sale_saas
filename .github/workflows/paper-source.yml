@@ -51,6 +51,9 @@ jobs:
           pnpm --dir storefront locales:test
           pnpm --dir storefront locales:check
 
+      - name: Verify AI translation draft safety
+        run: pnpm --dir storefront translations:ai:test
+
       - name: ESLint source check
         env:
           # Same public Saleor schema endpoint used by upstream Paper lint CI.
