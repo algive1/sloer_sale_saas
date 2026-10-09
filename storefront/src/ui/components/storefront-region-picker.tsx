@@ -22,6 +22,7 @@ import {
 type StorefrontRegionPickerProps = {
 	locales: LocaleSelectOption[];
 	channels: ChannelSelectOption[];
+	allowedChannels?: readonly string[];
 	variant?: "default" | "inverted";
 	className?: string;
 };
@@ -91,10 +92,11 @@ function buildTriggerSummary(
 export function StorefrontRegionPicker({
 	locales,
 	channels,
+	allowedChannels,
 	variant = "default",
 	className,
 }: StorefrontRegionPickerProps) {
-	const { locale, channel, navigateToLocale, navigateToChannel } = useStorefrontRegionNavigation();
+	const { locale, channel, navigateToLocale, navigateToChannel } = useStorefrontRegionNavigation(allowedChannels);
 	const t = useTranslations("nav.regionPicker");
 
 	const showLanguage = locales.length > 1;
