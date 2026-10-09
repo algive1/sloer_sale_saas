@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const processMessage = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => "answered"));
 vi.mock("@/lib/storage/libsql-http", () => ({
@@ -36,7 +36,11 @@ function signedRequest(
   });
   return POST(request,{params:Promise.resolve({siteId:pathSite})});
 }
-beforeEach(() => processMessage.mockClear());
+beforeEach(() => {
+  processMessage.mockClear();
+  vi.stubEnv("SUPPORT_AI_WORKER_SECRET","worker-secret".repeat(4));
+});
+afterEach(() => vi.unstubAllEnvs());
 describe("signed Chatwoot Agent Bot ingress", () => {
   it("accepts an owned, signed incoming customer message", async () => {
     const result = await signedRequest(baseEvent,"fashion","signing-secret");
