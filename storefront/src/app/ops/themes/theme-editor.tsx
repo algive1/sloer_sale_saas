@@ -13,6 +13,7 @@ type EditorProps = {
   storageReady: boolean;
   initialChannel?: string;
   initialLocale?: string;
+  localesByChannel?: Record<string, readonly string[]>;
   siteByChannel?: Record<string, { id: string; name: string; domain: string; defaultChannel: string; defaultLocale?: string }>;
 };
 type APIResponse = {
@@ -21,7 +22,7 @@ type APIResponse = {
 };
 const api = "/ops/themes/api";
 
-export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel={},initialChannel,initialLocale}:EditorProps) {
+export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel={},initialChannel,initialLocale,localesByChannel={}}:EditorProps) {
   const [channel,setChannel] = useState(initialChannel || channels[0] || "");
   const [locale,setLocale] = useState(initialLocale || locales[0] || "en");
   const [document,setDocument] = useState<ThemeData | null>(null);
@@ -42,6 +43,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
   const visibleChannels = selectedSite
     ? channels.filter((slug) => siteByChannel[slug]?.id === selectedSite.id)
     : channels;
+  const visibleLocales = localesByChannel[channel] ?? locales;
   const sitePreview = selectedSite
     ? `https://${selectedSite.domain}/${locale}/${channel}`
     : `/${locale}/${channel}`;
@@ -148,15 +150,23 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
   }
   function changeScope(kind:"channel"|"locale",value:string) {
     if(saving || (kind==="channel" ? value===channel : value===locale) || !confirmNavigation())return;
-    if(kind==="channel")setChannel(value);else setLocale(value);
+    if(kind==="channel") {
+      const allowed = localesByChannel[value] ?? locales;
+      if(!allowed.includes(locale)) {
+        const preferred = siteByChannel[value]?.defaultLocale;
+        setLocale(preferred && allowed.includes(preferred) ? preferred : allowed[0] ?? "en");
+      }
+      setChannel(value);
+    } else setLocale(value);
   }
   function changeBrand(id:string) {
     if(saving || id===selectedSite?.id || !confirmNavigation())return;
     const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id && slug===siteByChannel[slug]?.defaultChannel)
       ?? channels.find((slug)=>siteByChannel[slug]?.id===id);
     if(!firstChannel)return;
-    const nextLocale = siteByChannel[firstChannel]?.defaultLocale;
-    if(nextLocale && locales.includes(nextLocale)) setLocale(nextLocale);
+    const allowed = localesByChannel[firstChannel] ?? locales;
+    const preferred = siteByChannel[firstChannel]?.defaultLocale;
+    setLocale(preferred && allowed.includes(preferred) ? preferred : allowed[0] ?? "en");
     setChannel(firstChannel);
   }
   return (
@@ -187,7 +197,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
           语言
           <select className="mt-1 block rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
             value={locale} disabled={saving} onChange={event=>changeScope("locale",event.target.value)}>
-            {locales.map(item=><option key={item} value={item}>{item}</option>)}
+            {visibleLocales.map(item=><option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <div className="ml-auto flex flex-wrap items-center gap-2">
