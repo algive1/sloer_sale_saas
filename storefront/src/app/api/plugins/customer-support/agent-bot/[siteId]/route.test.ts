@@ -16,7 +16,7 @@ vi.mock("@/plugins/customer-support/ai/bot-config", () => ({
   }),
 }));
 vi.mock("@/plugins/customer-support/ai/bot-runtime", () => ({
-  processAIBotMessage: processMessage,
+  enqueueAIBotMessage: processMessage,
 }));
 import { POST } from "./route";
 
@@ -42,7 +42,7 @@ describe("signed Chatwoot Agent Bot ingress", () => {
     const result = await signedRequest(baseEvent,"fashion","signing-secret");
     expect(result.status).toBe(204);
     expect(processMessage).toHaveBeenCalledOnce();
-    expect(processMessage.mock.calls[0]?.[2]).toMatchObject({
+    expect(processMessage.mock.calls[0]?.[1]).toMatchObject({
       accountId:1,inboxId:11,conversationId:77,messageId:"123",
     });
   });
