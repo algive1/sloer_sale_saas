@@ -39,6 +39,8 @@ describe("AI bot security and scope", () => {
   it("keeps account questions, payments and personal identifiers away from the model", () => {
     expect(requiresHuman("Where is my order #100?")).toBe(true);
     expect(requiresHuman("refund please")).toBe(true);
+    expect(requiresHuman("I want a human agent please")).toBe(true);
+    expect(requiresHuman("请转人工客服")).toBe(true);
     expect(requiresHuman("tracking information for my parcel")).toBe(true);
     expect(requiresHuman("订单物流查询")).toBe(true);
     expect(requiresHuman("my email is me@example.com")).toBe(true);
