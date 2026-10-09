@@ -21,11 +21,12 @@ describe("AI bot security and scope", () => {
   });
   it("accepts only inbound public text with stable message and display IDs", () => {
     const payload = {event:"message_created",id:25,message_type:"incoming",content_type:"text",content:"Shipping?",
-      account:{id:1},inbox:{id:3},conversation:{display_id:7,inbox_id:3}};
+      account:{id:1},inbox:{id:3},conversation:{id:7,inbox_id:3}};
     expect(incomingBotMessage(payload)).toEqual({messageId:"25",accountId:1,inboxId:3,conversationId:7,question:"Shipping?"});
     expect(incomingBotMessage({...payload,message_type:"outgoing"})).toBeNull();
     expect(incomingBotMessage({...payload,private:true})).toBeNull();
-    expect(incomingBotMessage({...payload,conversation:{display_id:0}})).toBeNull();
+    expect(incomingBotMessage({...payload,conversation:{id:0}})).toBeNull();
+    expect(incomingBotMessage({...payload,conversation:{display_id:7,inbox_id:3}})).toBeNull();
   });
   it("only returns knowledge belonging to one brand and selects a whitelisted ID", () => {
     const candidates = faqCandidates(f,"fashion","How much for shipping?");
