@@ -51,7 +51,7 @@ export const SYSTEM_PLUGINS = {
     scope: "system",
     availability: "all-stores",
     integration: "storefront-module",
-    capabilities: ["storefront.chat", "ops.customer-support"],
+    capabilities: ["storefront.chat", "ops.customer-support", "support.ai-agent-bot"],
   },
   "seo-merchant": {
     id: "seo-merchant",
