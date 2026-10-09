@@ -10,7 +10,7 @@ export type ItemStatus = "queued" | "processing" | "draft" | "approved" | "rejec
   "failed" | "publishing" | "published" | "needs_reconciliation";
 export type TranslationItem = {itemId:string;jobId:string;productId:string;slug:string;sourceHash:string;
   source:TranslatedFields; translation:TranslatedFields|null; status:ItemStatus;revision:number;updatedAt:string};
-export type TranslationJob = TranslationScope & {id:string;createdAt:string;updatedAt:string;total:number;
+export type TranslationJob = TranslationScope & {id:string;createdAt:string;updatedAt:string;nextCursor:string|null;total:number;
   queued:number;draft:number;approved:number;published:number;failed:number};
 
 let setup:Promise<void>|null=null;
@@ -36,7 +36,7 @@ async function sql(query:string,args:(string|number|null)[]=[],read=false) {
 async function schema():Promise<void> {
   if (!setup) setup=(async()=>{
     await libsqlPipeline([
-      {sql:"CREATE TABLE IF NOT EXISTS ops_translation_jobs (id TEXT PRIMARY KEY, site_id TEXT NOT NULL, channel TEXT NOT NULL, locale TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"},
+      {sql:"CREATE TABLE IF NOT EXISTS ops_translation_jobs (id TEXT PRIMARY KEY, site_id TEXT NOT NULL, channel TEXT NOT NULL, locale TEXT NOT NULL, next_cursor TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"},
       {sql:"CREATE TABLE IF NOT EXISTS ops_translation_items (job_id TEXT NOT NULL, item_id TEXT NOT NULL, product_id TEXT NOT NULL, slug TEXT NOT NULL, source_hash TEXT NOT NULL, source_json TEXT NOT NULL, translation_json TEXT, status TEXT NOT NULL CHECK(status IN ('queued','processing','draft','approved','rejected','failed','publishing','published','needs_reconciliation')), revision INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, PRIMARY KEY(job_id,item_id))"},
       {sql:"CREATE INDEX IF NOT EXISTS ops_translation_items_status_idx ON ops_translation_items(status,updated_at)"}
     ],conn());
@@ -48,6 +48,7 @@ const n=(r:Row,k:string)=>Number(r[k]??0);
 function jobRow(r:Row):TranslationJob {
   return {id:s(r,"id"),siteId:s(r,"site_id"),channel:s(r,"channel"),
     locale:s(r,"locale") as TranslationScope["locale"],createdAt:s(r,"created_at"),updatedAt:s(r,"updated_at"),
+    nextCursor:typeof r.next_cursor==="string"?r.next_cursor:null,
     total:n(r,"total"),queued:n(r,"queued"),draft:n(r,"draft"),approved:n(r,"approved"),
     published:n(r,"published"),failed:n(r,"failed")};
 }
@@ -90,13 +91,19 @@ export async function createJob(scope:TranslationScope,count:number):Promise<Tra
     const current=await getJob(scope.siteId,s(ongoing.rows[0],"id"));
     if(current)return current.job;
   }
+  const last=await sql("SELECT next_cursor FROM ops_translation_jobs "+
+    "WHERE site_id=? AND channel=? AND locale=? ORDER BY created_at DESC LIMIT 1",
+    [scope.siteId,scope.channel,scope.locale],true);
+  const previous=last.rows[0];
+  if(previous && typeof previous.next_cursor!=="string")
+    throw new TranslationInputError("当前语言的商品已完成全部分页，请继续审核现有任务");
   // Read from authoritative Saleor; never accept client-supplied product copy or IDs.
-  const products=await listSourceProducts(scope.channel,count);
-  if (!products.length) throw new TranslationInputError("该市场没有可翻译商品");
+  const page=await listSourceProducts(scope.channel,count,previous?String(previous.next_cursor):null);
+  if (!page.products.length) throw new TranslationInputError("该市场没有更多可翻译商品");
   const id=randomUUID(),now=new Date().toISOString();
-  await sql("INSERT INTO ops_translation_jobs (id,site_id,channel,locale,created_at,updated_at) VALUES (?,?,?,?,?,?)",
-    [id,scope.siteId,scope.channel,scope.locale,now,now]);
-  for(const p of products) {
+  await sql("INSERT INTO ops_translation_jobs (id,site_id,channel,locale,next_cursor,created_at,updated_at) VALUES (?,?,?,?,?,?,?)",
+    [id,scope.siteId,scope.channel,scope.locale,page.nextCursor,now,now]);
+  for(const p of page.products) {
     await sql("INSERT INTO ops_translation_items (job_id,item_id,product_id,slug,source_hash,source_json,status,updated_at) VALUES (?,?,?,?,?,?,'queued',?)",
       [id,p.id,p.id,p.slug,p.hash,JSON.stringify(p.source),now]);
   }

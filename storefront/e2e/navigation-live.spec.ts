@@ -29,6 +29,7 @@ const operationsRoutes = [
   "/ops/themes",
   "/ops/sites",
   "/ops/plugins",
+  "/ops/translations",
   "/ops/support",
 ] as const;
 
@@ -113,6 +114,9 @@ test.describe("live storefront navigation and operational pages", () => {
       await page.getByRole("link", { name: /系统插件/ }).click();
       await expect(page).toHaveURL(/\/ops\/plugins$/);
       await expect(page.getByRole("heading", { name: "系统插件" })).toBeVisible();
+      await page.getByRole("link", { name: /AI 多语言管理中心/ }).click();
+      await expect(page).toHaveURL(/\/ops\/translations$/);
+      await expect(page.getByRole("heading", { name: "多语言管理中心" })).toBeVisible();
       await page.goto("/ops/analytics");
       await page.getByRole("link", { name: /品牌站点/ }).click();
       await expect(page).toHaveURL(/\/ops\/sites$/);

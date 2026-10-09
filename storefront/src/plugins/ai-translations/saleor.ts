@@ -31,8 +31,9 @@ async function graphql<T>(query: string, variables: Record<string, unknown>): Pr
   return body.data;
 }
 
-const LIST_PRODUCTS = "query OpsTranslationProductList($channel: String!, $first: Int!) {"+
-  " products(first:$first,channel:$channel) { edges { node { id slug name description seoTitle seoDescription } } } }";
+const LIST_PRODUCTS = "query OpsTranslationProductList($channel: String!, $first: Int!, $after: String) {"+
+  " products(first:$first,after:$after,channel:$channel) {"+
+  " pageInfo { hasNextPage endCursor } edges { node { id slug name description seoTitle seoDescription } } } }";
 const GET_PRODUCT = "query OpsTranslationProduct($id: ID!, $channel: String!, $language: LanguageCodeEnum!) {"+
   " product(id:$id,channel:$channel) { id slug name description seoTitle seoDescription"+
   " translation(languageCode:$language) { name description seoTitle seoDescription } } }";
@@ -44,10 +45,15 @@ function normalizedProduct(product: ProductNode): SourceProduct {
   return {id:product.id,slug:product.slug,source,hash:sourceHash(product.id,source)};
 }
 
-export async function listSourceProducts(channel:string, count:number):Promise<SourceProduct[]> {
-  const result = await graphql<{products?:{edges:{node:ProductNode}[]}|null}>(LIST_PRODUCTS,{channel,first:count});
-  return (result.products?.edges??[]).map(({node})=>normalizedProduct(node))
+export async function listSourceProducts(channel:string, count:number, after:string|null=null):Promise<{
+  products:SourceProduct[]; nextCursor:string|null;
+}> {
+  const result = await graphql<{products?:{pageInfo:{hasNextPage:boolean;endCursor:string|null};edges:{node:ProductNode}[]}|null}>(
+    LIST_PRODUCTS,{channel,first:count,after});
+  const page=result.products;
+  const products=(page?.edges??[]).map(({node})=>normalizedProduct(node))
     .filter((item)=>Object.keys(item.source).length>0);
+  return {products,nextCursor:page?.pageInfo.hasNextPage ? (page.pageInfo.endCursor??null) : null};
 }
 
 export async function freshProduct(scope:TranslationScope,id:string):Promise<{

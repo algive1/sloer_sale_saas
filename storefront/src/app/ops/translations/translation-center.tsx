@@ -27,6 +27,9 @@ export function TranslationCenter({brands,coverage,storageReady,workerReady,publ
   const [loading,setLoading]=useState(false);
   const [message,setMessage]=useState("");
   const ready=storageReady&&saleorReady;
+  const currentJob=jobs.find(j=>j.channel===channel&&j.locale===locale);
+  const allPagesQueued=Boolean(currentJob&&currentJob.nextCursor===null &&
+    currentJob.queued===0&&currentJob.draft===0&&currentJob.approved===0);
   const currentLocale=locales.includes(locale)?locale:locales[0]??"";
   const currentChannel=brand?.channels.includes(channel)?channel:brand?.channels[0]??"";
 
@@ -136,10 +139,10 @@ export function TranslationCenter({brands,coverage,storageReady,workerReady,publ
           </label>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" disabled={!ready||!currentLocale||busy||!workerReady}
+          <button type="button" disabled={!ready||!currentLocale||busy||!workerReady||allPagesQueued}
             onClick={()=>void mutate({action:"create",count:10})}
             className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
-            {busy?"处理中…":"创建 10 件商品翻译任务"}
+            {busy?"处理中…":allPagesQueued?"本市场商品已全部进入任务":"创建或继续下一批（最多 10 件）"}
           </button>
           <span className="self-center text-xs text-stone-500">
             {!storageReady?"需配置 libSQL 数据库":!saleorReady?"需配置 Saleor 专用 Token":

@@ -33,7 +33,7 @@ TRANSLATION_PUBLISH_ENABLED=0
 
 ## 使用
 
-1. 在 \`/ops/translations\` 选择品牌、市场、语言，创建最多 10 件商品的一批任务。
+1. 在 \`/ops/translations\` 选择品牌、市场、语言，创建最多 10 件商品的一批任务。完成该批审核后可以继续创建下一批；系统沿用 Saleor 商品分页游标，避免反复取前 10 件。
 2. 单独启动 \`docker compose --profile translations-ai up -d\`。专用 Poller 每 15 秒通过 Bearer Secret 调用一次 \`POST /api/plugins/ai-translations/worker\`。每次只处理一个排队项目，AI 调用绝不出现在普通顾客页面。
 3. 刷新任务页，核查商品原文和 AI 翻译；必要时编辑译文，逐件批准或退回。需要重试的失败项目可以手动重新入队。
 4. 单品牌且显式 \`TRANSLATION_PUBLISH_ENABLED=1\` 才会显示正式发布。发布前重新读取 Saleor 当前商品和目标语言译文；原文变化或已有人工译文都会阻止覆盖。
