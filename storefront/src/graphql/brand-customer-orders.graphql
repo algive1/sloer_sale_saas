@@ -23,13 +23,19 @@ query CurrentBrandOrdersPaginated(
   }
 }
 
-# Used to verify brand ownership before loading the complete legacy order view.
-query CurrentBrandOrderAccess($where: CustomerOrderWhereInput!) {
+# One exact query supplies only an order owned by the current brand.
+# Avoid the legacy "fetch first 100 orders and find locally" flow: older
+# purchases must remain accessible, and unrelated orders must never be read.
+query CurrentBrandOrderDetail(
+  $where: CustomerOrderWhereInput!
+  $languageCode: LanguageCodeEnum!
+) {
   me {
-    id
     orders(first: 1, where: $where) {
       edges {
-        node { id }
+        node {
+          ...OrderDetails
+        }
       }
     }
   }
