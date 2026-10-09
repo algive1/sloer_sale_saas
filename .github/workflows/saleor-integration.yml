@@ -129,6 +129,13 @@ jobs:
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_theme_collection.py
 
+      - name: Seed second brand Channel for strict cross-host E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
+            python3 manage.py shell < infra/saleor/bootstrap_multibrand_ci.py
+
       - name: Start vendored Saleor API and worker
         shell: bash
         run: |
@@ -267,10 +274,10 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_URL: http://localhost:3100
           NEXT_PUBLIC_CHECKOUT_URL: http://localhost:3100
           NEXT_PUBLIC_DEFAULT_CHANNEL: us
-          STOREFRONT_CHANNELS: us
+          STOREFRONT_CHANNELS: us,jewelry-us
           NEXT_PUBLIC_DEFAULT_LOCALE: en
           NEXT_PUBLIC_STOREFRONT_LOCALES: en
-          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,en:jewelry-us
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
@@ -354,10 +361,50 @@ jobs:
           PLAYWRIGHT_THEME_DB_RESET_TOKEN: ci-theme-secret-only-for-testing
         run: pnpm --dir storefront exec playwright test e2e/theme-builder-live.spec.ts --workers=1
 
+      - name: Start multi-brand shared-Saleor storefront
+        shell: bash
+        env:
+          STOREFRONT_SITES_JSON: '[{"id":"fashion-ci","name":"Fashion CI","domains":["fashion.example.test"],"channels":["us"],"defaultChannel":"us","defaultLocale":"en"},{"id":"jewelry-ci","name":"Jewelry CI","domains":["jewelry.example.test"],"channels":["jewelry-us"],"defaultChannel":"jewelry-us","defaultLocale":"en"}]'
+          STOREFRONT_CHANNELS: us,jewelry-us
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,en:jewelry-us
+          ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          THEME_LIBSQL_URL: http://127.0.0.1:3789
+          THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
+        run: |
+          set -euo pipefail
+          nohup pnpm --dir storefront exec next start -p 3101 > /tmp/multibrand-storefront.log 2>&1 &
+          echo "$!" > /tmp/multibrand-storefront.pid
+          for attempt in $(seq 1 60); do
+            if curl -fsS -H "Host: fashion.example.test" \
+              http://127.0.0.1:3101/en/us > /tmp/fashion-multibrand.html; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/multibrand-storefront.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Two real brand hosts and Checkout boundary E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+        run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts --workers=1
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
         run: |
+          if [ -f /tmp/multibrand-storefront.log ]; then
+            echo "===== Multi-brand storefront ====="
+            tail -n 200 /tmp/multibrand-storefront.log || true
+          fi
           if [ -f /tmp/storefront.log ]; then
             echo "===== Paper Storefront ====="
             tail -n 300 /tmp/storefront.log || true
