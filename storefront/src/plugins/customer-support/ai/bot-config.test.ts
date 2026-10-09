@@ -57,6 +57,10 @@ describe("brand-scoped AI bot setup", () => {
   it("rejects duplicate bot scopes, unpublished FAQ omissions and missing credentials", () => {
     vi.stubEnv("SUPPORT_AI_BOTS_JSON",JSON.stringify([bindings[0],bindings[0]]));
     expect(() => loadAIConfig()).toThrow(/Duplicate/);
+    vi.stubEnv("SUPPORT_AI_BOTS_JSON",JSON.stringify([bindings[0],{...bindings[1],apiToken:bindings[0].apiToken}]));
+    expect(() => loadAIConfig()).toThrow(/Duplicate/);
+    vi.stubEnv("SUPPORT_AI_BOTS_JSON",JSON.stringify([bindings[0],{...bindings[1],webhookSecret:bindings[0].webhookSecret}]));
+    expect(() => loadAIConfig()).toThrow(/Duplicate/);
     vi.stubEnv("SUPPORT_AI_BOTS_JSON",JSON.stringify(bindings));
     vi.stubEnv("SUPPORT_AI_FAQS_JSON",JSON.stringify([faqs[0]]));
     expect(() => loadAIConfig()).toThrow(/published FAQ/);
