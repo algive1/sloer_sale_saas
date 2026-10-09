@@ -52,7 +52,7 @@ export function incomingBotMessage(payload: unknown): IncomingBotMessage | null 
 
 /** Customer data must not be sent to a language model without a verified authorization path. */
 export function requiresHuman(question: string): boolean {
-  return /\b(order|refund|payment|cancel|address|credit.card|tracking.number|invoice|account|password|chargeback)\b/i.test(question) ||
+  return /\b(order|refund|payment|cancel|address|credit.card|tracking|my.package|my.parcel|invoice|account|password|chargeback)\b/i.test(question) ||
     /(订单|退款|支付|付款|收货地址|信用卡|账单|账户|密码|取消订单|物流单号|返金|注文|支払い|請求)/.test(question) ||
     /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(question) ||
     /\b(?:\d[ -]?){12,19}\b/.test(question);
