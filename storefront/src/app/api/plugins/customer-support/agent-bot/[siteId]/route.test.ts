@@ -22,7 +22,7 @@ import { POST } from "./route";
 
 const baseEvent = {
   event:"message_created",id:123,message_type:"incoming",content_type:"text",content:"Shipping?",
-  account:{id:1},inbox:{id:11},conversation:{display_id:77,inbox_id:11,status:"pending"},
+  account:{id:1},inbox:{id:11},conversation:{id:77,inbox_id:11,status:"pending"},
 };
 function signedRequest(
   payload: Record<string,unknown>, pathSite: string, secret: string, overrides: Record<string,string> = {},
