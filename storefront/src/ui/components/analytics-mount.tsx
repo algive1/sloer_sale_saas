@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { analyticsConsentMode } from "@/lib/analytics/consent";
 import { gaMeasurementId } from "@/plugins/ads-tracking/ga4-config";
+import { brandSitesConfigured } from "@/config/brand-sites";
 import { browserAdsConfigured } from "@/plugins/ads-tracking/config";
 import { AnalyticsPathnameViews } from "@/ui/components/analytics-pathname-views";
 import { AnalyticsRuntime } from "@/ui/components/analytics-runtime";
@@ -16,8 +17,8 @@ import { AnalyticsConsentBanner } from "@/ui/components/analytics-consent-banner
  * https://nextjs.org/docs/messages/blocking-prerender-client-hook
  */
 export function AnalyticsMount() {
-	const measurementId = gaMeasurementId();
-	const hasAdvertisingPixels = browserAdsConfigured();
+	const measurementId = brandSitesConfigured() ? null : gaMeasurementId();
+	const hasAdvertisingPixels = !brandSitesConfigured() && browserAdsConfigured();
 
 	return (
 		<>
