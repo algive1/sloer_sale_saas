@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { io } from "next/cache";
@@ -22,7 +23,15 @@ function formatCount(value: number) {
   return value.toLocaleString("zh-CN");
 }
 
-export default async function BrandInsightsPage({ params, searchParams }: Props) {
+export default function BrandInsightsPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-6xl p-8 text-sm text-stone-500">正在载入品牌数据...</main>}>
+      <BrandInsightsPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function BrandInsightsPageContent({ params, searchParams }: Props) {
   await io();
   const [{ siteId }, query] = await Promise.all([params, searchParams]);
   // The siteId is a lookup only. SQL predicates come exclusively from this
