@@ -1,0 +1,36 @@
+# Authenticated customer orders scoped by platform-verified brand Channel IDs.
+# The browser never supplies $where; the server derives it from Host.
+query CurrentBrandOrdersPaginated(
+  $first: Int!
+  $after: String
+  $languageCode: LanguageCodeEnum!
+  $where: CustomerOrderWhereInput!
+) {
+  me {
+    id
+    orders(first: $first, after: $after, where: $where) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          ...OrderDetails
+        }
+      }
+    }
+  }
+}
+
+# Used to verify brand ownership before loading the complete legacy order view.
+query CurrentBrandOrderAccess($where: CustomerOrderWhereInput!) {
+  me {
+    id
+    orders(first: 1, where: $where) {
+      edges {
+        node { id }
+      }
+    }
+  }
+}
