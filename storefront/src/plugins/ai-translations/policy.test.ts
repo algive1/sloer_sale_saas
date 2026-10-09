@@ -30,7 +30,7 @@ describe("multi-brand translation operations policy",()=>{
   it("normalizes EditorJS merchant text without sending schema to AI",()=>{
     const source=normalizeSource({name:"  Linen shirt  ",description:JSON.stringify({
       time:1,blocks:[{type:"paragraph",data:{text:"Comfortable <b>linen</b> &nbsp; shirt"}}]})});
-    expect(source).toEqual({name:"Linen shirt",description:"Comfortable  linen   shirt"});
+    expect(source).toEqual({name:"Linen shirt",description:"Comfortable linen shirt"});
     expect(sourceHash("p1",source)).toBe(sourceHash("p1",source));
     expect(sourceHash("p2",source)).not.toBe(sourceHash("p1",source));
   });

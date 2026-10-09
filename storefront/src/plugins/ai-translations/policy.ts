@@ -36,7 +36,7 @@ export function normalizeSource(value: Record<string, unknown>): TranslatedField
       try {
         const parsed = JSON.parse(text) as { blocks?: Array<{data?:{text?:string}}> };
         text = (parsed.blocks ?? []).map(b => b.data?.text ?? "").join(" ")
-          .replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+          .replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
       } catch { throw new TranslationInputError("无法解析商品 EditorJS 原文"); }
     }
     if (typeof text === "string" && text.trim()) result[key] = text.trim().slice(0, MAX_LENGTH[key]);
