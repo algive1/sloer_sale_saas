@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { CurrentUserOrdersPaginatedDocument } from "@/gql/graphql";
+import { CurrentUserOrdersPaginatedDocument, CurrentBrandOrdersPaginatedDocument } from "@/gql/graphql";
+import { brandSitesConfigured } from "@/config/brand-sites";
+import { currentBrandOrderFilter } from "@/lib/brand/customer-orders.server";
 import { executeAuthenticatedGraphQL } from "@/lib/graphql";
 import { hasAuthSession } from "@/lib/auth/has-auth-session";
 import { graphqlLanguageCodeVariables } from "@/lib/graphql-locale";
@@ -37,14 +39,18 @@ async function AccountOrdersContent({ params, searchParams }: Props) {
 		return <AccountOrdersError title={t("title")} message={t("signInRequired")} />;
 	}
 
-	const result = await executeAuthenticatedGraphQL(CurrentUserOrdersPaginatedDocument, {
-		variables: {
-			first: ORDERS_PER_PAGE,
-			after: after || null,
-			...graphqlLanguageCodeVariables(locale),
-		},
-		cache: "no-cache",
-	});
+  const brandWhere = brandSitesConfigured() ? await currentBrandOrderFilter() : null;
+  if (brandSitesConfigured() && !brandWhere) {
+    return <AccountOrdersError title={t("title")} message={tErrors("loadOrdersFailed")} />;
+  }
+  const variables = { first: ORDERS_PER_PAGE, after: after || null, ...graphqlLanguageCodeVariables(locale) };
+  const result = brandWhere
+    ? await executeAuthenticatedGraphQL(CurrentBrandOrdersPaginatedDocument, {
+        variables: { ...variables, where: brandWhere }, cache: "no-cache",
+      })
+    : await executeAuthenticatedGraphQL(CurrentUserOrdersPaginatedDocument, {
+        variables, cache: "no-cache",
+      });
 
 	if (!result.ok) {
 		return <AccountOrdersError title={t("title")} message={tErrors("loadOrdersFailed")} />;
