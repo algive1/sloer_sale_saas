@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 const MAX_WEBHOOK_BYTES = 20_000;
 
 export async function POST(request: Request, { params }: { params: Promise<{ siteId: string }> }) {
+  if ((process.env.SUPPORT_AI_WORKER_SECRET?.trim().length ?? 0) < 32) {
+    return new NextResponse(null, { status: 503 });
+  }
   if (!analyticsDatabaseConfigured()) return new NextResponse(null, { status: 503 });
 
   let config: ReturnType<typeof loadAIConfig>;
