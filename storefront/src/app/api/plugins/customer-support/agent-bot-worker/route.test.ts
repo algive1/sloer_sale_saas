@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const worker = vi.hoisted(() => vi.fn(async () => ({ processed:1,remaining:0 })));
+const worker = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({ processed:1,remaining:0 })));
 vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => true,
 }));
