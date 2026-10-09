@@ -54,6 +54,12 @@ export default async function BrandOverviewPage({ params, searchParams }: Props)
             近{period}天</Link>)}
         </div>
       </div>
+      <div className="mt-4">
+        <Link href={`/ops/sites/${encodeURIComponent(site.id)}/insights?days=${days}`}
+          className="inline-flex rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-stone-50">
+          查看流量、商品及结账分析 →
+        </Link>
+      </div>
       <div className="mt-6 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
         <b className="text-stone-900">当前范围：</b> {site.channels.join("、")}
         <span className="ml-2 text-stone-500">第一方埋点统计，不等于 Saleor 财务结算记录。</span>
