@@ -34,7 +34,7 @@ query CurrentBrandOrderDetail(
     orders(first: 1, where: $where) {
       edges {
         node {
-          ...OrderDetails
+          ...OrderFullDetails
         }
       }
     }
