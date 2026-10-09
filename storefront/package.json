@@ -51,7 +51,11 @@
 		"har:analyze": "node scripts/analyze-storefront-har.mjs",
 		"locales:audit": "node scripts/audit-locale-coverage.mjs --all",
 		"locales:check": "node scripts/audit-locale-coverage.mjs --fail-incomplete",
-		"locales:test": "node --test scripts/audit-locale-coverage.node-test.mjs"
+		"locales:test": "node --test scripts/audit-locale-coverage.node-test.mjs",
+		"translations:ai:plan": "node scripts/ai-catalog-translate.mjs",
+		"translations:ai:generate": "node scripts/ai-catalog-translate.mjs --generate",
+		"translations:ai:export": "node scripts/ai-catalog-translate.mjs --export-approved",
+		"translations:ai:test": "node --test scripts/lib/ai-catalog-drafts.node-test.mjs"
 	},
 	"dependencies": {
 		"@puckeditor/core": "0.23.0",

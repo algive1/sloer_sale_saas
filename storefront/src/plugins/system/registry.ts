@@ -53,6 +53,14 @@ export const SYSTEM_PLUGINS = {
     integration: "storefront-module",
     capabilities: ["storefront.chat", "ops.customer-support", "support.ai-agent-bot"],
   },
+  "ai-translations": {
+    id: "ai-translations",
+    apiVersion: 1,
+    scope: "system",
+    availability: "all-stores",
+    integration: "partial",
+    capabilities: ["catalog.ai-translation-drafts", "catalog.translation-review-export"],
+  },
   "seo-merchant": {
     id: "seo-merchant",
     apiVersion: 1,
