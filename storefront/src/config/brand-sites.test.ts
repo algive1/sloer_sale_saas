@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
-  brandSiteForChannel, brandSiteForHost, hostName, parseBrandSites, siteIdForChannel,
+  brandSiteForChannel, brandSiteForHost, hostName, parseBrandSites, siteIdForChannel, channelBelongsToHost,
 } from "./brand-sites";
 
 const config = JSON.stringify([
@@ -27,6 +27,9 @@ describe("multi-brand deterministic tenant mapping", () => {
     expect(brandSiteForHost("WWW.FASHION.EXAMPLE:443")?.id).toBe("fashion");
     expect(brandSiteForChannel("fashion-eu")?.id).toBe("fashion");
     expect(siteIdForChannel("jewelry-us")).toBe("jewelry");
+    expect(channelBelongsToHost("fashion-us", "fashion.example")).toBe(true);
+    expect(channelBelongsToHost("fashion-us", "jewelry.example")).toBe(false);
+    expect(channelBelongsToHost("jewelry-us", "unknown.example")).toBe(false);
     expect(brandSiteForHost("attackerfashion.example")).toBeNull();
     expect(brandSiteForHost("fashion.example.evil.test")).toBeNull();
     expect(brandSiteForChannel("us")).toBeNull();
