@@ -4,6 +4,7 @@ import { getStaticStorefrontChannelSlugs, isAllowedStorefrontChannel } from "@/c
 import { getDefaultLocaleSlug, isLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { BROWSE_LOCALE_COOKIE, getBrowseLocaleCookieOptions } from "@/lib/browse-locale";
 import { buildStorefrontPath } from "@/lib/storefront-path";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
@@ -16,8 +17,8 @@ const RESERVED_ROOT_SEGMENTS = new Set([
 	"sitemap.xml",
 ]);
 
-function isChannelSlug(segment: string): boolean {
-	const allowed = getStaticStorefrontChannelSlugs();
+function isChannelSlug(segment: string, siteChannels?: readonly string[]): boolean {
+	const allowed = siteChannels ?? getStaticStorefrontChannelSlugs();
 	return isAllowedStorefrontChannel(segment, allowed);
 }
 
@@ -61,8 +62,14 @@ export function middleware(request: NextRequest) {
 	}
 
 	const segments = pathname.split("/").filter(Boolean);
-	const defaultLocale = getDefaultLocaleSlug();
-	const defaultChannel = DefaultChannelSlug ?? getStaticStorefrontChannelSlugs()[0];
+	// Exact Host allowlist: an unknown domain cannot fall through to another brand.
+	// Only the reverse-proxy supplied Host is trusted; never x-forwarded-host.
+	const site = brandSiteForHost(request.headers.get("host"));
+	if (brandSitesConfigured() && !site && !RESERVED_ROOT_SEGMENTS.has(segments[0] ?? "")) {
+		return new NextResponse("Store not found", { status: 404 });
+	}
+	const defaultLocale = site?.defaultLocale ?? getDefaultLocaleSlug();
+	const defaultChannel = site?.defaultChannel ?? DefaultChannelSlug ?? getStaticStorefrontChannelSlugs()[0];
 
 	// Root → default browse home
 	if (segments.length === 0) {
@@ -82,7 +89,7 @@ export function middleware(request: NextRequest) {
 
 	// Disabled locale slug (defined but not in NEXT_PUBLIC_STOREFRONT_LOCALES) → canonical default locale
 	if (isLocaleSlug(first) && !isStorefrontLocaleSlug(first)) {
-		if (second && isChannelSlug(second)) {
+		if (second && isChannelSlug(second, site?.channels)) {
 			const url = request.nextUrl.clone();
 			const suffix = rest.length > 0 ? `/${rest.join("/")}` : "";
 			url.pathname = buildStorefrontPath(defaultLocale, second, suffix);
@@ -93,7 +100,7 @@ export function middleware(request: NextRequest) {
 
 	// Canonical format: /{locale}/{channel}/…
 	if (isStorefrontLocaleSlug(first)) {
-		if (second && isChannelSlug(second)) {
+		if (second && isChannelSlug(second, site?.channels)) {
 			return withBrowseLocaleCookie(request, NextResponse.next(), first);
 		}
 
@@ -108,7 +115,7 @@ export function middleware(request: NextRequest) {
 	}
 
 	// Legacy: /{channel}/… → /{defaultLocale}/{channel}/…
-	if (isChannelSlug(first)) {
+	if (isChannelSlug(first, site?.channels)) {
 		const url = request.nextUrl.clone();
 		const suffix = [second, ...rest].filter(Boolean).join("/");
 		url.pathname = buildStorefrontPath(defaultLocale, first, suffix ? `/${suffix}` : "");
