@@ -63,7 +63,7 @@ async function chatwoot(
     },
     ...(method === "POST" ? {body:JSON.stringify(data)} : {}),
     cache:"no-store",
-    signal:AbortSignal.timeout(8000),
+    signal:AbortSignal.timeout(5000),
   });
   if (!response.ok) throw new Error("chatwoot_http_" + response.status);
   return response.json();
@@ -98,7 +98,7 @@ async function askModel(
     method:"POST",
     headers:{"authorization":"Bearer " + config.provider.key,"content-type":"application/json"},
     cache:"no-store",
-    signal:AbortSignal.timeout(8000),
+    signal:AbortSignal.timeout(5000),
     body:JSON.stringify({
       model:config.provider.model,
       temperature:0,
