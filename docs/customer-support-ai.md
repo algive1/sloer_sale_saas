@@ -120,3 +120,11 @@ Start the worker **before** binding the Chatwoot Agent Bot. The worker writes a 
 Configure short Chatwoot/model network timeouts, a restricted internal endpoint, HTTPS for external networking, queue health alarms, and a reconciliation procedure for stale processing/failed claims. A worker outage must be visible to operators; it does not affect storefront browsing or payment.
 
 Chatwoot v4.18.0 `lib/webhooks/trigger.rb` defaults to a 5-second delivery timeout. Do not move AI inference back into the incoming Webhook route.
+
+For this repository's Docker Compose self-hosting, the Storefront container now accepts the `SUPPORT_*` server environment variables. After configuring a real Chatwoot CE service, an AI model, the libSQL ledger and the worker secret, start the dedicated worker with:
+
+```bash
+docker compose --profile support-ai up -d support-ai-poller
+```
+
+The `support-ai-poller` service is **profile-gated**: ordinary `docker compose up -d` still leaves it off. Chatwoot itself is installed from the official self-hosted CE deployment rather than bundled into the Saleor process. The poller runs every five seconds on the private Docker network; confirm resource usage and queue metrics before scaling.
