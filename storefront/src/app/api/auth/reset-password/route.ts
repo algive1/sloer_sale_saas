@@ -1,3 +1,4 @@
+import { readAuthJsonObject } from "@/lib/auth/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { rejectIfRateLimited } from "@/lib/auth/auth-rate-limit";
 import { isAllowedRedirectUrl } from "@/lib/auth/validate-redirect-url";
@@ -15,12 +16,6 @@ const REQUEST_PASSWORD_RESET_MUTATION = `
   }
 `;
 
-interface ResetPasswordRequest {
-	email: string;
-	channel: string;
-	redirectUrl: string;
-}
-
 interface RequestPasswordResetResult {
 	requestPasswordReset?: {
 		errors?: Array<{ field?: string | null; message: string; code?: string | null }>;
@@ -33,10 +28,8 @@ export async function POST(request: NextRequest) {
 		return rateLimited;
 	}
 
-	let body: ResetPasswordRequest;
-	try {
-		body = (await request.json()) as ResetPasswordRequest;
-	} catch {
+	const body = await readAuthJsonObject(request);
+	if (!body) {
 		return NextResponse.json(
 			{ errors: [{ message: "Invalid request body", code: "INVALID_JSON" }] },
 			{ status: 400 },
@@ -45,7 +38,7 @@ export async function POST(request: NextRequest) {
 
 	const { email, channel, redirectUrl } = body;
 
-	if (!email || !channel || !redirectUrl) {
+	if (typeof email !== "string" || !email.trim() || typeof channel !== "string" || !channel || typeof redirectUrl !== "string" || !redirectUrl) {
 		return NextResponse.json(
 			{ errors: [{ message: "Email, channel, and redirectUrl are required", code: "REQUIRED" }] },
 			{ status: 400 },
