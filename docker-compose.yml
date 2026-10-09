@@ -170,9 +170,10 @@ services:
     profiles: ["support-ai"]
     restart: unless-stopped
     environment:
-      SUPPORT_AI_WORKER_SECRET: ${SUPPORT_AI_WORKER_SECRET:?set SUPPORT_AI_WORKER_SECRET for support-ai profile}
+      SUPPORT_AI_WORKER_SECRET: ${SUPPORT_AI_WORKER_SECRET:-}
     entrypoint: ["/bin/sh", "-ec"]
     command: >
+      test -n "${SUPPORT_AI_WORKER_SECRET}" || { echo "Missing AI worker secret" >&2; exit 1; };
       while :; do
         curl --fail --silent --show-error --max-time 30
           --header "Authorization: Bearer ${SUPPORT_AI_WORKER_SECRET}"
