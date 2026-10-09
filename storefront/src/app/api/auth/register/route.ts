@@ -1,3 +1,4 @@
+import { readAuthJsonObject } from "@/lib/auth/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { rejectIfRateLimited } from "@/lib/auth/auth-rate-limit";
 import { isAllowedRedirectUrl } from "@/lib/auth/validate-redirect-url";
@@ -19,15 +20,6 @@ const REGISTER_MUTATION = `
   }
 `;
 
-interface RegisterRequest {
-	email: string;
-	password: string;
-	firstName?: string;
-	lastName?: string;
-	channel: string;
-	redirectUrl: string;
-}
-
 interface AccountRegisterResult {
 	accountRegister?: {
 		user?: { id: string; email: string };
@@ -41,10 +33,8 @@ export async function POST(request: NextRequest) {
 		return rateLimited;
 	}
 
-	let body: RegisterRequest;
-	try {
-		body = (await request.json()) as RegisterRequest;
-	} catch {
+	const body = await readAuthJsonObject(request);
+	if (!body) {
 		return NextResponse.json(
 			{ errors: [{ message: "Invalid request body", code: "INVALID_JSON" }] },
 			{ status: 400 },
@@ -53,9 +43,17 @@ export async function POST(request: NextRequest) {
 
 	const { email, password, firstName, lastName, channel, redirectUrl } = body;
 
-	if (!email || !password) {
+	if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password || typeof channel !== "string" || !channel || typeof redirectUrl !== "string" || !redirectUrl) {
 		return NextResponse.json(
 			{ errors: [{ message: "Email and password are required", code: "REQUIRED" }] },
+			{ status: 400 },
+		);
+	}
+
+	if ((firstName != null && typeof firstName !== "string") ||
+		(lastName != null && typeof lastName !== "string")) {
+		return NextResponse.json(
+			{ errors: [{ message: "Invalid name fields", code: "INVALID" }] },
 			{ status: 400 },
 		);
 	}
@@ -82,8 +80,8 @@ export async function POST(request: NextRequest) {
 			input: {
 				email,
 				password,
-				firstName: firstName || "",
-				lastName: lastName || "",
+				firstName: typeof firstName === "string" ? firstName : "",
+				lastName: typeof lastName === "string" ? lastName : "",
 				channel,
 				redirectUrl,
 			},
