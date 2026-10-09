@@ -13,7 +13,7 @@ type EditorProps = {
   storageReady: boolean;
   initialChannel?: string;
   initialLocale?: string;
-  siteByChannel?: Record<string, { id: string; name: string; domain: string; defaultLocale?: string }>;
+  siteByChannel?: Record<string, { id: string; name: string; domain: string; defaultChannel: string; defaultLocale?: string }>;
 };
 type APIResponse = {
   error?: string; draft?: ThemeData | null; published?: ThemeData | null;
@@ -62,7 +62,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
       })
       .then(result=>{
         if(controller.signal.aborted) return;
-        const loaded = result.draft || result.published || freshTemplate("fashion");
+        const loaded = result.draft || result.published || freshTemplate(brands.length ? "blank" : "fashion");
         documentRef.current = loaded;
         savedRef.current = loaded;
         setDocument(loaded);
@@ -74,7 +74,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
         if(controller.signal.aborted) return;
         setStatus(error instanceof Error ? error.message : "Unable to load draft");
         if (!storageReady) {
-          const initial=freshTemplate("fashion");
+          const initial=freshTemplate(brands.length ? "blank" : "fashion");
           documentRef.current=initial;
           savedRef.current=initial;
           setDocument(initial);
@@ -131,6 +131,9 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
     }
   },[channel,locale,storageReady]);
 
+  function confirmPublish():boolean {
+    return window.confirm(`确定发布「${selectedSite?.name ?? "当前店铺"} / ${channel} / ${locale}」的首页吗？发布后会覆盖这个市场和语言的线上首页。`);
+  }
   function confirmNavigation():boolean {
     return !dirty || window.confirm("Unsaved edits will be discarded. Continue?");
   }
@@ -149,7 +152,8 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
   }
   function changeBrand(id:string) {
     if(saving || id===selectedSite?.id || !confirmNavigation())return;
-    const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id);
+    const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id && slug===siteByChannel[slug].defaultChannel)
+      ?? channels.find((slug)=>siteByChannel[slug]?.id===id);
     if(!firstChannel)return;
     const nextLocale = siteByChannel[firstChannel]?.defaultLocale;
     if(nextLocale && locales.includes(nextLocale)) setLocale(nextLocale);
@@ -198,7 +202,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
             {saving?"保存中…":"保存草稿"}
           </button>
           <button type="button" disabled={saving || loading || !document || !storageReady}
-            onClick={()=>{void persist("publish",documentRef.current).catch(()=>{});}}
+            onClick={()=>{if(confirmPublish())void persist("publish",documentRef.current).catch(()=>{});}}
             className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
             {saving?"发布中…":"发布上线"}
           </button>
@@ -228,7 +232,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
           height="calc(100vh - 215px)"
           viewports={[{width:1440,height:"auto",label:"Desktop"},{width:390,height:"auto",label:"Mobile"}]}
           onChange={data=>{documentRef.current=data;setDirty(JSON.stringify(data.content)!==JSON.stringify(savedRef.current.content));}}
-          onPublish={async data=>{await persist("publish",data);}}
+          onPublish={async data=>{if(confirmPublish())await persist("publish",data);}}
         />
       )}
     </div>
