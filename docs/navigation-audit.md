@@ -71,3 +71,22 @@ and the browser test checks the actual click. Wishlist records now require
 bounded, safe internal links, a valid price and currency before cloud/local
 storage. Sync skips rewriting identical cloud records. This does not yet solve
 shared-database tenant `site_id` isolation across unrelated merchants.
+
+## Public analytics ingestion check (next audit phase)
+
+The browser-facing `POST /api/analytics/events` is limited to behavioural
+signals and enforces the configured consent mode at the server. An unauthenticated
+visitor can no longer submit `refund_completed` as if it were an authoritative
+transaction: that event is accepted only through the separately signed Saleor
+webhook `/api/analytics/saleor-order-events`. The event body is read in bounded
+32 KB chunks, even when the client omits or lies about Content-Length.
+
+Revenue still includes browser-observed `checkout_completed` as an analytical
+signal, not an authoritative proof of paid status. Fulfilment, payment state and
+order-reminder eligibility continue to use Saleor. For financially authoritative
+net sales reporting, reconcile orders to signed server events / Saleor transaction
+records before treating those figures as ledger values. Never claim a shopper's
+browser is an authenticated purchase ledger.
+
+New unit tests check permitted signals, forged refunds, consent denied/required/
+implied modes, oversized payloads, invalid JSON and disabled analytics storage.
