@@ -1,4 +1,6 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { getBaseUrl } from "@/lib/seo/config";
 
 /**
@@ -14,9 +16,12 @@ import { getBaseUrl } from "@/lib/seo/config";
  * Transactional and per-user surfaces (cart, checkout, account, search results) are
  * always-dynamic renders with nothing to index.
  */
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const site = brandSitesConfigured() ? brandSiteForHost((await headers()).get("host")) : null;
+  if (brandSitesConfigured() && !site) return { rules: [{ userAgent: "*", disallow: "/" }] };
+  const origin = site ? `https://${site.domains[0]}` : getBaseUrl().replace(/\/$/, "");
 	return {
-		sitemap: `${getBaseUrl().replace(/\/$/, "")}/sitemap.xml`,
+		sitemap: `${origin}/sitemap.xml`,
 		rules: [
 			{
 				userAgent: "*",
