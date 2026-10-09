@@ -11,12 +11,18 @@ export type BrandSite = Readonly<{
   defaultChannel: string;
   defaultLocale?: string;
   description?: string;
+  logo?: string;
+  logoInverted?: string;
+  privacyPageSlug?: string;
+  termsPageSlug?: string;
 }>;
 
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const CHANNEL = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const LOCALE = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})?$/;
 const DOMAIN = /^(?:[a-z0-9-]+\.)*[a-z0-9-]+$/;
+const LOGO = /^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+\.(?:svg|png|webp)$/;
+const PAGE_SLUG = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,127}$/;
 let memoRaw: string | undefined;
 let memoSites: readonly BrandSite[] | null = null;
 
@@ -64,6 +70,16 @@ export function parseBrandSites(raw: string | undefined): readonly BrandSite[] |
         (typeof row.description !== "string" || row.description.length > 300)) {
       throw new Error("Invalid brand description: " + id);
     }
+    for (const key of ["logo", "logoInverted"] as const) {
+      if (row[key] !== undefined && (typeof row[key] !== "string" || !LOGO.test(row[key]))) {
+        throw new Error("Invalid brand " + key + ": " + id);
+      }
+    }
+    for (const key of ["privacyPageSlug", "termsPageSlug"] as const) {
+      if (row[key] !== undefined && (typeof row[key] !== "string" || !PAGE_SLUG.test(row[key]))) {
+        throw new Error("Invalid brand " + key + ": " + id);
+      }
+    }
     if (ids.has(id)) throw new Error("Duplicate brand site id: " + id);
     ids.add(id);
     for (const domain of names) {
@@ -79,6 +95,10 @@ export function parseBrandSites(raw: string | undefined): readonly BrandSite[] |
       defaultChannel: row.defaultChannel,
       ...(row.defaultLocale ? { defaultLocale: row.defaultLocale } : {}),
       ...(row.description ? { description: row.description } : {}),
+      ...(row.logo ? { logo: row.logo } : {}),
+      ...(row.logoInverted ? { logoInverted: row.logoInverted } : {}),
+      ...(row.privacyPageSlug ? { privacyPageSlug: row.privacyPageSlug } : {}),
+      ...(row.termsPageSlug ? { termsPageSlug: row.termsPageSlug } : {}),
     };
   });
 }
