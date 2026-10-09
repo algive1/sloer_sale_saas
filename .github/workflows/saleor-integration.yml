@@ -347,6 +347,12 @@ jobs:
           PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
         run: pnpm --dir storefront exec playwright test e2e/navigation-live.spec.ts --workers=1
 
+      - name: Browser API boundary and authorization E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3100
+          PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
+        run: pnpm --dir storefront exec playwright test e2e/api-boundaries-live.spec.ts --workers=1
+
       - name: Storefront theme editor draft and published homepage E2E
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3100

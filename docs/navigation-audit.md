@@ -90,3 +90,12 @@ browser is an authenticated purchase ledger.
 
 New unit tests check permitted signals, forged refunds, consent denied/required/
 implied modes, oversized payloads, invalid JSON and disabled analytics storage.
+
+## API boundary and authorization E2E (PR #26, rebased)
+
+The browser suite `e2e/api-boundaries-live.spec.ts` checks invalid account
+request payloads, protected cache/admin routes, unsigned Saleor webhook,
+invalid Listing/Merchant parameters and reminder mutation/Cron protections.
+It performs no email sends or theme writes. Tests run against CI Saleor and
+Paper but do not prove real provider credentials, merchant RBAC or multi-site
+Host-to-site isolation.
