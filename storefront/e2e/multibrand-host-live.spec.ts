@@ -93,12 +93,20 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     expect(checkoutData.data.checkoutCreate.checkout.channel.slug).toBe("us");
 
     const checkoutPath = origin + "/checkout?checkout=" + encodeURIComponent(checkoutId!);
-    const [sameHost, foreignHost] = await Promise.all([
+    const [sameHost, foreignHost, localizedCheckout, localizedForeignHost] = await Promise.all([
       request.get(checkoutPath, { headers: fashion }),
       request.get(checkoutPath, { headers: jewelry }),
+      request.get(checkoutPath + "&locale=de", {
+        headers: { ...fashion, Cookie: "browse-locale=de", "Accept-Language": "de-DE" },
+      }),
+      request.get(checkoutPath + "&locale=de", {
+        headers: { ...jewelry, Cookie: "browse-locale=de", "Accept-Language": "de-DE" },
+      }),
     ]);
     expect(sameHost.status(), "Checkout is available to its own brand").toBe(200);
     expect(foreignHost.status(), "Checkout must be denied from foreign brand").toBe(404);
+    expect(localizedCheckout.status(), "German language must preserve own-brand checkout access").toBe(200);
+    expect(localizedForeignHost.status(), "Language parameters cannot override brand ownership").toBe(404);
   });
 
   test("administration stays password-protected irrespective of incoming brand Host", async ({ request }) => {
