@@ -9,6 +9,7 @@ import { buildOrderStatusPath } from "@paper/session-bridge";
 import { checkRateLimit } from "@/lib/auth/auth-rate-limit";
 import { getCheckoutLocaleSlug } from "@/lib/browse-locale-server";
 import { isStorefrontLocaleSlug } from "@/config/locale";
+import { isChannelAllowedForCurrentHost } from "@/lib/brand/request-scope";
 import {
 	ORDER_VIEW_FIND_RATE_LIMIT,
 	emailsMatch,
@@ -78,6 +79,8 @@ export async function verifyOrderEmailAction(
 		return genericMiss();
 	}
 
+	const channel = (order as { channel?: { slug?: string | null } | null }).channel?.slug;
+  if (!(await isChannelAllowedForCurrentHost(channel ?? ""))) return genericMiss();
 	return grantOrderView(order.id, formData);
 }
 
@@ -108,5 +111,7 @@ export async function findOrderByNumberAction(
 		return genericMiss();
 	}
 
+	const channel = (lookup.order as { channel?: { slug?: string | null } | null }).channel?.slug;
+  if (!(await isChannelAllowedForCurrentHost(channel ?? ""))) return genericMiss();
 	return grantOrderView(lookup.order.id, formData);
 }
