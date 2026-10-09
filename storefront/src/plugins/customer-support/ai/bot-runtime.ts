@@ -95,7 +95,7 @@ function currentCustomerQuestion(conversation: Record<string, unknown>, messageI
   });
   const latest = object(incoming.at(-1));
   const nonActivity = object(conversation.last_non_activity_message);
-  const current = String(latest.id ?? "") === messageId ? latest :
+  const current: Record<string, unknown> = String(latest.id ?? "") === messageId ? latest :
     String(nonActivity.id ?? "") === messageId ? nonActivity : {};
   if (!current.id || String(current.id) !== messageId ||
       (current.message_type !== 0 && current.message_type !== "incoming") ||
