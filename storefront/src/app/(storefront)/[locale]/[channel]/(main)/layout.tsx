@@ -18,7 +18,11 @@ export async function generateMetadata({ params }: { params: LayoutProps["params
 			default: site?.name ?? brandConfig.siteName,
 			template: site ? `%s | ${site.name}` : brandConfig.titleTemplate,
 		},
-		description: site?.description ?? brandConfig.description,
+    description: site?.description ?? brandConfig.description,
+    ...(site ? {
+      metadataBase: new URL(`https://${site.domains[0]}`),
+      openGraph: { siteName: site.name, description: site.description ?? brandConfig.description },
+    } : {}),
 	};
 }
 
