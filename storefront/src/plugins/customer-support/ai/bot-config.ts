@@ -86,7 +86,7 @@ export function loadAIConfig(): AIConfig | null {
   for (const item of rawBots) {
     const { siteId, accountId, inboxId, webhookSecret, apiToken } = item;
     if (typeof siteId !== "string" || !positiveId(accountId) || !positiveId(inboxId) ||
-        !bounded(webhookSecret, 32, 512) || !bounded(apiToken, 16, 1024)) {
+        !bounded(webhookSecret, 24, 512) || !bounded(apiToken, 16, 1024)) {
       throw new Error("Invalid AI bot binding");
     }
     if (getChatwootBinding(support, siteId)?.accountId !== accountId) {
