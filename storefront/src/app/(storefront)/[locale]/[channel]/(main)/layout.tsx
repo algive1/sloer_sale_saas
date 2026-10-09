@@ -51,6 +51,9 @@ export default function RootLayout({ children, params }: LayoutProps) {
 				<Suspense fallback={null}>
 					<CartDrawerSlot params={params} />
 				</Suspense>
+				<Suspense fallback={null}>
+					<CustomerSupportSlot params={params} />
+				</Suspense>
 			</StorefrontProviders>
 		</>
 	);
