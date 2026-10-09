@@ -72,7 +72,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       expect(original.draftRevision).toBe(0);
 
       await page.goto("/ops/themes");
-      await expect(page.getByRole("heading", { name: "店铺可视化装修" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "品牌网站首页装修" })).toBeVisible();
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
       // Confirm the actual Puck block sidebar mounted, not just our server shell.
