@@ -61,8 +61,14 @@ export function buildOrderConfirmationPath({
  * Origin for checkout links. Empty NEXT_PUBLIC_CHECKOUT_URL → same deploy (relative paths).
  */
 export function getCheckoutOrigin(): string | undefined {
-	const configured = process.env.NEXT_PUBLIC_CHECKOUT_URL?.replace(/\/$/, "");
-	return configured || undefined;
+  // Shared Next storefront, distinct brand domains: browser checkout and order
+  // confirmation must stay on the current brand host. A single configured
+  // NEXT_PUBLIC_CHECKOUT_URL belongs to legacy single-store deployments.
+  // The brand flag is written by the trusted server root layout.
+  if (typeof document !== "undefined" &&
+      document.documentElement?.dataset?.multibrand === "true") return undefined;
+  const configured = process.env.NEXT_PUBLIC_CHECKOUT_URL?.replace(/\/$/, "");
+  return configured || undefined;
 }
 
 /**
