@@ -24,7 +24,7 @@ A "success" toast requires an acknowledged persistence/publish result.
 | 5. Decorate | From brand card open correct default market and language; choose brand then market then language; guard unsaved draft; never silently edit another brand | Initial navigation, visible scope, safe blank draft and confirmation implemented |
 | 6. Release homepage | Draft/save doesn't change online site; publish requires confirmation of brand, market and locale; the live URL is **not** considered verified merely because it exists | Scope key and publish confirmation implemented; end-to-end site verification pending |
 | 7. Verify launch | Independently validate DNS, HTTPS, catalog, stock, checkout, payment methods, shipping, privacy/legal and order emails | No automatic readiness check: show 'configured / pending validation', not 'online' |
-| 8. Review reporting | Platform summary is explicitly labeled; brand-selected reports return only authorized brand data at **SQL/API** layer, never client-side filtering | All-brand scope label implemented; brand-specific reports **not yet supported** |
+| 8. Review reporting | Platform summary is explicitly labeled; brand-selected reports return only authorized brand data at **SQL/API** layer, never client-side filtering | Initial brand-only summary available under `/ops/sites/[siteId]` (7 channel-filtered SQL queries). Other analytics dashboards and Saleor order lists remain platform-wide until each read path is scoped. |
 | 9. Operate plugins | Global plugin deployed once; each brand can have its own pixel ID, consent policy, reminder sender/rules; no fake installation toggle | Shared plugins present; per-brand configuration and authorized write endpoints pending |
 
 ### Release-state proposal
@@ -34,6 +34,26 @@ A failure in a required check downgrades readiness and displays exactly which
 prerequisite fails. Publishing a homepage is **not equivalent** to passing
 checkout/payment readiness. Platform administrators may inspect all brands;
 brand-scoped staff must only see assigned brands/channels.
+
+### Operator site readiness (partial implementation)
+
+Each configured brand links to `/ops/sites/[siteId]/readiness` for a server-read
+checklist. It verifies registry/domain entries, storefront Channel exposure,
+whether the configured Saleor Channels can be queried (when credentials exist),
+the valid locale/market pair, and whether the default homepage has a stored
+published revision. It **does not** claim DNS, TLS, shipping, payment, order
+emails or upstream tenant authorization are verified. These are shown as
+pending independent checks, not green "launched" labels.
+
+Brand performance summary is reachable via `/ops/sites/[siteId]` and uses
+server-owned Channel selection. All seven base metrics queries bind the
+Channel list in SQL, including session funnel, net revenue, source attribution
+and abandoned checkout sessions. The former global overview remains explicitly
+labelled platform-wide and is still restricted to platform operators.
+A composite `(channel, occurred_at)` index assists brand/time reporting.
+Brand-specific realtime, advanced traffic, products, checkout health and order
+management views are **not yet** site-scoped, so the application must not show
+them as brand-only views.
 
 ## Shopper journey and acceptance
 
