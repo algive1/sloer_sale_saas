@@ -71,12 +71,14 @@ export function parseBrandSites(raw: string | undefined): readonly BrandSite[] |
       throw new Error("Invalid brand description: " + id);
     }
     for (const key of ["logo", "logoInverted"] as const) {
-      if (row[key] !== undefined && (typeof row[key] !== "string" || !LOGO.test(row[key]))) {
+      const value = row[key];
+      if (value !== undefined && (typeof value !== "string" || !LOGO.test(value))) {
         throw new Error("Invalid brand " + key + ": " + id);
       }
     }
     for (const key of ["privacyPageSlug", "termsPageSlug"] as const) {
-      if (row[key] !== undefined && (typeof row[key] !== "string" || !PAGE_SLUG.test(row[key]))) {
+      const value = row[key];
+      if (value !== undefined && (typeof value !== "string" || !PAGE_SLUG.test(value))) {
         throw new Error("Invalid brand " + key + ": " + id);
       }
     }
