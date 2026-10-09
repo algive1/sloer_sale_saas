@@ -48,7 +48,10 @@
 		"content:export-seed": "node scripts/export-storefront-content-seed.mjs",
 		"orders:seed": "node scripts/seed-paid-orders.mjs",
 		"skills:bootstrap": "node scripts/bootstrap-agent-skills.mjs",
-		"har:analyze": "node scripts/analyze-storefront-har.mjs"
+		"har:analyze": "node scripts/analyze-storefront-har.mjs",
+		"locales:audit": "node scripts/audit-locale-coverage.mjs --all",
+		"locales:check": "node scripts/audit-locale-coverage.mjs --fail-incomplete",
+		"locales:test": "node --test scripts/audit-locale-coverage.test.mjs"
 	},
 	"dependencies": {
 		"@puckeditor/core": "0.23.0",
