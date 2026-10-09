@@ -200,7 +200,7 @@ export async function syncCheckoutFromServer(checkoutId: string): Promise<Checko
 }
 
 export async function updateCheckoutEmail(checkoutId: string, email: string): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutEmailUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -222,7 +222,7 @@ export async function updateCheckoutMarketingConsent(
 	checkoutId: string,
 	optedIn: boolean,
 ): Promise<SimpleActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutMetadataUpdateDocument, {
 		variables: {
 			id: checkoutId,
@@ -252,7 +252,7 @@ export async function updateCheckoutShippingAddress(
 	shippingAddress: AddressInput,
 	saveAddress?: boolean,
 ): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutShippingAddressUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -271,7 +271,7 @@ export async function updateCheckoutShippingAddress(
 }
 
 export async function attachCustomerToCheckout(checkoutId: string): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutCustomerAttachDocument, {
 		variables: {
 			checkoutId,
@@ -293,7 +293,7 @@ export async function registerCheckoutAccount(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
-\tawait requireChannelForCurrentHost(input.channel);
+	await requireChannelForCurrentHost(input.channel);
 	// Confirmation emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
 		const { server: t } = await getCheckoutServerTranslations();
@@ -352,7 +352,7 @@ export async function recoverOrphanedCheckout(
 	channel: string,
 	lines: RecoverLine[],
 ): Promise<CheckoutActionResult & { checkoutId?: string }> {
-\tawait requireChannelForCurrentHost(channel);
+	await requireChannelForCurrentHost(channel);
 	const locale = await resolveCheckoutLocaleSlug();
 	const createResult = await executeAuthenticatedGraphQL(checkoutCreateDocument, {
 		variables: {
@@ -402,12 +402,12 @@ export async function recoverOrphanedCheckout(
 }
 
 export async function detachCheckoutCustomer(checkoutId: string): Promise<void> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	await Checkout.detachCustomer(checkoutId);
 }
 
 export async function calculateDeliveryOptions(checkoutId: string): Promise<DeliveryOptionsActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(deliveryOptionsCalculateDocument, {
 		variables: { id: checkoutId },
 		cache: "no-cache",
@@ -435,7 +435,7 @@ export async function updateCheckoutDeliveryMethod(
 	checkoutId: string,
 	deliveryMethodId: string,
 ): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutDeliveryMethodUpdateDocument, {
 		variables: {
 			checkoutId,
@@ -457,7 +457,7 @@ export async function updateCheckoutBillingAddress(input: {
 	billingAddress: AddressInput;
 	saveAddress: boolean;
 }): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(input.checkoutId);
+	await requireCheckoutForCurrentHost(input.checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutBillingAddressUpdateDocument, {
 		variables: {
 			checkoutId: input.checkoutId,
@@ -478,7 +478,7 @@ export async function updateCheckoutBillingAddress(input: {
 export async function initializePaymentGateways(
 	variables: PaymentGatewaysInitializeMutationVariables,
 ): Promise<PaymentGatewaysInitializeActionResult> {
-\tawait requireCheckoutVariablesForCurrentHost(variables);
+	await requireCheckoutVariablesForCurrentHost(variables);
 	const result = await executeAuthenticatedGraphQL(paymentGatewaysInitializeDocument, {
 		variables,
 		cache: "no-cache",
@@ -505,7 +505,7 @@ export async function initializePaymentGateways(
 export async function initializeCheckoutTransaction(
 	variables: TransactionInitializeMutationVariables,
 ): Promise<TransactionInitializeActionResult> {
-\tawait requireCheckoutVariablesForCurrentHost(variables);
+	await requireCheckoutVariablesForCurrentHost(variables);
 	const { server: t } = await getCheckoutServerTranslations();
 
 	const dummyGuardError = getDummyPaymentGuardError(variables.paymentGateway?.id);
@@ -559,7 +559,7 @@ export async function initializeCheckoutTransaction(
 export async function processCheckoutTransaction(
 	variables: TransactionProcessMutationVariables,
 ): Promise<TransactionProcessActionResult> {
-\tawait requireCheckoutVariablesForCurrentHost(variables);
+	await requireCheckoutVariablesForCurrentHost(variables);
 	// Mirror the initialize guards: when every integrated gateway is disabled for this
 	// environment, a direct call to this action must not drive transactions either.
 	// Forks adding gateways should extend this check alongside the initialize guards.
@@ -688,7 +688,7 @@ export async function getAddressValidationRules(
 }
 
 export async function removeCheckoutLine(checkoutId: string, lineId: string): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutLineDeleteDocument, {
 		variables: {
 			checkoutId,
@@ -709,7 +709,7 @@ export async function applyCheckoutPromoCode(
 	checkoutId: string,
 	promoCode: string,
 ): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutAddPromoCodeDocument, {
 		variables: {
 			checkoutId,
@@ -730,7 +730,7 @@ export async function removeCheckoutPromoCode(
 	checkoutId: string,
 	promoCode: string,
 ): Promise<CheckoutActionResult> {
-\tawait requireCheckoutForCurrentHost(checkoutId);
+	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutRemovePromoCodeDocument, {
 		variables: {
 			checkoutId,
@@ -752,7 +752,7 @@ export async function requestCheckoutPasswordReset(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
-\tawait requireChannelForCurrentHost(input.channel);
+	await requireChannelForCurrentHost(input.channel);
 	// Reset emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
 		const { server: t } = await getCheckoutServerTranslations();
