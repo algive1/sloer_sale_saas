@@ -1,4 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { invariant } from "ts-invariant";
 import { buildCheckoutPath, buildOrderStatusPath } from "@paper/session-bridge";
 import { DefaultChannelSlug } from "@/app/config";
@@ -37,7 +39,9 @@ type CheckoutSessionLoaderProps = {
 export async function CheckoutSessionLoader({
 	searchParams: searchParamsPromise,
 }: CheckoutSessionLoaderProps) {
-	const searchParams = await searchParamsPromise;
+  const searchParams = await searchParamsPromise;
+  const site = brandSitesConfigured() ? brandSiteForHost((await headers()).get("host")) : null;
+  if (brandSitesConfigured() && !site) notFound();
 	invariant(process.env.NEXT_PUBLIC_SALEOR_API_URL, "Missing NEXT_PUBLIC_SALEOR_API_URL env variable");
 
 	const orderId = searchParams.order ?? null;
@@ -72,7 +76,10 @@ export async function CheckoutSessionLoader({
 		loadState = "error";
 	} else if (!checkoutResult.ok) {
 		loadState = "error";
-	} else if (!checkoutResult.checkout) {
+  } else if (!checkoutResult.checkout) {
+    // In multi-brand mode, do not mount a client checkout with an inaccessible ID.
+    // The browser must not receive cross-brand checkout data or a fetchable session.
+    if (brandSitesConfigured()) notFound();
 		loadState = "not_found";
 		await Checkout.clearCheckoutCookieByValue(checkoutIdFromUrl);
 	} else {
@@ -98,7 +105,7 @@ export async function CheckoutSessionLoader({
 	}
 
 	const browseChannel = channelSlug ?? (await Checkout.getChannelSlugFromCartCookies());
-	const contentChannel = browseChannel ?? DefaultChannelSlug ?? "default-channel";
+	const contentChannel = browseChannel ?? site?.defaultChannel ?? DefaultChannelSlug ?? "default-channel";
 	const [checkoutContent, messages] = await Promise.all([
 		getStorefrontContent(contentChannel, browseLocale).then((content) => content.surfaces.checkout),
 		loadCheckoutMessages(browseLocale),
