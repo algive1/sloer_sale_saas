@@ -60,6 +60,11 @@ describe("signed Chatwoot Agent Bot ingress", () => {
     expect(result.status).toBe(403);
     expect(processMessage).not.toHaveBeenCalled();
   });
+  it("accepts unsupported attachment messages for human handoff", async () => {
+    const result = await signedRequest({...baseEvent,content_type:"image",content:null},"fashion","signing-secret");
+    expect(result.status).toBe(204);
+    expect(processMessage.mock.calls[0]?.[1]).toMatchObject({question:""});
+  });
   it("ignores outgoing bot messages and private messages", async () => {
     for(const change of [{message_type:"outgoing"},{private:true}]) {
       const result = await signedRequest({...baseEvent,...change},"fashion","signing-secret");

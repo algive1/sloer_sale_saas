@@ -39,11 +39,11 @@ export async function enqueueAIBotMessage(bot: BotBinding, event: IncomingBotMes
   await libsqlPipeline([{
     sql: "INSERT OR IGNORE INTO support_ai_delivery " +
       "(site_id,message_id,conversation_id,status,kind,claimed_at) SELECT ?,?,?,'queued'," +
-      "CASE WHEN (SELECT COUNT(*) FROM support_ai_delivery " +
+      "CASE WHEN ? = 1 OR (SELECT COUNT(*) FROM support_ai_delivery " +
       "WHERE site_id=? AND conversation_id=? AND claimed_at>=?) >= 20 OR " +
       "(SELECT COUNT(*) FROM support_ai_delivery WHERE site_id=? AND claimed_at>=?) >= 500 " +
       "THEN 'handoff' ELSE 'answer' END, ?",
-    args: [bot.siteId,event.messageId,event.conversationId,
+    args: [bot.siteId,event.messageId,event.conversationId,event.question.length ? 0 : 1,
       bot.siteId,event.conversationId,since,bot.siteId,since,now.toISOString()],
   }]);
 }
@@ -87,19 +87,23 @@ async function conversationDetails(
       positive(data.inbox_id) !== bot.inboxId || data.status !== "pending") return null;
   return data;
 }
-function currentCustomerQuestion(conversation: Record<string, unknown>, messageId: string): string | null {
+function currentIncomingMessage(
+  conversation: Record<string, unknown>, messageId: string,
+): Record<string, unknown> | null {
+  // GET /conversations/:id includes only the latest event, not full message history.
   const messages = Array.isArray(conversation.messages) ? conversation.messages : [];
-  const incoming = messages.filter((item) => {
-    const m = object(item);
-    return (m.message_type === 0 || m.message_type === "incoming") && m.private !== true;
-  });
-  const latest = object(incoming.at(-1));
+  const latest = object(messages.at(-1));
   const nonActivity = object(conversation.last_non_activity_message);
-  const current: Record<string, unknown> = String(latest.id ?? "") === messageId ? latest :
+  const current = String(latest.id ?? "") === messageId ? latest :
     String(nonActivity.id ?? "") === messageId ? nonActivity : {};
   if (!current.id || String(current.id) !== messageId ||
       (current.message_type !== 0 && current.message_type !== "incoming") ||
-      current.private === true || current.content_type !== "text" || typeof current.content !== "string" ||
+      current.private === true) return null;
+  return current;
+}
+function currentCustomerQuestion(conversation: Record<string, unknown>, messageId: string): string | null {
+  const current = currentIncomingMessage(conversation, messageId);
+  if (!current || current.content_type !== "text" || typeof current.content !== "string" ||
       !current.content.trim() || current.content.length > 1000) return null;
   return current.content.trim();
 }
@@ -161,9 +165,9 @@ async function processOne(config: AIConfig, row: PendingRow): Promise<void> {
   try {
     const live = await conversationDetails(config,bot,row);
     if (!live) { await mark(row,"skipped"); return; }
+    if (!currentIncomingMessage(live,row.messageId)) { await mark(row,"skipped"); return; }
     const question = currentCustomerQuestion(live,row.messageId);
-    if (!question) { await mark(row,"skipped"); return; }
-    if (row.kind === "handoff" || requiresHuman(question)) {
+    if (row.kind === "handoff" || !question || requiresHuman(question)) {
       await handoff(config,bot,row);
       await mark(row,"handed_off");
       return;

@@ -39,17 +39,18 @@ export function incomingBotMessage(payload: unknown): IncomingBotMessage | null 
   const inbox = rec(event.inbox);
   if (event.event !== "message_created" ||
       (event.message_type !== "incoming" && event.message_type !== 0) ||
-      event.private === true || event.content_type !== "text") return null;
+      event.private === true) return null;
   const messageId = intId(event.id);
   const accountId = intId(account.id);
   const inboxId = intId(conversation.inbox_id ?? inbox.id);
   // Chatwoot v4.18 webhook conversation.webhook_data uses `id`, not `display_id`.
   // `id` is the per-Account display ID expected by /conversations/:id.
   const conversationId = intId(conversation.id);
-  const question = event.content;
-  if (!messageId || !accountId || !inboxId || !conversationId ||
-      typeof question !== "string" || !question.trim() || question.length > 1000) return null;
-  return { messageId: String(messageId), accountId, inboxId, conversationId, question: question.trim() };
+  const question = event.content_type === "text" && typeof event.content === "string" &&
+    event.content.trim().length > 0 && event.content.length <= 1000 ? event.content.trim() : "";
+  if (!messageId || !accountId || !inboxId || !conversationId) return null;
+  // Non-text or oversized visitor input must be handed to a human, not silently ignored.
+  return { messageId: String(messageId), accountId, inboxId, conversationId, question };
 }
 
 /** Customer data must not be sent to a language model without a verified authorization path. */

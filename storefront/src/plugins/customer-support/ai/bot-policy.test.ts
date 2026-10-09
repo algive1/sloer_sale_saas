@@ -25,6 +25,8 @@ describe("AI bot security and scope", () => {
     expect(incomingBotMessage(payload)).toEqual({messageId:"25",accountId:1,inboxId:3,conversationId:7,question:"Shipping?"});
     expect(incomingBotMessage({...payload,message_type:"outgoing"})).toBeNull();
     expect(incomingBotMessage({...payload,private:true})).toBeNull();
+    expect(incomingBotMessage({...payload,content_type:"image",content:null})?.question).toBe("");
+    expect(incomingBotMessage({...payload,content:"x".repeat(1001)})?.question).toBe("");
     expect(incomingBotMessage({...payload,conversation:{id:0}})).toBeNull();
     expect(incomingBotMessage({...payload,conversation:{display_id:7,inbox_id:3}})).toBeNull();
   });
