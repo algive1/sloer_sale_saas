@@ -1,6 +1,5 @@
 import { cookies, headers } from "next/headers";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
-import { fetchCheckoutOnServer } from "@/checkout/lib/server/fetch-checkout";
 import { isChannelAllowedForCurrentHost, requireChannelForCurrentHost } from "@/lib/brand/request-scope";
 import { cache } from "react";
 import { checkoutIdCookieName } from "@paper/session-bridge";
@@ -141,6 +140,7 @@ export const find = cache(async (
     // Paper's lean cart query intentionally omits checkout.channel.
     // Verify authoritative channel via the existing full checkout query
     // rather than inferring ownership from a client-controlled cookie name.
+    const { fetchCheckoutOnServer } = await import("@/checkout/lib/server/fetch-checkout");
     const live = await fetchCheckoutOnServer(checkoutId);
     if (!live.ok || !live.checkout ||
         (expectedChannel && live.checkout.channel.slug !== expectedChannel)) return null;
