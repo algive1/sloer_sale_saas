@@ -10,6 +10,7 @@ import { toTypedDocument } from "@/checkout/lib/server/to-typed-document";
 import { executePublicGraphQL } from "@/lib/graphql";
 import { checkoutGraphqlLocaleVariables } from "@/lib/checkout-locale";
 import type { LocaleSlug } from "@/config/locale";
+import { isChannelAllowedForCurrentHost } from "@/lib/brand/request-scope";
 
 const checkoutQueryDocument = toTypedDocument<CheckoutQuery, CheckoutQueryVariables>(CheckoutDocument);
 
@@ -39,5 +40,10 @@ export async function fetchCheckoutOnServer(
 		return { ok: false };
 	}
 
-	return { ok: true, checkout: result.data.checkout ?? null };
+  const checkout = result.data.checkout ?? null;
+  if (checkout && !(await isChannelAllowedForCurrentHost(checkout.channel.slug))) {
+    // Cross-host checkout ID behaves like an inaccessible checkout, not a valid session.
+    return { ok: true, checkout: null };
+  }
+  return { ok: true, checkout };
 }
