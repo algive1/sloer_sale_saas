@@ -28,8 +28,7 @@ export function TranslationCenter({brands,coverage,storageReady,workerReady,publ
   const [message,setMessage]=useState("");
   const ready=storageReady&&saleorReady;
   const currentJob=jobs.find(j=>j.channel===channel&&j.locale===locale);
-  const allPagesQueued=Boolean(currentJob&&currentJob.nextCursor===null &&
-    currentJob.queued===0&&currentJob.draft===0&&currentJob.approved===0);
+  const allPagesQueued=Boolean(currentJob&&currentJob.nextCursor===null);
   const currentLocale=locales.includes(locale)?locale:locales[0]??"";
   const currentChannel=brand?.channels.includes(channel)?channel:brand?.channels[0]??"";
 

@@ -85,7 +85,7 @@ export async function createJob(scope:TranslationScope,count:number):Promise<Tra
   // Repeated button clicks/retries return the existing active batch rather than
   // creating duplicate model spend and conflicting approval work.
   const ongoing=await sql("SELECT j.id FROM ops_translation_jobs j JOIN ops_translation_items i ON i.job_id=j.id "+
-    "WHERE j.site_id=? AND j.channel=? AND j.locale=? AND i.status IN ('queued','processing','draft','approved','publishing') "+
+    "WHERE j.site_id=? AND j.channel=? AND j.locale=? AND i.status IN ('queued','processing','draft','publishing') "+
     "ORDER BY j.created_at DESC LIMIT 1",[scope.siteId,scope.channel,scope.locale],true);
   if(ongoing.rows.length) {
     const current=await getJob(scope.siteId,s(ongoing.rows[0],"id"));
