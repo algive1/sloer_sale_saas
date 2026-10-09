@@ -9,26 +9,33 @@ import {
 	wishlistCloudConfigured,
 } from "@/lib/wishlist/wishlist-store";
 import { isValidWishlistProductId, isValidWishlistRecord } from "@/lib/wishlist/validation";
+import {
+  scopedWishlistOwnerKey, wishlistItemBelongsToSite, wishlistScopeFromHost, type WishlistSiteScope,
+} from "@/lib/wishlist/site-scope";
 
 
 const OWNER_COOKIE = "paper_wishlist_owner";
 const OWNER_MAX_AGE = 60 * 60 * 24 * 365;
 
 export async function GET(request: NextRequest) {
+  const scope = wishlistScopeFromHost(request.headers.get("host"));
+  if (!scope) return NextResponse.json({ error: "store_not_found" }, { status: 404 });
 	if (!wishlistCloudConfigured()) return NextResponse.json({ items: [], cloud: false });
-	const owner = await resolveOwner(request);
+	const owner = await resolveOwner(request, scope);
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
-	const items = await listWishlist(owner.key);
+	const items = (await listWishlist(owner.key)).filter((item) => wishlistItemBelongsToSite(item, scope));
 	const response = NextResponse.json({ items, cloud: true });
 	setGuestCookie(response, owner);
 	return response;
 }
 
 export async function POST(request: NextRequest) {
+  const scope = wishlistScopeFromHost(request.headers.get("host"));
+  if (!scope) return NextResponse.json({ error: "store_not_found" }, { status: 404 });
 	if (!wishlistCloudConfigured()) return new NextResponse(null, { status: 204 });
 	const item: unknown = await request.json().catch(() => null);
-	if (!isValidWishlistRecord(item)) return NextResponse.json({ error: "invalid_item" }, { status: 400 });
-	const owner = await resolveOwner(request);
+	if (!isValidWishlistRecord(item) || !wishlistItemBelongsToSite(item, scope)) return NextResponse.json({ error: "invalid_item" }, { status: 400 });
+	const owner = await resolveOwner(request, scope);
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
 	await upsertWishlist(owner.key, item);
 	const response = new NextResponse(null, { status: 204 });
@@ -37,10 +44,12 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const scope = wishlistScopeFromHost(request.headers.get("host"));
+  if (!scope) return NextResponse.json({ error: "store_not_found" }, { status: 404 });
 	if (!wishlistCloudConfigured()) return new NextResponse(null, { status: 204 });
 	const body = (await request.json().catch(() => null)) as { productId?: string } | null;
 	if (!isValidWishlistProductId(body?.productId)) return NextResponse.json({ error: "invalid_product" }, { status: 400 });
-	const owner = await resolveOwner(request);
+	const owner = await resolveOwner(request, scope);
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
 	await removeWishlist(owner.key, body.productId);
 	const response = new NextResponse(null, { status: 204 });
@@ -48,13 +57,13 @@ export async function DELETE(request: NextRequest) {
 	return response;
 }
 
-async function resolveOwner(request: NextRequest): Promise<{ key: string; guestId?: string; mergeFrom?: string }> {
+async function resolveOwner(request: NextRequest, scope: WishlistSiteScope): Promise<{ key: string; guestId?: string; mergeFrom?: string }> {
 	const guestId = request.cookies.get(OWNER_COOKIE)?.value || crypto.randomUUID();
 	const auth = await executeAuthenticatedGraphQL(CurrentUserDocument, { cache: "no-cache", maxRetries: 0, timeoutMs: 1_500 });
 	if (auth.ok && auth.data.me?.id) {
-		return { key: `user:${auth.data.me.id}`, mergeFrom: `guest:${guestId}` };
+		return { key: scopedWishlistOwnerKey(`user:${auth.data.me.id}`, scope), mergeFrom: scopedWishlistOwnerKey(`guest:${guestId}`, scope) };
 	}
-	return { key: `guest:${guestId}`, guestId };
+	return { key: scopedWishlistOwnerKey(`guest:${guestId}`, scope), guestId };
 }
 
 function setGuestCookie(
