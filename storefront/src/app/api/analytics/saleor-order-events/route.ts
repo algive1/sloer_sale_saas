@@ -6,6 +6,7 @@ import {
 	storeFirstPartyCommerceEvent,
 } from "@/plugins/analytics/first-party-store";
 import { verifyWebhookSignature } from "@/lib/api-auth";
+import { brandSitesConfigured, brandSiteForChannel } from "@/config/brand-sites";
 
 
 type Money = { amount?: number | string | null; currency?: string | null };
@@ -44,6 +45,12 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: "invalid_json" }, { status: 400 });
 	}
 	const order = extractOrder(payload);
+  // Webhook is signature-verified, so take its channel from the actual Saleor
+  // order payload, not the public HTTP Host of the callback endpoint.
+  if (brandSitesConfigured() &&
+      (!order?.channel?.slug || !brandSiteForChannel(order.channel.slug))) {
+    return NextResponse.json({ error: "unknown_store_channel" }, { status: 400 });
+  }
 	if (!order?.id || !order.totalRefunded) {
 		return NextResponse.json({ error: "missing_order_refund_fields" }, { status: 400 });
 	}
