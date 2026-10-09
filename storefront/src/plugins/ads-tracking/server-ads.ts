@@ -1,6 +1,7 @@
 import "server-only";
 
 import { metaPixelId, tiktokPixelId } from "@/plugins/ads-tracking/config";
+import { brandSitesConfigured } from "@/config/brand-sites";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { adsStorageAllowed, analyticsStorageAllowed } from "@/lib/analytics/consent";
 import {
@@ -25,6 +26,7 @@ export async function deliverServerDestinations(
 	event: PaperCommerceEvent,
 	requestHeaders: HeaderReader,
 ): Promise<void> {
+	if (brandSitesConfigured()) return;
 	const choice = parseConsentChoice(readCookie(requestHeaders, ANALYTICS_CONSENT_COOKIE));
 	const jobs: Promise<void>[] = [];
 
@@ -42,6 +44,7 @@ export async function deliverGa4ServerEvent(
 	event: PaperCommerceEvent,
 	requestHeaders: HeaderReader,
 ): Promise<void> {
+	if (brandSitesConfigured()) return;
 	await deliverGa4(event, requestHeaders);
 }
 
