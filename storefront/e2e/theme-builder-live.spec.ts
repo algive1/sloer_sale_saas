@@ -146,7 +146,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
         await dialog.accept();
       });
       await (await requirePuckPublishButton()).click();
-      await expect(page.locator('p[role="status"]')).toContainText("Published.", { timeout: 30_000 });
+      await expect(page.locator('p[role="status"]')).toContainText("发布成功", { timeout: 30_000 });
 
       const published = await authorized.get(scope);
       const after = await published.json() as {
