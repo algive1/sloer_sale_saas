@@ -92,7 +92,7 @@ Connect the Chatwoot Agent Bot to that brand's Website Inbox and configure its c
 
 ## Operational limitations
 
-- **Synchronous webhook MVP:** real high-volume deployment needs an asynchronous durable worker. A claimed failed message is not automatically retried to avoid duplicate answers; operators need a reconciliation procedure.
+- **Durable queue:** Chatwoot's default outgoing webhook timeout is 5 seconds. The signed POST does only HMAC verification and an atomic libSQL enqueue, returning 204 quickly. A **separate bearer-protected polling worker** processes at most one message per HTTP call. Uncertain failures remain failed rather than automatically replaying messages; operators need a reconciliation procedure.
 - The `support_ai_delivery` table retains delivery IDs and processing statuses only, not raw chat content. Chatwoot owns conversations and attachments.
 - A model selects among up to 12 current-brand FAQ records, not an arbitrary internet search. Poor matches or model outages hand off to humans.
 - The `AI assistant` prefix identifies automated replies. Human handoff uses the documented Chatwoot `/toggle_status` route and requires real-version E2E verification.
@@ -102,3 +102,19 @@ Connect the Chatwoot Agent Bot to that brand's Website Inbox and configure its c
 - Confirm actual account-scoped conversation GET, message POST, handoff POST, two-brand isolation, mobile behavior, duplicate delivery, human takeover and failure paths before production enablement.
 
 Run `pnpm --dir storefront exec vitest run src/plugins/customer-support/ai/bot-policy.test.ts src/plugins/customer-support/ai/bot-config.test.ts` and the full CI and browser suites before merging.
+
+### Self-hosted worker scheduling
+
+The worker must run outside HTTP shopper requests. On the same trusted private network, schedule a protected POST to `/api/plugins/customer-support/agent-bot-worker` approximately every 5–10 seconds while operating; it reads one queued message per invocation. Use a process supervisor to manage the worker and HTTP timeouts. Never put its bearer token in a public client, URL or repository.
+
+Illustrative invocation (use a secret sourced from your deployment vault, not a literal value):
+
+```bash
+curl --fail --silent --show-error --max-time 30 --request POST \
+  -H "Authorization: Bearer ${SUPPORT_AI_WORKER_SECRET}" \
+  "http://127.0.0.1:3000/api/plugins/customer-support/agent-bot-worker"
+```
+
+Configure short Chatwoot/model network timeouts, a restricted internal endpoint, HTTPS for external networking, queue health alarms, and a reconciliation procedure for stale processing/failed claims. A worker outage must be visible to operators; it does not affect storefront browsing or payment.
+
+Chatwoot v4.18.0 `lib/webhooks/trigger.rb` defaults to a 5-second delivery timeout. Do not move AI inference back into the incoming Webhook route.
