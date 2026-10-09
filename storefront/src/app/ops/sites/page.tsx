@@ -104,10 +104,16 @@ export default function BrandSitesPage() {
                 </div>
                 <div className="mt-6 flex flex-wrap gap-4 border-t border-stone-100 pt-4 text-sm">
                   {configured && (
-                    <Link href={`/ops/sites/${encodeURIComponent(site.id)}`}
-                      className="font-semibold underline underline-offset-4">
-                      查看品牌经营概况 →
-                    </Link>
+                    <>
+                      <Link href={`/ops/sites/${encodeURIComponent(site.id)}/readiness`}
+                        className="font-semibold underline underline-offset-4">
+                        检查上线准备 →
+                      </Link>
+                      <Link href={`/ops/sites/${encodeURIComponent(site.id)}`}
+                        className="font-semibold underline underline-offset-4">
+                        查看品牌经营概况 →
+                      </Link>
+                    </>
                   )}
                   {canEditHomepage ? (
                     <Link href={editUrl} className="font-semibold underline underline-offset-4">
