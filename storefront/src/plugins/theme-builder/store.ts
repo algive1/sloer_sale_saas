@@ -2,6 +2,7 @@ import "server-only";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import { parseTheme, serializeTheme } from "./validate";
 import type { ThemeData } from "./template";
+import { siteIdForChannel } from "@/config/brand-sites";
 
 type StoredTheme = {
   draft: ThemeData | null;
@@ -37,10 +38,10 @@ export function themeDatabaseConfigured(): boolean {
   return themeConnection() !== null;
 }
 
-export function activeThemeSiteId(): string {
-  const siteId = process.env.STOREFRONT_SITE_ID?.trim() || "primary";
-  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(siteId)) throw new Error("Invalid STOREFRONT_SITE_ID");
-  return siteId;
+export function activeThemeSiteId(channel: string): string {
+  // Server-verified channel membership maps to one site in multi-brand mode.
+  // Old single-brand instances continue using STOREFRONT_SITE_ID.
+  return siteIdForChannel(channel);
 }
 
 async function ensureSchema(): Promise<void> {
@@ -72,7 +73,7 @@ export async function readTheme(channel: string, locale: string): Promise<Stored
   await ensureSchema();
   const [result] = await libsqlPipeline([{
     sql: "SELECT draft_json, published_json, draft_revision, published_revision FROM storefront_theme_homepages WHERE site_id = ? AND channel = ? AND locale = ? LIMIT 1",
-    args: [activeThemeSiteId(), channel, locale],
+    args: [activeThemeSiteId(channel), channel, locale],
     wantRows: true,
   }], database());
   const record = hranaRowsToObjects(result)[0];
@@ -101,7 +102,7 @@ export async function saveTheme(
   }
   const json = serializeTheme(input);
   await ensureSchema();
-  const siteId = activeThemeSiteId();
+  const siteId = activeThemeSiteId(channel);
   const now = new Date().toISOString();
   const statement = expectedRevision === 0
     ? {
