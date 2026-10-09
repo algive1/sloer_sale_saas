@@ -1,6 +1,7 @@
 "use client";
 
 import { googleAdsId, googleAdsPurchaseLabel, metaPixelId, tiktokPixelId } from "@/plugins/ads-tracking/config";
+import { globalMerchantTagsAllowed } from "@/lib/analytics/global-destinations-policy";
 import { adsStorageAllowed } from "@/lib/analytics/consent";
 import { readConsentChoice } from "@/lib/analytics/browser";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
@@ -127,7 +128,7 @@ export function flushBrowserAdEvents(): void {
 }
 
 export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAdContext = {}): void {
-	if (typeof window === "undefined" || !adsStorageAllowed(readConsentChoice())) return;
+	if (typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
 
 	const key = browserAdEventKey(event);
 	if (projectMeta(event) && metaPixelId()) {
@@ -156,7 +157,7 @@ export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAd
 }
 
 export function sendAdPageView(): void {
-	if (typeof window === "undefined" || !adsStorageAllowed(readConsentChoice())) return;
+	if (typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
 
 	const canMeta = Boolean(metaPixelId() && typeof window.fbq === "function");
 	const canTikTok = Boolean(tiktokPixelId() && typeof window.ttq?.page === "function");
