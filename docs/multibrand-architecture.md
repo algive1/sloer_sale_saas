@@ -101,3 +101,39 @@ sites) host/channel lookup; there are no DB reads on browsing requests. For a
 large number of sites, index the already-validated in-memory configuration
 into host/channel Maps. Avoid per-request plugin discovery and avoid
 cross-process mutable caches for published content without invalidation.
+
+## Checkout and wishlist guard increment (still not production-complete)
+
+- Shared libSQL wishlist keys now include the verified `site_id` in multi-brand
+  mode for both guest and authenticated owners. Guest→user merging stays within
+  the same site. POST rejects a product's foreign Channel and cross-brand
+  localized URLs. Existing single-site keys remain unchanged.
+- Previously existing single-site wishlist rows are **not** silently migrated
+  or exposed to every new brand. Explicit merchant-scoped migration is required
+  for continuity when enabling the multi-brand configuration.
+- Cart cookie selection only considers Channels of the incoming trusted Host;
+  wrong-channel checkout cookies cannot become the default checkout.
+- Cart create/read and checkout RSC loading verify host Channel ownership,
+  and payment/checkout Server Actions verify the *live Saleor checkout* before
+  write mutations. A cross-brand checkout ID is rejected, not silently reused.
+- For multi-brand direct checkout requests with a missing or foreign token,
+  return an unavailable/not-found response instead of mounting client checkout
+  state which might refetch the foreign checkout.
+
+### Remaining high-risk requirements
+
+- The public Saleor GraphQL endpoint may still accept a valid bearer checkout
+  ID independently of Paper. Browser-readable credentials and GraphQL must be
+  scoped at the backing API/proxy boundary if strict brand confidentiality is
+  required. Paper action checks alone do not enforce upstream tenant RBAC.
+- Saleor customers are global within this Core instance. Orders, authenticated
+  account pages, password flows, refunds, merchant staff and webhook actions
+  still require a coherent per-brand authorization/data model.
+- Browser/server ad providers and first-party analytics are still configured
+  globally. No mixed-brand deployment should be enabled until event tables,
+  consent, pixels and cross-brand reports have site-specific configuration.
+- Per-host canonical URL, sitemap, Merchant feeds, robots, cache keys and origin
+  redirect policies must be verified with two real test domains.
+- For high assurance legal/merchant separation, consider one Saleor tenant
+  instance per brand behind a unified operations control plane. Sharing one
+  Saleor Core with Channel mapping is a convenience, not automatic isolation.
