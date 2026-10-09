@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const processMessage = vi.hoisted(() => vi.fn(async () => "answered"));
+const processMessage = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => "answered"));
 vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => true,
 }));
