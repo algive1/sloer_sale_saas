@@ -74,7 +74,7 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 				{/* Language + market — hidden when only one option on each axis */}
 				{(localeOptions.length > 1 || selectorChannels.length > 1) && (
 					<div className="mt-10">
-						<StorefrontRegionPicker locales={localeOptions} channels={selectorChannels} variant="inverted" />
+						<StorefrontRegionPicker locales={localeOptions} channels={selectorChannels} allowedChannels={site?.channels} variant="inverted" />
 					</div>
 				)}
 
