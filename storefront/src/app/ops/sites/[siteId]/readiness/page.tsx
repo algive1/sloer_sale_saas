@@ -52,8 +52,9 @@ export default async function BrandReadinessPage({ params }: { params: Promise<{
   }
 
   const platformMissing = site.channels.filter((channel) => !staticChannels.includes(channel));
+  const registeredSaleor = new Set(backendChannels ?? []);
   const unrecognizedSaleor = backendChannels
-    ? site.channels.filter((channel) => !backendChannels.includes(channel))
+    ? site.channels.filter((channel) => !registeredSaleor.has(channel))
     : [];
   const checks: Check[] = [
     {
