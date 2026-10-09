@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
+import { fetchCheckoutOnServer } from "@/checkout/lib/server/fetch-checkout";
 import { isChannelAllowedForCurrentHost, requireChannelForCurrentHost } from "@/lib/brand/request-scope";
 import { cache } from "react";
 import { checkoutIdCookieName } from "@paper/session-bridge";
@@ -132,10 +133,18 @@ export async function clearCheckoutCookieByValue(checkoutId: string) {
  * and the cart page all read the checkout during one RSC render, and without dedup each
  * paid its own Saleor round trip (extra upstream load + provisioned-memory wall time).
  */
-export const find = cache(async (checkoutId: string, localeSlug?: string): Promise<CartCheckout | null> => {
-	if (!checkoutId) {
-		return null;
-	}
+export const find = cache(async (
+  checkoutId: string, localeSlug?: string, expectedChannel?: string,
+): Promise<CartCheckout | null> => {
+  if (!checkoutId) return null;
+  if (brandSitesConfigured()) {
+    // Paper's lean cart query intentionally omits checkout.channel.
+    // Verify authoritative channel via the existing full checkout query
+    // rather than inferring ownership from a client-controlled cookie name.
+    const live = await fetchCheckoutOnServer(checkoutId);
+    if (!live.ok || !live.checkout ||
+        (expectedChannel && live.checkout.channel.slug !== expectedChannel)) return null;
+  }
 
 	const result = await executePublicGraphQL(CheckoutFindDocument, {
 		variables: { id: checkoutId, ...(await checkoutGraphqlLocaleVariables(localeSlug)) },
@@ -146,7 +155,6 @@ export const find = cache(async (checkoutId: string, localeSlug?: string): Promi
 		return null;
 	}
 
-  if (!(await isChannelAllowedForCurrentHost(result.data.checkout.channel.slug))) return null;
 	return withTranslatedCartCheckout(result.data.checkout);
 });
 
@@ -164,8 +172,8 @@ export async function findOrCreate({
 		return result.ok ? result.data.checkoutCreate?.checkout : null;
 	}
 
-	const checkout = await find(checkoutId, localeSlug);
-	if (checkout && checkout.channel.slug === channel) {
+	const checkout = await find(checkoutId, localeSlug, channel);
+	if (checkout) {
 		return checkout;
 	}
 
