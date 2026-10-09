@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { renderPublishedThemeHomepage } from "@/plugins/theme-builder/entry.server";
-import { brandConfig } from "@/config/brand";
 import { resolveLocaleFromSlug } from "@/config/locale";
 import { getFeaturedProducts } from "@/lib/catalog/get-featured-products";
 import { resolveChannelCurrency } from "@/lib/channels/resolve-channel-currency";
@@ -17,10 +16,6 @@ import { ImageWithText } from "@/ui/sections/image-with-text/image-with-text";
 import { MediaHero } from "@/ui/sections/media-hero/media-hero";
 import { MulticolumnSection } from "@/ui/sections/multicolumn-section/multicolumn-section";
 import { RichTextBlock } from "@/ui/sections/rich-text-block/rich-text-block";
-
-export const metadata = {
-	description: brandConfig.description,
-};
 
 // Prefetch: default (auto). With global `partialPrefetching`, viewport links already get the
 // homepage App Shell. No link uses `prefetch={true}` to "/".
