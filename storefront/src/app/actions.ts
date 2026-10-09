@@ -6,6 +6,8 @@ import { signOutSession } from "@/lib/auth/bff-server";
 import { executeAuthenticatedGraphQL } from "@/lib/graphql";
 import { CheckoutDeleteLinesDocument, CheckoutLinesUpdateDocument } from "@/gql/graphql";
 import * as Checkout from "@/lib/checkout";
+import { requireCheckoutForCurrentHost } from "@/checkout/lib/server/require-checkout-site";
+import { requireChannelForCurrentHost } from "@/lib/brand/request-scope";
 
 // Private state (session/cart cookies) lives in dynamic holes that read cookies at
 // request time — it is never in the shared cache, so there is nothing global to
@@ -45,6 +47,8 @@ export async function logout() {
 }
 
 export async function saveCheckoutId(channel: string, checkoutId: string) {
+  await requireChannelForCurrentHost(channel);
+  await requireCheckoutForCurrentHost(checkoutId);
 	await Checkout.saveIdToCookie(channel, checkoutId);
 }
 
@@ -55,11 +59,13 @@ export async function saveCheckoutId(channel: string, checkoutId: string) {
  */
 export async function clearCheckout(channel: string) {
 	"use server";
+  await requireChannelForCurrentHost(channel);
 	await Checkout.clearCheckoutCookie(channel);
 	refresh();
 }
 
 export async function deleteCartLine(checkoutId: string, lineId: string) {
+  await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(CheckoutDeleteLinesDocument, {
 		variables: {
 			checkoutId,
@@ -79,6 +85,7 @@ export async function deleteCartLine(checkoutId: string, lineId: string) {
 }
 
 export async function updateCartLineQuantity(checkoutId: string, lineId: string, quantity: number) {
+  await requireCheckoutForCurrentHost(checkoutId);
 	if (quantity < 1) {
 		return deleteCartLine(checkoutId, lineId);
 	}
