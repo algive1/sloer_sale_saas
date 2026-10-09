@@ -14,6 +14,7 @@ const labels: Record<SystemPluginId, { name: string; href?: string }> = {
   "ads-tracking": { name: "广告追踪" },
   "payment-reminders": { name: "支付催付", href: "/ops/analytics/reminders" },
   "seo-merchant": { name: "SEO 与 Google Merchant" },
+  "customer-support": { name: "在线客服 · Chatwoot", href: "/ops/support" },
 };
 
 /**

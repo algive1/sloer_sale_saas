@@ -15,6 +15,7 @@
 | analytics | system/all stores | `partial`: first-party ingest/storage, dashboard report calculations moved to `storefront/src/plugins/analytics`, while storefront event emitters, app routes and UI remain in Paper |
 | ads-tracking | system/all stores | `partial`: browser/server delivery logic, pixel and GA4 config live in `storefront/src/plugins/ads-tracking`; consent state, event projections, browser mount and routes remain integrated with Paper |
 | payment-reminders | system/all stores | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved |
+| customer-support | system/all stores | `storefront-module`: optional per-brand Chatwoot CE website SDK mounted on click; no Saleor order/customer API access in phase 1 |
 | seo-merchant | system/all stores | `legacy-inline`: original SEO and feed routes remain operational |
 
 Registry: `storefront/src/plugins/system/registry.ts`. Operations can inspect the system-wide catalog at `/ops/plugins` (read-only; no store-specific activation or customer-page I/O). `partial` means server-side business logic was extracted but other code still lives in Paper. `legacy-inline` means the feature is **not yet extracted**. Existing endpoints, schemas and reporting SQL remain unchanged.
