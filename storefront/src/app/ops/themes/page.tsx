@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
@@ -17,7 +18,19 @@ type PageProps = {
   searchParams: Promise<{ channel?: string; locale?: string }>;
 };
 
-export default async function ThemeEditorPage({ searchParams }: PageProps) {
+export default function ThemeEditorPage({ searchParams }: PageProps) {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#f6f7f9] px-5 py-8 text-sm text-stone-500">
+        正在载入品牌装修...
+      </main>
+    }>
+      <ThemeEditorContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function ThemeEditorContent({ searchParams }: PageProps) {
   const [availableChannels, query] = await Promise.all([getStorefrontChannelSlugs(), searchParams]);
   const sites = getBrandSites();
   const pairs = getConfiguredLocaleChannelPairs();
