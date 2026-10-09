@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { io } from "next/cache";
@@ -19,7 +20,15 @@ type Check = {
   details: string;
 };
 
-export default async function BrandReadinessPage({ params }: { params: Promise<{ siteId: string }> }) {
+export default function BrandReadinessPage({ params }: { params: Promise<{ siteId: string }> }) {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-6xl p-8 text-sm text-stone-500">正在载入品牌数据...</main>}>
+      <BrandReadinessPageContent params={params} />
+    </Suspense>
+  );
+}
+
+async function BrandReadinessPageContent({ params }: { params: Promise<{ siteId: string }> }) {
   await io();
   const { siteId } = await params;
   const site = getBrandSites()?.find((item) => item.id === siteId);
