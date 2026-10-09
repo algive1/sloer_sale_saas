@@ -12,6 +12,9 @@ async function ensureSchema(): Promise<void> {
         "site_id TEXT NOT NULL, message_id TEXT NOT NULL, conversation_id INTEGER NOT NULL, " +
         "status TEXT NOT NULL, kind TEXT NOT NULL, claimed_at TEXT NOT NULL, started_at TEXT, " +
         "finished_at TEXT, PRIMARY KEY(site_id,message_id))",
+    },{
+      sql: "CREATE TABLE IF NOT EXISTS support_ai_worker_heartbeat (" +
+        "id INTEGER PRIMARY KEY CHECK (id=1), seen_at TEXT NOT NULL)",
     }]).then(() => undefined).catch((error: unknown) => { schemaPromise = null; throw error; });
   }
   await schemaPromise;
@@ -24,6 +27,14 @@ export async function enqueueAIBotMessage(bot: BotBinding, event: IncomingBotMes
   }
   await ensureSchema();
   const now = new Date();
+  const [heartbeat] = await libsqlPipeline([{
+    sql:"SELECT seen_at FROM support_ai_worker_heartbeat WHERE id=1",wantRows:true,
+  }]);
+  const seen = hranaRowsToObjects(heartbeat)[0]?.seen_at;
+  if (typeof seen !== "string" || !Number.isFinite(Date.parse(seen)) ||
+      now.getTime() - Date.parse(seen) > 60_000 || Date.parse(seen) - now.getTime() > 10_000) {
+    throw new Error("support_ai_worker_not_running");
+  }
   const since = new Date(now.getTime() - 86_400_000).toISOString();
   await libsqlPipeline([{
     sql: "INSERT OR IGNORE INTO support_ai_delivery " +
@@ -83,10 +94,14 @@ function currentCustomerQuestion(conversation: Record<string, unknown>, messageI
     return (m.message_type === 0 || m.message_type === "incoming") && m.private !== true;
   });
   const latest = object(incoming.at(-1));
-  if (!latest.id || String(latest.id) !== messageId ||
-      latest.content_type !== "text" || typeof latest.content !== "string" ||
-      !latest.content.trim() || latest.content.length > 1000) return null;
-  return latest.content.trim();
+  const nonActivity = object(conversation.last_non_activity_message);
+  const current = String(latest.id ?? "") === messageId ? latest :
+    String(nonActivity.id ?? "") === messageId ? nonActivity : {};
+  if (!current.id || String(current.id) !== messageId ||
+      (current.message_type !== 0 && current.message_type !== "incoming") ||
+      current.private === true || current.content_type !== "text" || typeof current.content !== "string" ||
+      !current.content.trim() || current.content.length > 1000) return null;
+  return current.content.trim();
 }
 async function askModel(
   config: AIConfig, question: string, candidates: readonly PublishedFaq[],
@@ -182,6 +197,11 @@ export async function runQueuedAIBot(config: AIConfig,maxItems = 3): Promise<{
   processed: number; remaining: number;
 }> {
   await ensureSchema();
+  await libsqlPipeline([{
+    sql:"INSERT INTO support_ai_worker_heartbeat (id,seen_at) VALUES(1,?) " +
+      "ON CONFLICT(id) DO UPDATE SET seen_at=excluded.seen_at",
+    args:[new Date().toISOString()],
+  }]);
   const safeLimit = Math.max(1,Math.min(maxItems,5));
   const [read] = await libsqlPipeline([{
     sql:"SELECT site_id,message_id,conversation_id,kind FROM support_ai_delivery " +
