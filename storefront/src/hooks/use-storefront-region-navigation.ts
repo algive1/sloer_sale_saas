@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
-import { getPairedChannelForLocale, getLocalesForChannel } from "@/config/locale-channel";
+import { getPairedChannelForLocale, getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { useCatalogIdentity } from "@/lib/catalog/catalog-identity-bridge";
 import {
 	appendSearchParams,
@@ -37,12 +37,11 @@ export function useStorefrontRegionNavigation(allowedChannels?: readonly string[
 	function navigateToLocale(newLocale: string) {
 		if (!channel || !isLocaleSlug(newLocale)) return;
 
-		if (isStorefrontLocaleSlug(newLocale)) {
-			writeBrowseLocaleCookieClient(newLocale);
-		}
-
 		// When a locale×channel matrix is configured, switch to the paired market too.
 		const targetChannel = getPairedChannelForLocale(newLocale, channel, allowedChannels);
+		// An unlisted pair is not a valid destination. Do not persist a preference
+		// or navigate to a 404 (particularly in multi-brand mode).
+		if (!isAllowedLocaleChannelPair(newLocale, targetChannel)) return;
 
 		if (targetChannel !== channel && hasCartCookieForChannel(channel)) {
 			const proceed = window.confirm(
@@ -63,6 +62,8 @@ export function useStorefrontRegionNavigation(allowedChannels?: readonly string[
 			? buildStorefrontPath(newLocale, targetChannel, suffix)
 			: buildStorefrontPath(newLocale, targetChannel);
 
+		// Persist only after confirming a market/cart change.
+		writeBrowseLocaleCookieClient(newLocale);
 		// Drop query when we abandoned a detail URL (listing/home has no variant/filters meaning).
 		const keepQuery = Boolean(catalogIdentity) || suffix === (parsed?.suffix ?? "");
 		router.push(appendSearchParams(path, keepQuery ? searchParams : undefined));
@@ -84,9 +85,7 @@ export function useStorefrontRegionNavigation(allowedChannels?: readonly string[
 		const allowedLocales = getLocalesForChannel(newChannel);
 		const nextLocale = allowedLocales?.length && !allowedLocales.includes(locale)
 			? allowedLocales[0] : locale;
-		if (nextLocale !== locale && isStorefrontLocaleSlug(nextLocale)) {
-			writeBrowseLocaleCookieClient(nextLocale);
-		}
+		if (!isAllowedLocaleChannelPair(nextLocale, newChannel)) return;
 		const oldPath = parseStorefrontPathname(pathname);
 		const currentSuffix = oldPath?.suffix ?? "";
 		const suffix = nextLocale === locale ? currentSuffix
@@ -97,6 +96,9 @@ export function useStorefrontRegionNavigation(allowedChannels?: readonly string[
 			? replaceStorefrontChannel(pathname, newChannel) ?? buildStorefrontPath(locale, newChannel)
 			: buildStorefrontPath(nextLocale, newChannel, suffix);
 		const keepQuery = nextLocale === locale || Boolean(catalogIdentity) || suffix === currentSuffix;
+		if (nextLocale !== locale && isStorefrontLocaleSlug(nextLocale)) {
+			writeBrowseLocaleCookieClient(nextLocale);
+		}
 		router.push(appendSearchParams(path, keepQuery ? searchParams : undefined));
 	}
 

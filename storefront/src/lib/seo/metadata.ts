@@ -5,6 +5,7 @@ import { getLocaleDefinition, getStorefrontLocaleSlugs, type LocaleSlug } from "
 import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
 import { parseEditorJSToText } from "@/lib/editorjs";
 import { buildStorefrontPath } from "@/lib/storefront-path";
+import { brandSiteForChannel } from "@/config/brand-sites";
 
 /**
  * Root Metadata
@@ -259,16 +260,18 @@ export function buildBrowsePageMetadata(options: {
 	ogType?: "website" | "product";
 	openGraph?: Record<string, string>;
 }): Metadata {
-	const url = buildStorefrontPath(options.locale, options.channel, options.pathSuffix);
+	const site = brandSiteForChannel(options.channel);
+	const relativeUrl = buildStorefrontPath(options.locale, options.channel, options.pathSuffix);
+	const url = site ? `https://${site.domains[0]}${relativeUrl}` : relativeUrl;
 	const languages = buildLocaleHreflangAlternates(
 		options.channel,
 		options.pathSuffixByLocale ?? options.pathSuffix,
 	);
 
 	const ogLocale = getLocaleDefinition(options.locale)?.ogLocale;
-	const ogAlternateLocale = getBrowseOgAlternateLocales(options.locale);
+	const ogAlternateLocale = getBrowseOgAlternateLocales(options.locale, options.channel);
 
-	return buildPageMetadata({
+	const metadata = buildPageMetadata({
 		title: options.title,
 		description: options.description,
 		image: options.image,
@@ -279,6 +282,7 @@ export function buildBrowsePageMetadata(options: {
 		ogType: options.ogType,
 		openGraph: options.openGraph,
 	});
+	return site ? { ...metadata, metadataBase: new URL(`https://${site.domains[0]}`) } : metadata;
 }
 
 /**
@@ -287,11 +291,15 @@ export function buildBrowsePageMetadata(options: {
  * (same set as hreflang) — never every `STOREFRONT_LOCALES` entry, which may include
  * languages with no valid browse URL.
  */
-function getBrowseOgAlternateLocales(currentLocale: string): string[] {
+function getBrowseOgAlternateLocales(currentLocale: string, channel: string): string[] {
+	const site = brandSiteForChannel(channel);
 	const pairs = getConfiguredLocaleChannelPairs();
+	const enabled = new Set(getStorefrontLocaleSlugs());
 	const slugs: readonly LocaleSlug[] = pairs
-		? [...new Set(pairs.map((pair) => pair.locale))]
-		: getStorefrontLocaleSlugs();
+		? [...new Set(pairs
+			.filter((pair) => enabled.has(pair.locale) && (!site || site.channels.includes(pair.channel)))
+			.map((pair) => pair.locale))]
+		: [...enabled];
 
 	return slugs
 		.filter((slug) => slug !== currentLocale)

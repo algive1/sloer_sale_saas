@@ -87,6 +87,31 @@ describe("buildBrowsePageMetadata OpenGraph locale", () => {
 		expect(og.type).toBeUndefined();
 		expect(og["product:price:amount"]).toBe("10");
 	});
+	it("uses each brand's own canonical base and omits foreign-brand OG alternates", () => {
+		vi.stubEnv("NEXT_PUBLIC_STOREFRONT_LOCALES", "en,de,fr");
+		vi.stubEnv("NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS", "en:fashion-us,de:fashion-us,en:jewelry-us,fr:jewelry-us");
+		vi.stubEnv("STOREFRONT_SITES_JSON", JSON.stringify([
+			{ id: "fashion", name: "Fashion", domains: ["fashion.example.test"],
+				channels: ["fashion-us"], defaultChannel: "fashion-us", defaultLocale: "en" },
+			{ id: "jewelry", name: "Jewelry", domains: ["jewelry.example.test"],
+				channels: ["jewelry-us"], defaultChannel: "jewelry-us", defaultLocale: "en" },
+		]));
+		const metadata = buildBrowsePageMetadata({
+			title: "Example",
+			locale: "de",
+			channel: "fashion-us",
+			pathSuffix: "/products/hoodie",
+		});
+		expect(metadata.alternates?.canonical).toBe("https://fashion.example.test/de/fashion-us/products/hoodie");
+		expect(metadata.metadataBase?.toString()).toBe("https://fashion.example.test/");
+		expect(metadata.alternates?.languages).toEqual({
+			"en-US": "https://fashion.example.test/en/fashion-us/products/hoodie",
+			"de-DE": "https://fashion.example.test/de/fashion-us/products/hoodie",
+			"x-default": "https://fashion.example.test/en/fashion-us/products/hoodie",
+		});
+		expect((metadata.openGraph as OgRecord).alternateLocale).toEqual(["en_US"]);
+	});
+
 });
 
 describe("resolveSeoDescription", () => {

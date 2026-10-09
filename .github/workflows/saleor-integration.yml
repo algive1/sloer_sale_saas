@@ -378,8 +378,8 @@ jobs:
           NEXT_PUBLIC_DEFAULT_CHANNEL: us
           STOREFRONT_CHANNELS: us,jewelry-us
           NEXT_PUBLIC_DEFAULT_LOCALE: en
-          NEXT_PUBLIC_STOREFRONT_LOCALES: en
-          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,en:jewelry-us
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
@@ -397,9 +397,11 @@ jobs:
           STOREFRONT_SITES_JSON: '[{"id":"fashion-ci","name":"Fashion CI","domains":["fashion.example.test"],"channels":["us"],"defaultChannel":"us","defaultLocale":"en"},{"id":"jewelry-ci","name":"Jewelry CI","domains":["jewelry.example.test"],"channels":["jewelry-us"],"defaultChannel":"jewelry-us","defaultLocale":"en"}]'
           STOREFRONT_CHANNELS: us,jewelry-us
           NEXT_PUBLIC_DEFAULT_CHANNEL: us
-          NEXT_PUBLIC_STOREFRONT_LOCALES: en
-          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,en:jewelry-us
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
+          STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
           GOOGLE_MERCHANT_FEED_ENABLED: "true"
           THEME_LIBSQL_URL: http://127.0.0.1:3789
           THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
@@ -427,6 +429,11 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           SALEOR_API_URL: http://127.0.0.1:8000/graphql/
         run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts --workers=1
+
+      - name: Multi-brand localized browser, market and SEO E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/localization-live.spec.ts --workers=1
 
       - name: Integration logs on failure
         if: failure()

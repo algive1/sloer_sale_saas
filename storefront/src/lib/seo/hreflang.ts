@@ -1,6 +1,7 @@
 import { getDefaultLocaleSlug, getLocaleDefinition, getStorefrontLocaleSlugs } from "@/config/locale";
 import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
+import { brandSiteForChannel } from "@/config/brand-sites";
 import { buildStorefrontPath } from "@/lib/storefront-path";
 
 type LocaleChannelTarget = { locale: string; channel: string };
@@ -9,25 +10,32 @@ type LocaleChannelTarget = { locale: string; channel: string };
 export type HreflangPathInput = string | Record<string, string>;
 
 function getHreflangTargets(fallbackChannel: string): LocaleChannelTarget[] {
+	const site = brandSiteForChannel(fallbackChannel);
+	const enabled = new Set(getStorefrontLocaleSlugs());
 	const pairs = getConfiguredLocaleChannelPairs();
-	if (pairs) {
-		return pairs.map(({ locale, channel }) => ({ locale, channel }));
-	}
+	if (!pairs) return [...enabled].map((locale) => ({ locale, channel: fallbackChannel }));
 
-	return getStorefrontLocaleSlugs().map((locale) => ({ locale, channel: fallbackChannel }));
+	// Brand ownership is an SEO boundary, not just a storefront routing boundary.
+	// Sort current channel first so duplicate hreflang keys prefer this market.
+	return pairs
+		.filter(({ locale, channel }) => enabled.has(locale) && (!site || site.channels.includes(channel)))
+		.sort((a, b) => Number(b.channel === fallbackChannel) - Number(a.channel === fallbackChannel));
 }
 
-function getXDefaultTarget(fallbackChannel: string): LocaleChannelTarget {
-	const pairs = getConfiguredLocaleChannelPairs();
-	const defaultLocale = getDefaultLocaleSlug();
-
-	if (pairs) {
-		const defaultPair = pairs.find((pair) => pair.locale === defaultLocale) ?? pairs[0];
-		if (defaultPair) return defaultPair;
+function getXDefaultTarget(fallbackChannel: string, targets: readonly LocaleChannelTarget[]): LocaleChannelTarget {
+	const site = brandSiteForChannel(fallbackChannel);
+	const defaultLocale = site?.defaultLocale ?? getDefaultLocaleSlug();
+	if (site) {
+		return targets.find(({ locale, channel }) => locale === defaultLocale && channel === site.defaultChannel)
+			?? targets.find(({ locale }) => locale === defaultLocale)
+			?? targets.find(({ channel }) => channel === fallbackChannel)
+			?? targets[0]!;
 	}
 
 	const defaultChannel = getStaticStorefrontChannelSlugs()[0] ?? fallbackChannel;
-	return { locale: defaultLocale, channel: defaultChannel };
+	return targets.find(({ locale }) => locale === defaultLocale)
+		?? targets.find(({ channel }) => channel === defaultChannel)
+		?? targets[0]!;
 }
 
 function resolvePathSuffix(pathInput: HreflangPathInput, locale: string, fallbackSuffix: string): string {
@@ -63,17 +71,21 @@ export function buildLocaleHreflangAlternates(
 	const languages: Record<string, string> = {};
 	const fallbackSuffix = typeof pathSuffix === "string" ? pathSuffix : (Object.values(pathSuffix)[0] ?? "");
 	const regionAware = getConfiguredLocaleChannelPairs() !== null;
+	const targets = getHreflangTargets(channel);
+	if (targets.length === 0) return languages;
+	const site = brandSiteForChannel(channel);
+	const makeUrl = (path: string) => site ? `https://${site.domains[0]}${path}` : path;
 
-	for (const { locale, channel: targetChannel } of getHreflangTargets(channel)) {
+	for (const { locale, channel: targetChannel } of targets) {
 		const languageKey = getHreflangLanguageKey(locale, regionAware);
-		if (!languageKey) continue;
+		if (!languageKey || languages[languageKey]) continue;
 		const suffix = resolvePathSuffix(pathSuffix, locale, fallbackSuffix);
-		languages[languageKey] = buildStorefrontPath(locale, targetChannel, suffix);
+		languages[languageKey] = makeUrl(buildStorefrontPath(locale, targetChannel, suffix));
 	}
 
-	const xDefault = getXDefaultTarget(channel);
+	const xDefault = getXDefaultTarget(channel, targets);
 	const xDefaultSuffix = resolvePathSuffix(pathSuffix, xDefault.locale, fallbackSuffix);
-	languages["x-default"] = buildStorefrontPath(xDefault.locale, xDefault.channel, xDefaultSuffix);
+	languages["x-default"] = makeUrl(buildStorefrontPath(xDefault.locale, xDefault.channel, xDefaultSuffix));
 
 	return languages;
 }
