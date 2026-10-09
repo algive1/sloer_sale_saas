@@ -1,6 +1,6 @@
-# Customer Support AI extension — design only (not implemented)
+# Customer Support AI Agent Bot — initial implementation and deployment gates
 
-This document defines a **separate, optional AI capability** for the existing system-level `customer-support` plugin. This is *not* a claim that AI chat is currently enabled.
+This document covers an **optional AI integration** for the system-level `customer-support` plugin. The source now contains a signed Agent Bot callback, grounded FAQ selection, message de-duplication and human handoff; it is disabled by default and has not passed live Chatwoot/model integration tests.
 
 ## Reuse and licensing
 
@@ -69,3 +69,62 @@ Chatwoot Account B / Inbox B --- webhook ---> our Agent Bot callback
 - No AI order details for anonymous chats; verified brand order can return only its authorized status.
 - OpenAI/model outage and Chatwoot outage fall back to human queue; storefront checkout/purchase hot path remains unaffected.
 - No actual AI model provider, webhook secret or bot token has been configured in phase 1. A green unit test does not equal a working end-to-end AI bot.
+
+## Code now implemented (prototype, NOT production approval)
+
+- `src/plugins/customer-support/ai/bot-config.ts` validates each branded Agent Bot Account and Inbox against the trusted Chatwoot site mapping; only selected brands need to enable AI.
+- `src/plugins/customer-support/ai/bot-policy.ts` verifies the raw-body HMAC/timestamp, rejects non-customer messages and routes obvious orders, payments and personal information to a human.
+- `src/plugins/customer-support/ai/bot-runtime.ts` retrieves and checks the current Chatwoot conversation from the branded Account before and after model selection; it atomically claims a message in libSQL and limits one conversation to 20 bot claims per day.
+- `POST /api/plugins/customer-support/agent-bot/[siteId]` receives brand-specific signed callbacks and returns without rendering storefront pages or accessing Saleor GraphQL.
+- The language model receives a short visitor question plus approved current-brand FAQ IDs, question titles and keywords. It may select an existing FAQ ID or none. Our server sends the published FAQ answer and URL, never model-generated policies.
+
+## Runtime setup
+
+Set these *server-only* variables with the corresponding existing Chatwoot support config:
+
+- `SUPPORT_AI_BOTS_JSON`: array of `{siteId, accountId, inboxId, webhookSecret, apiToken}`. Obtain real values from the pinned Chatwoot CE installation; keys must be separate for every brand.
+- `SUPPORT_AI_FAQS_JSON`: array of `{siteId, id, locale, question, answer, keywords, sourceUrl}`. A source URL must be HTTPS on that brand's configured domain.
+- `SUPPORT_AI_MODEL_URL`: explicit trusted HTTPS OpenAI-compatible `/v1/chat/completions` endpoint.
+- `SUPPORT_AI_MODEL_NAME` and `SUPPORT_AI_MODEL_API_KEY`: explicit model name and server-side token.
+- Existing `ANALYTICS_LIBSQL_URL` and `ANALYTICS_LIBSQL_AUTH_TOKEN`: durable event claims. Bot remains disabled without a working database.
+
+Connect the Chatwoot Agent Bot to that brand's Website Inbox and configure its callback as `https://store.example.com/api/plugins/customer-support/agent-bot/fashion` (example). The URL contains a route selector, not a proof of tenant identity. The HMAC and live Account/Inbox checks provide authorization.
+
+## Operational limitations
+
+- **Durable queue:** Chatwoot's default outgoing webhook timeout is 5 seconds. The signed POST does only HMAC verification and an atomic libSQL enqueue, returning 204 quickly. A **separate bearer-protected polling worker** processes at most one message per HTTP call. Uncertain failures remain failed rather than automatically replaying messages; operators need a reconciliation procedure.
+- The `support_ai_delivery` table retains delivery IDs and processing statuses only, not raw chat content. Chatwoot owns conversations and attachments.
+- A model selects among up to 12 current-brand FAQ records, not an arbitrary internet search. Poor matches or model outages hand off to humans.
+- The `AI assistant` prefix identifies automated replies. Human handoff uses the documented Chatwoot `/toggle_status` route and requires real-version E2E verification.
+- No Saleor customer, checkout, order, payment or refund permissions are granted. Do not present this integration as a verified order-status assistant.
+- Never work around HMAC verification failures by disabling validation. Validate the actual Agent Bot secret on the pinned Chatwoot CE version.
+- Model provider data transfers require a separate legal, privacy and consent review before enabling. The conservative string detector does not replace a full sensitive-data policy.
+- Confirm actual account-scoped conversation GET, message POST, handoff POST, two-brand isolation, mobile behavior, duplicate delivery, human takeover and failure paths before production enablement.
+
+Run `pnpm --dir storefront exec vitest run src/plugins/customer-support/ai/bot-policy.test.ts src/plugins/customer-support/ai/bot-config.test.ts` and the full CI and browser suites before merging.
+
+### Self-hosted worker scheduling
+
+The worker must run outside HTTP shopper requests. On the same trusted private network, schedule a protected POST to `/api/plugins/customer-support/agent-bot-worker` approximately every 5–10 seconds while operating; it reads one queued message per invocation. Use a process supervisor to manage the worker and HTTP timeouts. Never put its bearer token in a public client, URL or repository.
+
+Illustrative invocation (use a secret sourced from your deployment vault, not a literal value):
+
+```bash
+curl --fail --silent --show-error --max-time 30 --request POST \
+  -H "Authorization: Bearer ${SUPPORT_AI_WORKER_SECRET}" \
+  "http://127.0.0.1:3000/api/plugins/customer-support/agent-bot-worker"
+```
+
+Start the worker **before** binding the Chatwoot Agent Bot. The worker writes a heartbeat on every poll. If no heartbeat has been recorded in the last 60 seconds, incoming callbacks fail closed instead of silently accumulating unserved conversations. Verify that the pinned Chatwoot release opens the conversation on bot webhook errors; the Chatwoot account's `keep_pending_on_bot_failure` setting can alter this behavior.
+
+Configure short Chatwoot/model network timeouts, a restricted internal endpoint, HTTPS for external networking, queue health alarms, and a reconciliation procedure for stale processing/failed claims. A worker outage must be visible to operators; it does not affect storefront browsing or payment.
+
+Chatwoot v4.18.0 `lib/webhooks/trigger.rb` defaults to a 5-second delivery timeout. Do not move AI inference back into the incoming Webhook route.
+
+For this repository's Docker Compose self-hosting, the Storefront container now accepts the `SUPPORT_*` server environment variables. After configuring a real Chatwoot CE service, an AI model, the libSQL ledger and the worker secret, start the dedicated worker with:
+
+```bash
+docker compose --profile support-ai up -d support-ai-poller
+```
+
+The `support-ai-poller` service is **profile-gated**: ordinary `docker compose up -d` still leaves it off. Chatwoot itself is installed from the official self-hosted CE deployment rather than bundled into the Saleor process. The poller runs every five seconds on the private Docker network; confirm resource usage and queue metrics before scaling.

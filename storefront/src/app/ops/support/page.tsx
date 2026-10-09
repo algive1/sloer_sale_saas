@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getBrandSites } from "@/config/brand-sites";
 import { parseChatwootSupportConfig } from "@/plugins/customer-support/config";
+import { loadAIConfig } from "@/plugins/customer-support/ai/bot-config";
+import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 
 export const metadata: Metadata = { title: "在线客服 | Commerce Ops", robots: { index: false, follow: false } };
 
@@ -26,6 +28,18 @@ export default function SupportPage() {
     reason = "客服配置不完整或品牌映射不匹配；前台聊天已安全关闭。";
   }
 
+  let aiBrands: readonly string[] = [];
+  let aiStatus = "未启用";
+  if (process.env.SUPPORT_AI_BOTS_JSON?.trim()) {
+    try {
+      if (!analyticsDatabaseConfigured() || (process.env.SUPPORT_AI_WORKER_SECRET?.trim().length ?? 0) < 32) throw new Error("no worker/ledger");
+      const ai = loadAIConfig();
+      aiBrands = ai?.bots.map((bot) => bot.siteId) ?? [];
+      aiStatus = "配置有效（待真实服务验证）";
+    } catch {
+      aiStatus = "AI 配置错误或缺少持久化存储，未就绪";
+    }
+  }
   return (
     <main className="mx-auto max-w-5xl px-5 py-8">
       <Link href="/ops/plugins" className="text-sm text-muted-foreground hover:underline">← 系统插件</Link>
@@ -51,9 +65,14 @@ export default function SupportPage() {
           ))}
         </ul>
       </section>
+      <section className="mt-5 rounded-xl border bg-card p-5">
+        <h2 className="font-semibold">AI Agent Bot</h2>
+        <p className="mt-2 text-sm text-muted-foreground">状态：{aiStatus}。AI 仅选择当前品牌的已审核 FAQ；无法确认的咨询交给人工。</p>
+        {aiBrands.length > 0 && <p className="mt-2 text-sm text-muted-foreground">已配置品牌：{aiBrands.join("、")}</p>}
+      </section>
       <p className="mt-5 text-sm text-muted-foreground">
-        当前阶段仅支持游客网站实时聊天。客户订单、身份绑定、消息 Webhook 和自动化客服尚未接入。
-        配置与生产验收说明参见仓库 docs/customer-support.md。
+        机器人需单独配置并验证真实 Chatwoot 服务。客户身份、订单查询、退款和物流修改没有开放给 AI。
+        配置与验收参见 docs/customer-support.md 和 docs/customer-support-ai.md。
       </p>
     </main>
   );
