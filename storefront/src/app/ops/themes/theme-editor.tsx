@@ -11,7 +11,9 @@ type EditorProps = {
   locales: readonly string[];
   siteId: string;
   storageReady: boolean;
-  siteByChannel?: Record<string, { id: string; name: string; domain: string }>;
+  initialChannel?: string;
+  initialLocale?: string;
+  siteByChannel?: Record<string, { id: string; name: string; domain: string; defaultLocale?: string }>;
 };
 type APIResponse = {
   error?: string; draft?: ThemeData | null; published?: ThemeData | null;
@@ -19,9 +21,9 @@ type APIResponse = {
 };
 const api = "/ops/themes/api";
 
-export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel={}}:EditorProps) {
-  const [channel,setChannel] = useState(channels[0] || "");
-  const [locale,setLocale] = useState(locales[0] || "en");
+export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel={},initialChannel,initialLocale}:EditorProps) {
+  const [channel,setChannel] = useState(initialChannel || channels[0] || "");
+  const [locale,setLocale] = useState(initialLocale || locales[0] || "en");
   const [document,setDocument] = useState<ThemeData | null>(null);
   const documentRef = useRef<Data>(BLANK_TEMPLATE);
   const savedRef = useRef<Data>(BLANK_TEMPLATE);
@@ -34,6 +36,12 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
   const [status,setStatus] = useState("");
   const [revision,setRevision] = useState({draft:0,published:0});
   const selectedSite = siteByChannel[channel];
+  const brands = Object.values(siteByChannel).filter(
+    (site, index, all) => all.findIndex((other) => other.id === site.id) === index,
+  );
+  const visibleChannels = selectedSite
+    ? channels.filter((slug) => siteByChannel[slug]?.id === selectedSite.id)
+    : channels;
   const sitePreview = selectedSite
     ? `https://${selectedSite.domain}/${locale}/${channel}`
     : `/${locale}/${channel}`;
@@ -136,21 +144,39 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
     setStatus(name==="fashion"?"Fashion template applied to draft. Publish to go live.":"Blank draft created. Live site unchanged.");
   }
   function changeScope(kind:"channel"|"locale",value:string) {
-    if(saving || !confirmNavigation())return;
+    if(saving || (kind==="channel" ? value===channel : value===locale) || !confirmNavigation())return;
     if(kind==="channel")setChannel(value);else setLocale(value);
+  }
+  function changeBrand(id:string) {
+    if(saving || id===selectedSite?.id || !confirmNavigation())return;
+    const firstChannel = channels.find((slug)=>siteByChannel[slug]?.id===id);
+    if(!firstChannel)return;
+    const nextLocale = siteByChannel[firstChannel]?.defaultLocale;
+    if(nextLocale && locales.includes(nextLocale)) setLocale(nextLocale);
+    setChannel(firstChannel);
   }
   return (
     <div>
       <section className="flex flex-wrap items-end gap-3 border-b border-stone-200 bg-white px-5 py-4 md:px-8">
+        {brands.length > 0 ? (
+          <label className="block text-xs font-medium text-stone-600">
+            品牌网站
+            <select aria-label="选择品牌网站" className="mt-1 block min-w-36 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+              value={selectedSite?.id ?? ""} disabled={saving} onChange={event=>changeBrand(event.target.value)}>
+              {brands.map(site=><option key={site.id} value={site.id}>{site.name}</option>)}
+            </select>
+          </label>
+        ) : (
+          <label className="block text-xs font-medium text-stone-600">
+            当前店铺
+            <span className="mt-1 block rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">{siteId}</span>
+          </label>
+        )}
         <label className="block text-xs font-medium text-stone-600">
-          店铺 / Site ID
-          <span className="mt-1 block rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">{selectedSite ? `${selectedSite.name} (${selectedSite.id})` : siteId}</span>
-        </label>
-        <label className="block text-xs font-medium text-stone-600">
-          销售渠道
-          <select className="mt-1 block min-w-36 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
-            value={channel} disabled={saving} onChange={event=>changeScope("channel",event.target.value)}>
-            {channels.map(item=><option key={item} value={item}>{item}</option>)}
+          市场 / 销售渠道
+          <select aria-label="选择市场" className="mt-1 block min-w-36 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+            value={channel} disabled={saving || visibleChannels.length === 0} onChange={event=>changeScope("channel",event.target.value)}>
+            {visibleChannels.map(item=><option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="block text-xs font-medium text-stone-600">
@@ -161,10 +187,10 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
           </select>
         </label>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button disabled={saving} onClick={()=>setTemplate("fashion")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
+          <button disabled={saving || !channel} onClick={()=>setTemplate("fashion")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
             套用服饰模板
           </button>
-          <button disabled={saving} onClick={()=>setTemplate("blank")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
+          <button disabled={saving || !channel} onClick={()=>setTemplate("blank")} className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">
             空白页面
           </button>
           <button disabled={saving || loading || !document || !storageReady} onClick={()=>{void persist("draft",documentRef.current).catch(()=>{});}}
@@ -177,7 +203,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
             {saving?"发布中…":"发布上线"}
           </button>
           <a target="_blank" rel="noopener noreferrer" href={sitePreview}
-            className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100">查看线上页面 ↗</a>
+            className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100" title="需要已配置域名、HTTPS 并发布对应市场和语言的页面">打开网站 ↗</a>
         </div>
       </section>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-5 py-2 text-xs text-stone-600 md:px-8">
@@ -185,8 +211,12 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
         <span>{dirty?"● Unsaved edits · ":""}草稿版本 {revision.draft} · 发布版本 {revision.published}</span>
       </div>
       {status && <p role="status" className="border-b border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-900 md:px-8">{status}</p>}
-      {loading ? (
-        <div className="mx-auto max-w-6xl animate-pulse p-12 text-sm text-stone-500">Loading storefront editor…</div>
+      {!channel ? (
+        <div className="mx-auto max-w-6xl p-12 text-sm text-stone-700">
+          没有可装修的销售渠道。请先在 Saleor 中启用该品牌对应的 Channel，并检查站点配置。
+        </div>
+      ) : loading ? (
+        <div className="mx-auto max-w-6xl animate-pulse p-12 text-sm text-stone-500">正在载入首页草稿…</div>
       ) : !document ? (
         <div className="mx-auto max-w-6xl p-12 text-sm text-stone-700">
           Draft storage could not be loaded. No changes have been made to your live storefront.
@@ -194,7 +224,7 @@ export function ThemeEditor({channels,locales,siteId,storageReady,siteByChannel=
         </div>
       ) : (
         <Puck key={channel+":"+locale+":"+generation} config={fashionEditorConfig} data={document}
-          headerTitle="Fashion storefront · Homepage" headerPath={"/"+locale+"/"+channel}
+          headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"} headerPath={"/"+locale+"/"+channel}
           height="calc(100vh - 215px)"
           viewports={[{width:1440,height:"auto",label:"Desktop"},{width:390,height:"auto",label:"Mobile"}]}
           onChange={data=>{documentRef.current=data;setDirty(JSON.stringify(data.content)!==JSON.stringify(savedRef.current.content));}}
