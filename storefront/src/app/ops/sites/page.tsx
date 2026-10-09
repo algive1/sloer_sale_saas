@@ -69,7 +69,7 @@ export default function BrandSitesPage() {
                 ))}
               </div>
               <div className="mt-6 flex flex-wrap gap-4 border-t border-stone-100 pt-4 text-sm">
-                <Link href="/ops/themes" className="font-semibold underline underline-offset-4">装修此品牌 →</Link>
+                <Link href="/ops/themes" className="font-semibold underline underline-offset-4">进入装修管理 →</Link>
                 {site.domains[0] && site.defaultChannel ? (
                   <a href={`https://${site.domains[0]}/${"defaultLocale" in site ? (site.defaultLocale ?? "en") : "en"}/${site.defaultChannel}`}
                     target="_blank" rel="noopener noreferrer" className="font-semibold underline underline-offset-4">
