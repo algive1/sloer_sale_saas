@@ -29,6 +29,7 @@ const operationsRoutes = [
   "/ops/themes",
   "/ops/sites",
   "/ops/plugins",
+  "/ops/support",
 ] as const;
 
 test.describe("live storefront navigation and operational pages", () => {
@@ -104,6 +105,10 @@ test.describe("live storefront navigation and operational pages", () => {
       }
       // Actual client-side menu navigation, not only direct URL requests.
       const page = await context.newPage();
+      await page.goto("/ops/analytics");
+      await page.getByRole("link", { name: /在线客服/ }).click();
+      await expect(page).toHaveURL(/\/ops\/support$/);
+      await expect(page.getByRole("heading", { name: /在线客服 · Chatwoot/ })).toBeVisible();
       await page.goto("/ops/analytics");
       await page.getByRole("link", { name: /系统插件/ }).click();
       await expect(page).toHaveURL(/\/ops\/plugins$/);

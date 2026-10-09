@@ -45,6 +45,14 @@ export const SYSTEM_PLUGINS = {
     integration: "storefront-module",
     capabilities: ["ops.manual-reminders", "ops.automatic-reminders"],
   },
+  "customer-support": {
+    id: "customer-support",
+    apiVersion: 1,
+    scope: "system",
+    availability: "all-stores",
+    integration: "storefront-module",
+    capabilities: ["storefront.chat", "ops.customer-support"],
+  },
   "seo-merchant": {
     id: "seo-merchant",
     apiVersion: 1,
