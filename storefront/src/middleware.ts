@@ -7,6 +7,7 @@ import { buildStorefrontPath } from "@/lib/storefront-path";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { verifyCheckoutHostAtRequestBoundary } from "@/lib/brand/checkout-host-guard";
 import { channelForExplicitLocale, localeForChannel, resolveEntryLocalization, verifiedCountryFromHeader } from "@/lib/entry-localization";
+import { isAllowedLocaleChannelPair } from "@/config/locale-channel";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
@@ -151,6 +152,14 @@ export async function middleware(request: NextRequest) {
 	// Canonical format: /{locale}/{channel}/…
 	if (isStorefrontLocaleSlug(first)) {
 		if (second && isChannelSlug(second, site?.channels)) {
+			// Reject invalid combinations before Next's RSC/PPR response starts.
+			// A layout-level notFound() may stream HTTP 200 after the shell flushes.
+			if (!isAllowedLocaleChannelPair(first, second)) {
+				return new NextResponse("Store language unavailable for market", {
+					status: 404,
+					headers: { "Cache-Control": "no-store" },
+				});
+			}
 			return withBrowseLocaleCookie(request, NextResponse.next(), first);
 		}
 
