@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { io } from "next/cache";
@@ -22,7 +23,15 @@ function money(value: number, currency: string): string {
  * Platform-admin only (via existing /ops middleware).
  * Brand identity is resolved from server configuration, never client supplied channels.
  */
-export default async function BrandOverviewPage({ params, searchParams }: Props) {
+export default function BrandOverviewPage({ params, searchParams }: Props) {
+  return (
+    <Suspense fallback={<main className="mx-auto max-w-6xl p-8 text-sm text-stone-500">正在载入品牌数据...</main>}>
+      <BrandOverviewPageContent params={params} searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function BrandOverviewPageContent({ params, searchParams }: Props) {
   await io();
   const [{ siteId }, search] = await Promise.all([params, searchParams]);
   const site = getBrandSites()?.find((item) => item.id === siteId);
