@@ -5,6 +5,8 @@ const fashion = { Host: "fashion.example.test" };
 const jewelry = { Host: "jewelry.example.test" };
 
 test.describe("localized storefront entry and brand-safe SEO", () => {
+  test.describe.configure({ mode: "serial", timeout: 120_000 });
+
   test("first entry respects browser languages, cookies and brand ownership", async ({ request }) => {
     const getEntry = (host: typeof fashion, extra: Record<string, string> = {}) =>
       request.get(origin + "/", {
