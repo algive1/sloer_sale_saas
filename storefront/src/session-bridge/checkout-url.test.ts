@@ -56,6 +56,26 @@ describe("buildCheckoutUrl", () => {
 		process.env.NEXT_PUBLIC_CHECKOUT_URL = prev;
 	});
 
+	it("stays on the shopper's current brand in shared-core multi-brand browser mode", () => {
+		const old = process.env.NEXT_PUBLIC_CHECKOUT_URL;
+		process.env.NEXT_PUBLIC_CHECKOUT_URL = "https://checkout.brand-a.example";
+		const previousDocument = globalThis.document;
+		try {
+			Object.defineProperty(globalThis, "document", {
+				configurable: true,
+				value: { documentElement: { dataset: { multibrand: "true" } } },
+			});
+			expect(buildCheckoutUrl({ checkoutId: "jewelry-checkout" }))
+				.toBe("/checkout?checkout=jewelry-checkout");
+			expect(buildOrderConfirmationUrl({ token: "ov1.abc.def" }))
+				.toBe("/order/ov1.abc.def");
+		} finally {
+			Object.defineProperty(globalThis, "document", { configurable: true, value: previousDocument });
+			if (old === undefined) delete process.env.NEXT_PUBLIC_CHECKOUT_URL;
+			else process.env.NEXT_PUBLIC_CHECKOUT_URL = old;
+		}
+	});
+
 	it("returns absolute URL when CHECKOUT_URL is set", () => {
 		const prev = process.env.NEXT_PUBLIC_CHECKOUT_URL;
 		process.env.NEXT_PUBLIC_CHECKOUT_URL = "https://checkout.example.com";
