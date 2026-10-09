@@ -4,6 +4,7 @@ import { storeFirstPartyCommerceEvent } from "@/plugins/analytics/first-party-st
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 import { analyticsStorageAllowed } from "@/lib/analytics/consent";
 import { ANALYTICS_CONSENT_COOKIE, parseConsentChoice } from "@/lib/analytics/cookies";
+import { brandSitesConfigured, channelBelongsToHost } from "@/config/brand-sites";
 
 const MAX_BODY_BYTES = 32_000;
 
@@ -104,6 +105,13 @@ export async function POST(request: Request) {
   }
   if (!PUBLIC_EVENTS.has(event.name)) {
     return NextResponse.json({ error: "invalid_event" }, { status: 400 });
+  }
+
+  // Channel is supplied by the browser. Never accept it as a tenant claim:
+  // bind it to the trusted incoming Host before storing an event.
+  if (brandSitesConfigured() &&
+      (!event.channel || !channelBelongsToHost(event.channel, request.headers.get("host")))) {
+    return NextResponse.json({ error: "invalid_store_channel" }, { status: 403 });
   }
 
   await storeFirstPartyCommerceEvent(event, request.headers);

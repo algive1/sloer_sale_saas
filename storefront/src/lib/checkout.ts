@@ -1,4 +1,6 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
+import { isChannelAllowedForCurrentHost, requireChannelForCurrentHost } from "@/lib/brand/request-scope";
 import { cache } from "react";
 import { checkoutIdCookieName } from "@paper/session-bridge";
 import { CheckoutCreateDocument, CheckoutCustomerDetachDocument, CheckoutFindDocument } from "@/gql/graphql";
@@ -8,8 +10,16 @@ import { checkoutCreateContextMetadata } from "@/lib/commerce-context/checkout-c
 import { executeAuthenticatedGraphQL, executePublicGraphQL } from "@/lib/graphql";
 import { graphqlLanguageCodeVariables } from "@/lib/graphql-locale";
 
+async function cartSiteChannels(): Promise<{ allowed: readonly string[]; defaultChannel: string } | null> {
+  if (!brandSitesConfigured()) return null;
+  const site = brandSiteForHost((await headers()).get("host"));
+  // Unknown hosts get no cross-brand cookie fallback.
+  return site ? { allowed: site.channels, defaultChannel: site.defaultChannel } : { allowed: [], defaultChannel: "" };
+}
+
 /** Checkout id from this channel's cart cookie (`checkoutId-{channel}`). */
 export async function getIdFromCookies(channel: string) {
+  if (!(await isChannelAllowedForCurrentHost(channel))) return "";
 	try {
 		const cookieName = checkoutIdCookieName(channel);
 		const checkoutId = (await cookies()).get(cookieName)?.value || "";
@@ -29,10 +39,12 @@ export async function getIdFromCookies(channel: string) {
  */
 /** Channel slug from cart cookies when checkout channel is not yet known (e.g. empty checkout). */
 export async function getChannelSlugFromCartCookies(): Promise<string | null> {
+  const brand = await cartSiteChannels();
 	try {
 		const cartCookies = (await cookies())
 			.getAll()
-			.filter((cookie) => cookie.name.startsWith("checkoutId-") && cookie.value);
+			.filter((cookie) => cookie.name.startsWith("checkoutId-") && cookie.value &&
+        (!brand || brand.allowed.includes(cookie.name.slice(checkoutIdCookieName("").length))));
 
 		if (cartCookies.length === 0) {
 			return null;
@@ -40,7 +52,7 @@ export async function getChannelSlugFromCartCookies(): Promise<string | null> {
 
 		const channelFromCookie = (name: string) => name.slice(checkoutIdCookieName("").length);
 
-		const defaultChannel = process.env.NEXT_PUBLIC_DEFAULT_CHANNEL;
+		const defaultChannel = brand?.defaultChannel ?? process.env.NEXT_PUBLIC_DEFAULT_CHANNEL;
 		if (defaultChannel) {
 			const preferred = cartCookies.find((cookie) => cookie.name === checkoutIdCookieName(defaultChannel));
 			if (preferred) {
@@ -55,16 +67,18 @@ export async function getChannelSlugFromCartCookies(): Promise<string | null> {
 }
 
 export async function getFirstCheckoutIdFromCartCookies(): Promise<string | null> {
+  const brand = await cartSiteChannels();
 	try {
 		const cartCookies = (await cookies())
 			.getAll()
-			.filter((cookie) => cookie.name.startsWith("checkoutId-") && cookie.value);
+			.filter((cookie) => cookie.name.startsWith("checkoutId-") && cookie.value &&
+        (!brand || brand.allowed.includes(cookie.name.slice(checkoutIdCookieName("").length))));
 
 		if (cartCookies.length === 0) {
 			return null;
 		}
 
-		const defaultChannel = process.env.NEXT_PUBLIC_DEFAULT_CHANNEL;
+		const defaultChannel = brand?.defaultChannel ?? process.env.NEXT_PUBLIC_DEFAULT_CHANNEL;
 		if (defaultChannel) {
 			const preferred = cartCookies.find((cookie) => cookie.name === checkoutIdCookieName(defaultChannel));
 			if (preferred) {
@@ -79,6 +93,7 @@ export async function getFirstCheckoutIdFromCartCookies(): Promise<string | null
 }
 
 export async function saveIdToCookie(channel: string, checkoutId: string) {
+  await requireChannelForCurrentHost(channel);
 	const shouldUseHttps =
 		process.env.NEXT_PUBLIC_STOREFRONT_URL?.startsWith("https") || !!process.env.NEXT_PUBLIC_VERCEL_URL;
 	const cookieName = checkoutIdCookieName(channel);
@@ -117,10 +132,19 @@ export async function clearCheckoutCookieByValue(checkoutId: string) {
  * and the cart page all read the checkout during one RSC render, and without dedup each
  * paid its own Saleor round trip (extra upstream load + provisioned-memory wall time).
  */
-export const find = cache(async (checkoutId: string, localeSlug?: string): Promise<CartCheckout | null> => {
-	if (!checkoutId) {
-		return null;
-	}
+export const find = cache(async (
+  checkoutId: string, localeSlug?: string, expectedChannel?: string,
+): Promise<CartCheckout | null> => {
+  if (!checkoutId) return null;
+  if (brandSitesConfigured()) {
+    // Paper's lean cart query intentionally omits checkout.channel.
+    // Verify authoritative channel via the existing full checkout query
+    // rather than inferring ownership from a client-controlled cookie name.
+    const { fetchCheckoutOnServer } = await import("@/checkout/lib/server/fetch-checkout");
+    const live = await fetchCheckoutOnServer(checkoutId);
+    if (!live.ok || !live.checkout ||
+        (expectedChannel && live.checkout.channel.slug !== expectedChannel)) return null;
+  }
 
 	const result = await executePublicGraphQL(CheckoutFindDocument, {
 		variables: { id: checkoutId, ...(await checkoutGraphqlLocaleVariables(localeSlug)) },
@@ -148,7 +172,7 @@ export async function findOrCreate({
 		return result.ok ? result.data.checkoutCreate?.checkout : null;
 	}
 
-	const checkout = await find(checkoutId, localeSlug);
+	const checkout = await find(checkoutId, localeSlug, channel);
 	if (checkout) {
 		return checkout;
 	}
@@ -158,6 +182,7 @@ export async function findOrCreate({
 }
 
 export async function create({ channel, localeSlug }: { channel: string; localeSlug?: string }) {
+  await requireChannelForCurrentHost(channel);
 	const locale = await resolveCheckoutLocaleSlug(localeSlug);
 	return executeAuthenticatedGraphQL(CheckoutCreateDocument, {
 		cache: "no-cache",

@@ -20,6 +20,7 @@ import { speedInsightsSampleRate } from "@/lib/speed-insights";
 import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
 import { AnalyticsMount } from "@/ui/components/analytics-mount";
 import { WebAnalytics } from "@/ui/components/web-analytics";
+import { brandSitesConfigured } from "@/config/brand-sites";
 
 /**
  * Root defaults + `og:locale` derived from the URL locale segment. Params-only, so it
@@ -78,7 +79,7 @@ export default async function LocaleRootLayout({
 	const mediaOrigin = saleorMediaPreconnectOrigin();
 
 	return (
-		<html {...htmlProps}>
+		<html {...htmlProps} data-multibrand={brandSitesConfigured() ? "true" : undefined}>
 			{/* No crossOrigin: plain <img> fetches are not CORS, and a `crossorigin`
 			    preconnect would warm a connection the image load cannot reuse. */}
 			{mediaOrigin && <link rel="preconnect" href={mediaOrigin} />}

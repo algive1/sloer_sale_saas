@@ -40,12 +40,25 @@ export function getConfiguredLocaleChannelPairs(): readonly LocaleChannelPair[] 
 }
 
 /** When a pair matrix is configured, return the channel bound to a locale; otherwise keep the current channel. */
-export function getPairedChannelForLocale(locale: string, currentChannel: string): string {
-	const pairs = getConfiguredLocaleChannelPairs();
-	if (!pairs) return currentChannel;
-
-	const match = pairs.find((pair) => pair.locale === locale);
-	return match?.channel ?? currentChannel;
+export function getPairedChannelForLocale(
+  locale: string,
+  currentChannel: string,
+  allowedChannels?: readonly string[],
+): string {
+  const pairs = getConfiguredLocaleChannelPairs();
+  if (!pairs) return currentChannel;
+  // Prefer staying within the current market if it offers the new language.
+  if (pairs.some((pair) => pair.locale === locale && pair.channel === currentChannel)) return currentChannel;
+  // A multi-brand picker receives the server-verified list of markets belonging
+  // to THIS brand. Never select the first same-language market globally.
+  if (allowedChannels) {
+    const match = pairs.find((pair) => pair.locale === locale && allowedChannels.includes(pair.channel));
+    return match?.channel ?? currentChannel;
+  }
+  // Backward-compatible legacy single-brand switching, where locale and
+  // regional Channel may have been paired one-to-one in the global matrix.
+  const match = pairs.find((pair) => pair.locale === locale);
+  return match?.channel ?? currentChannel;
 }
 
 /** Locales valid for a channel when a pair matrix is configured; `null` means all locales are allowed. */

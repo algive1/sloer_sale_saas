@@ -2,6 +2,7 @@ import "server-only";
 
 import { ensureAnalyticsSchema } from "@/plugins/analytics/first-party-store";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
+import { withAnalyticsChannelScope } from "./scoped-statements";
 
 export type CheckoutBucket = "hour" | "day";
 
@@ -73,6 +74,7 @@ export async function readCheckoutReport(input: {
 	from: Date;
 	to: Date;
 	bucket: CheckoutBucket;
+	channels?: readonly string[] | null;
 }): Promise<CheckoutReport> {
 	await ensureAnalyticsSchema();
 
@@ -101,7 +103,7 @@ export async function readCheckoutReport(input: {
 		failuresResult,
 		paymentMethodsResult,
 		shippingMethodsResult,
-	] = await libsqlPipeline([
+	] = await libsqlPipeline(withAnalyticsChannelScope([
 		{
 			sql: `SELECT
 				COUNT(DISTINCT CASE WHEN event_name = 'checkout_started' THEN ${sessionExpr} END) AS started,
@@ -209,7 +211,7 @@ export async function readCheckoutReport(input: {
 		},
 		methodPerformanceQuery("payment_method_selected", methodExpr, from, to),
 		methodPerformanceQuery("shipping_method_selected", methodExpr, from, to),
-	]);
+	], input.channels ?? null));
 
 	const summaryRow = hranaRowsToObjects(summaryResult)[0] ?? {};
 	const funnelCounts = new Map(

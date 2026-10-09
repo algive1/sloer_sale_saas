@@ -1,6 +1,7 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import { brandSitesConfigured, channelBelongsToHost } from "@/config/brand-sites";
 import { after } from "next/server";
 import { track } from "@vercel/analytics/server";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
@@ -28,6 +29,10 @@ export function emitCommerceEvent(event: PaperCommerceEvent): void {
 async function deliver(event: PaperCommerceEvent): Promise<void> {
 	try {
 		const requestHeaders = await headers();
+    if (brandSitesConfigured() &&
+        (!event.channel || !channelBelongsToHost(event.channel, requestHeaders.get("host")))) {
+      return; // Never attribute a client-parameterized server event to another brand.
+    }
 		const jobs: Promise<unknown>[] = [
 			deliverServerDestinations(event, requestHeaders),
 			storeFirstPartyCommerceEvent(event, requestHeaders),

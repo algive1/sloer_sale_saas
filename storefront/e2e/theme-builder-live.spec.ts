@@ -72,7 +72,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       expect(original.draftRevision).toBe(0);
 
       await page.goto("/ops/themes");
-      await expect(page.getByRole("heading", { name: "店铺可视化装修" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "品牌网站首页装修" })).toBeVisible();
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
       // Confirm the actual Puck block sidebar mounted, not just our server shell.
@@ -131,8 +131,22 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       // Reload first so it picks up the persisted draft and revision #1.
       await page.goto("/ops/themes");
       await requirePuckPublishButton();
+      // Publishing is a business-impacting action. Cancel must never change
+      // the live homepage or the pending draft revision.
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain("us / en");
+        await dialog.dismiss();
+      });
       await (await requirePuckPublishButton()).click();
-      await expect(page.locator('p[role="status"]')).toContainText("Published.", { timeout: 30_000 });
+      expect((await (await authorized.get(scope)).json()).published).toBeNull();
+
+      // Explicit merchant confirmation publishes the selected site/market/locale.
+      page.once("dialog", async (dialog) => {
+        expect(dialog.message()).toContain("us / en");
+        await dialog.accept();
+      });
+      await (await requirePuckPublishButton()).click();
+      await expect(page.locator('p[role="status"]')).toContainText("发布成功", { timeout: 30_000 });
 
       const published = await authorized.get(scope);
       const after = await published.json() as {

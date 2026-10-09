@@ -1,0 +1,42 @@
+# Authenticated customer orders scoped by platform-verified brand Channel IDs.
+# The browser never supplies $where; the server derives it from Host.
+query CurrentBrandOrdersPaginated(
+  $first: Int!
+  $after: String
+  $languageCode: LanguageCodeEnum!
+  $where: CustomerOrderWhereInput!
+) {
+  me {
+    id
+    orders(first: $first, after: $after, where: $where) {
+      totalCount
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          ...OrderDetails
+        }
+      }
+    }
+  }
+}
+
+# One exact query supplies only an order owned by the current brand.
+# Avoid the legacy "fetch first 100 orders and find locally" flow: older
+# purchases must remain accessible, and unrelated orders must never be read.
+query CurrentBrandOrderDetail(
+  $where: CustomerOrderWhereInput!
+  $languageCode: LanguageCodeEnum!
+) {
+  me {
+    orders(first: 1, where: $where) {
+      edges {
+        node {
+          ...OrderFullDetails
+        }
+      }
+    }
+  }
+}

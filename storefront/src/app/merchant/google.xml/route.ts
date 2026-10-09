@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { getDefaultLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { fetchGoogleMerchantProducts } from "@/lib/merchant/google-feed-source";
@@ -36,9 +37,16 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	const url = new URL(request.url);
-	const allowedChannels = await getStorefrontChannelSlugs();
+	// The requested Channel is not a tenant credential. Resolve and restrict
+	// the feed to the exact trusted merchant hostname before querying Saleor.
+	const site = brandSitesConfigured() ? brandSiteForHost(request.headers.get("host")) : null;
+	if (brandSitesConfigured() && !site) return textResponse("Store not found.", 404);
+	const availableChannels = await getStorefrontChannelSlugs();
+	const allowedChannels = site
+		? availableChannels.filter((slug) => site.channels.includes(slug))
+		: availableChannels;
 	const requestedChannel = url.searchParams.get("channel")?.trim();
-	const channel = requestedChannel || allowedChannels[0];
+	const channel = requestedChannel || site?.defaultChannel || allowedChannels[0];
 
 	if (!channel || !allowedChannels.includes(channel)) {
 		return textResponse("Unknown storefront channel.", 400);
@@ -55,11 +63,11 @@ export async function GET(request: Request): Promise<Response> {
 
 	const products = await fetchGoogleMerchantProducts(channel, locale);
 	const xml = buildGoogleMerchantXml(products, {
-		baseUrl: getBaseUrl(),
+		baseUrl: site ? `https://${site.domains[0]}` : getBaseUrl(),
 		channel,
 		locale,
-		storeName: seoConfig.siteName,
-		defaultBrand: seoConfig.defaultBrand,
+		storeName: site?.name ?? seoConfig.siteName,
+		defaultBrand: site?.name ?? seoConfig.defaultBrand,
 		excludeSkuPrefixes: parsePrefixes(process.env.GOOGLE_MERCHANT_EXCLUDE_SKU_PREFIXES),
 	});
 
@@ -69,6 +77,7 @@ export async function GET(request: Request): Promise<Response> {
 			"content-type": "application/xml; charset=utf-8",
 			"cache-control": "public, s-maxage=900, stale-while-revalidate=3600",
 			"x-robots-tag": "noindex, nofollow",
+			"vary": "Host",
 		},
 	});
 }

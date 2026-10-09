@@ -1,0 +1,180 @@
+## Architecture decision — Option A (approved 2026-10-09)
+
+**Decision:** One self-hosted Saleor Core and one primary operations plane,
+with one **exclusive set of Saleor Channels per brand site**. Each brand may
+own several channels (e.g. US/EU) to serve its regional markets. System plugins
+are deployed once, while site configuration and first-party records must be
+scoped by the verified brand.
+
+This matches Saleor's documented Channel capability (regional, brand and
+business-model storefronts), while preserving independent public domains and
+Puck themes. The app may eventually be served from one Next instance with
+Host routing, provided each tenant boundary below is enforced.
+
+**Important limitation:** A Channel is *not a separate Saleor customer tenant*.
+Customer account identity remains global, and knowing a Checkout UUID is enough
+to access some fields or mutate a checkout through Saleor's public GraphQL
+endpoint. Staff order permissions can be restricted by Channel, but global user
+identity, browser-direct GraphQL, and cross-brand account order lists are
+distinct boundaries.
+
+**Required launch conditions for Option A:**
+1. Enforce exclusive Channel-to-brand ownership and test negative Host/channel
+   combinations throughout storefront, checkout, cart, order lookup and API.
+2. Restrict staff permissions to allowed Channels, reserve all-brand platform
+   access for platform administrators, and use API-level authorization for any
+   sensitive cross-brand customer information. Don't rely on the page router.
+3. Make shopper order lists and order detail lookup brand-scoped at query and
+   response boundaries; no unfiltered global account order views.
+4. Partition site-specific analytics, pixel credentials, email reminders,
+   content, cookies, feeds and canonical URLs, including asynchronous webhooks.
+5. Test at least two hosts and two disjoint brand Channels with the same
+   customer email, checkout URL and order lookup (positive and negative cases).
+6. Keep global ad destinations disabled until per-brand targets are configured,
+   tested and confirmed not to cross-report.
+
+**Explicit non-goal:** Do not clone the Saleor Core or fork its data schema
+per brand. If an essential upstream identity authorization boundary cannot
+be made safe while sharing Core, the affected route/feature must remain
+disabled rather than pretending that frontend Channel filtering provides
+strong tenant authorization.
+
+# Multi-brand storefront design and rollout
+
+## Terms and non-negotiable rules
+
+- **Brand site**: one merchant-facing identity, hostnames, logo, description,
+  legal documents, CMS content, analytics scope and marketing destinations.
+- **Saleor Channel**: a market/currency/pricing/stock publication surface.
+  One brand can have multiple channels. In the current shared Saleor backend
+  the same channel MUST NOT belong to two brands.
+- **System plugin**: installed once in code and available to every brand.
+  This does not grant access to another brand's data.
+- Storefront consumer requests resolve the **real Host** through a static
+  allowlist. Site IDs in cookies, event payloads and query params are never
+  authoritative. The reverse proxy must overwrite Host and strip untrusted
+  forwarded hostname headers; keep its routing and CDN cache host-aware.
+
+## Implemented in the foundation branch
+
+1. `STOREFRONT_SITES_JSON`: strictly validated domains, brand IDs, unique
+   Channel ownership, per-brand default Channel, name, description, optional
+   logo paths and published legal CMS page slugs.
+2. Existing deployments without this variable retain the single-site
+   `STOREFRONT_SITE_ID` behavior and original global logo/SEO configuration.
+3. Incoming storefront root and localised product pages are constrained by
+   the matching brand hostname and its allowed channels; wrong brand host
+   returns 404 rather than silently routing to the global default.
+4. A second server-side guard checks Host+Channel, not just middleware redirects.
+5. Puck theme draft, preview and published documents use the unique
+   `site_id/channel/locale` key. The editor identifies the brand when a
+   channel is selected; existing revision comparison and storage remain.
+6. Per-channel brand metadata, visible wordmark/logo, footer and market
+   selector avoid leaking another brand's presentation and channel links.
+7. Pure unit tests cover unknown hosts, Host attacks, duplicate assignments,
+   bad configuration and separated theme keys.
+
+Example routing (illustration, not actual merchant data):
+
+```json
+[
+  {
+    "id": "brand-fashion",
+    "name": "Fashion",
+    "description": "A contemporary clothing collection.",
+    "domains": ["fashion.example.com", "www.fashion.example.com"],
+    "channels": ["fashion-us", "fashion-eu"],
+    "defaultChannel": "fashion-us",
+    "defaultLocale": "en",
+    "logo": "/brands/fashion/logo.svg",
+    "logoInverted": "/brands/fashion/logo-white.svg",
+    "privacyPageSlug": "fashion-privacy",
+    "termsPageSlug": "fashion-terms"
+  },
+  {
+    "id": "brand-jewelry",
+    "name": "Jewelry",
+    "domains": ["jewelry.example.com"],
+    "channels": ["jewelry-us"],
+    "defaultChannel": "jewelry-us",
+    "defaultLocale": "en"
+  }
+]
+```
+
+Set `STOREFRONT_CHANNELS` to the union of these channels and publish each
+channel's catalog in Saleor; the JSON above is not a product permission system.
+Brand image paths must point to actual public files supplied by the merchant.
+The example does not create real merchant policy pages.
+
+## Still required BEFORE enabling one shared multi-brand instance in production
+
+- **Checkout and orders**: enforce verified site+channel in every route, session,
+  cart and order link; decide if cross-brand customer accounts are legally and
+  operationally acceptable. Saleor customers are not per-brand tenants by default.
+- **Analytics**: migrate event storage, refund deduplication, all report queries,
+  session attribution and dashboards to site-scoped keys and filters. Browser
+  channel fields are not trusted tenant identities.
+- **Payment reminders**: site-scoped reminder rules, order access, job claiming,
+  mail sender/domain and templates; validate Saleor order channel and site.
+- **Advertising and consent**: independent pixel IDs, access tokens, GA4, site
+  attribution and deduplication; never mix visitor/consent identifiers across hosts.
+- **SEO and feeds**: site-aware canonical links, robots, sitemap, Merchant Center
+  feed, structured data and redirects. The existing public store URL variable
+  and some global static metadata are single-domain-oriented.
+- **Admin**: central merchant-owned brand switcher, site-specific RBAC when brand
+  operators are introduced, all CRUD API reads and writes checked server-side.
+  The current Basic Auth secret is one platform administrator, not tenant RBAC.
+- **Test gate**: two configured hosts, separate channels/products/analytics,
+  negative cross-host browsing, cross-brand checkout/account/ops boundaries,
+  privacy content, theme publish, webhook and payment E2E, plus production build.
+
+**Do not treat this foundation as production-ready multi-brand isolation.**
+One safe short-term option is a separate storefront instance per brand,
+reusing the identical repository/plugins but distinct host, environment,
+storefront site ID and storage/analytics credentials. This does not by itself
+create per-brand Saleor user permissions.
+
+## Performance
+
+Static mapping costs one in-process parse per config change, then O(number of
+sites) host/channel lookup; there are no DB reads on browsing requests. For a
+large number of sites, index the already-validated in-memory configuration
+into host/channel Maps. Avoid per-request plugin discovery and avoid
+cross-process mutable caches for published content without invalidation.
+
+## Checkout and wishlist guard increment (still not production-complete)
+
+- Shared libSQL wishlist keys now include the verified `site_id` in multi-brand
+  mode for both guest and authenticated owners. Guest→user merging stays within
+  the same site. POST rejects a product's foreign Channel and cross-brand
+  localized URLs. Existing single-site keys remain unchanged.
+- Previously existing single-site wishlist rows are **not** silently migrated
+  or exposed to every new brand. Explicit merchant-scoped migration is required
+  for continuity when enabling the multi-brand configuration.
+- Cart cookie selection only considers Channels of the incoming trusted Host;
+  wrong-channel checkout cookies cannot become the default checkout.
+- Cart create/read and checkout RSC loading verify host Channel ownership,
+  and payment/checkout Server Actions verify the *live Saleor checkout* before
+  write mutations. A cross-brand checkout ID is rejected, not silently reused.
+- For multi-brand direct checkout requests with a missing or foreign token,
+  return an unavailable/not-found response instead of mounting client checkout
+  state which might refetch the foreign checkout.
+
+### Remaining high-risk requirements
+
+- The public Saleor GraphQL endpoint may still accept a valid bearer checkout
+  ID independently of Paper. Browser-readable credentials and GraphQL must be
+  scoped at the backing API/proxy boundary if strict brand confidentiality is
+  required. Paper action checks alone do not enforce upstream tenant RBAC.
+- Saleor customers are global within this Core instance. Orders, authenticated
+  account pages, password flows, refunds, merchant staff and webhook actions
+  still require a coherent per-brand authorization/data model.
+- Browser/server ad providers and first-party analytics are still configured
+  globally. No mixed-brand deployment should be enabled until event tables,
+  consent, pixels and cross-brand reports have site-specific configuration.
+- Per-host canonical URL, sitemap, Merchant feeds, robots, cache keys and origin
+  redirect policies must be verified with two real test domains.
+- For high assurance legal/merchant separation, consider one Saleor tenant
+  instance per brand behind a unified operations control plane. Sharing one
+  Saleor Core with Channel mapping is a convenience, not automatic isolation.

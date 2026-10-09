@@ -19,6 +19,11 @@ function HeaderActionsSkeleton() {
 	);
 }
 
+async function BrandLogoSlot({ params }: { params: BrowseRouteParams }) {
+	const { channel } = await params;
+	return <Logo channel={channel} />;
+}
+
 function HeaderLogoFallback() {
 	return (
 		<div className="flex shrink-0 items-center" aria-hidden="true">
@@ -36,7 +41,7 @@ export function BrowseHeaderFrame({ params }: { params: BrowseRouteParams }) {
 			<div className="container-nav">
 				<div className="flex h-16 items-center justify-between gap-4">
 					<Suspense fallback={<HeaderLogoFallback />}>
-						<Logo />
+						<BrandLogoSlot params={params} />
 					</Suspense>
 
 					<Suspense

@@ -2,7 +2,7 @@
 
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
-import { getPairedChannelForLocale } from "@/config/locale-channel";
+import { getPairedChannelForLocale, getLocalesForChannel } from "@/config/locale-channel";
 import { useCatalogIdentity } from "@/lib/catalog/catalog-identity-bridge";
 import {
 	appendSearchParams,
@@ -24,7 +24,7 @@ import {
  * registered yet (chrome streamed before the detail shell), drop the foreign
  * handle instead of 404ing.
  */
-export function useStorefrontRegionNavigation() {
+export function useStorefrontRegionNavigation(allowedChannels?: readonly string[]) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -42,7 +42,7 @@ export function useStorefrontRegionNavigation() {
 		}
 
 		// When a locale×channel matrix is configured, switch to the paired market too.
-		const targetChannel = getPairedChannelForLocale(newLocale, channel);
+		const targetChannel = getPairedChannelForLocale(newLocale, channel, allowedChannels);
 
 		if (targetChannel !== channel && hasCartCookieForChannel(channel)) {
 			const proceed = window.confirm(
@@ -69,7 +69,7 @@ export function useStorefrontRegionNavigation() {
 	}
 
 	function navigateToChannel(newChannel: string) {
-		if (!locale || newChannel === channel) return;
+		if (!locale || newChannel === channel || (allowedChannels && !allowedChannels.includes(newChannel))) return;
 
 		// Locale slugs must never land in the channel segment (e.g. `no` / `nb` mistaken for a market).
 		if (isLocaleSlug(newChannel)) return;
@@ -81,8 +81,23 @@ export function useStorefrontRegionNavigation() {
 			if (!proceed) return;
 		}
 
-		const path = replaceStorefrontChannel(pathname, newChannel) ?? buildStorefrontPath(locale, newChannel);
-		router.push(appendSearchParams(path, searchParams));
+		const allowedLocales = getLocalesForChannel(newChannel);
+		const nextLocale = allowedLocales?.length && !allowedLocales.includes(locale)
+			? allowedLocales[0] : locale;
+		if (nextLocale !== locale && isStorefrontLocaleSlug(nextLocale)) {
+			writeBrowseLocaleCookieClient(nextLocale);
+		}
+		const oldPath = parseStorefrontPathname(pathname);
+		const currentSuffix = oldPath?.suffix ?? "";
+		const suffix = nextLocale === locale ? currentSuffix
+			: catalogIdentity
+				? rewriteCatalogSuffixForLocaleSwitch(currentSuffix, catalogIdentity, nextLocale)
+				: safeLocaleSwitchSuffixWithoutIdentity(currentSuffix);
+		const path = nextLocale === locale
+			? replaceStorefrontChannel(pathname, newChannel) ?? buildStorefrontPath(locale, newChannel)
+			: buildStorefrontPath(nextLocale, newChannel, suffix);
+		const keepQuery = nextLocale === locale || Boolean(catalogIdentity) || suffix === currentSuffix;
+		router.push(appendSearchParams(path, keepQuery ? searchParams : undefined));
 	}
 
 	return { locale, channel, navigateToLocale, navigateToChannel };

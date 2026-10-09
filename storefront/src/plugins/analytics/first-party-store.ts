@@ -2,6 +2,7 @@ import "server-only";
 
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { checkoutAnalyticsDimensions } from "@/lib/analytics/checkout-dimensions";
+import { analyticsChannelClause } from "./channel-scope";
 import { analyticsEventItems } from "@/lib/analytics/event-items";
 import { readAnalyticsRequestContext } from "@/lib/analytics/request-context";
 import { normalizeTrafficAttribution, type TrafficType } from "@/lib/analytics/traffic-source";
@@ -102,9 +103,9 @@ export async function storeFirstPartyCommerceEvent(
 			sql: `SELECT session_id, source, medium, campaign, landing_path, traffic_type, source_group, referrer_host,
 				country_code, region_code, device_type, click_ids_json
 				FROM analytics_events
-				WHERE event_name = 'checkout_completed' AND transaction_id = ?
+				WHERE event_name = 'checkout_completed' AND transaction_id = ? AND channel = ?
 				ORDER BY occurred_at ASC LIMIT 1`,
-			args: [event.transactionId],
+			args: [event.transactionId, channel],
 			wantRows: true,
 		}]);
 		const purchase = hranaRowsToObjects(purchaseResult)[0];
@@ -205,9 +206,10 @@ export async function storeFirstPartyCommerceEvent(
 	await libsqlPipeline(statements);
 }
 
-export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary | null> {
+export async function readAnalyticsSummary(days = 30, channels: readonly string[] | null = null): Promise<AnalyticsSummary | null> {
 	if (!analyticsDatabaseConfigured()) return null;
 	await ensureSchema();
+	const scoped = analyticsChannelClause(channels);
 	const safeDays = Math.max(1, Math.min(days, 365));
 	const since = new Date(Date.now() - safeDays * 86_400_000).toISOString();
 	const abandonmentCutoff = new Date(Date.now() - 60 * 60 * 1_000).toISOString();
@@ -218,8 +220,8 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
 				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases,
 				SUM(CASE WHEN event_name = 'payment_failed' THEN 1 ELSE 0 END) AS payment_failures
-				FROM analytics_events WHERE occurred_at >= ?`,
-			args: [since],
+				FROM analytics_events WHERE occurred_at >= ?${scoped.sql}`,
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 		{
@@ -229,20 +231,20 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 					WHEN event_name = 'refund_completed' THEN -value
 					ELSE 0 END), 0) AS value
 				FROM analytics_events
-				WHERE occurred_at >= ? AND event_name IN ('checkout_completed', 'refund_completed')
+				WHERE occurred_at >= ?${scoped.sql} AND event_name IN ('checkout_completed', 'refund_completed')
 				GROUP BY COALESCE(NULLIF(currency, ''), 'UNKNOWN')
 				ORDER BY value DESC`,
-			args: [since],
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 		{
 			sql: `SELECT event_name AS name,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS count
 				FROM analytics_events
-				WHERE occurred_at >= ? AND event_name IN
+				WHERE occurred_at >= ?${scoped.sql} AND event_name IN
 				('page_viewed','product_viewed','wishlist_added','product_added_to_cart','cart_viewed','checkout_started','payment_method_selected','checkout_completed')
 				GROUP BY event_name`,
-			args: [since],
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 		{
@@ -250,11 +252,11 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 				COALESCE(NULLIF(traffic_type, ''), 'direct') AS traffic_type,
 				COUNT(DISTINCT COALESCE(session_id, event_id)) AS sessions,
 				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS purchases
-				FROM analytics_events WHERE occurred_at >= ?
+				FROM analytics_events WHERE occurred_at >= ?${scoped.sql}
 				GROUP BY COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct'),
 					COALESCE(NULLIF(traffic_type, ''), 'direct')
 				ORDER BY sessions DESC LIMIT 20`,
-			args: [since],
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 		{
@@ -265,29 +267,29 @@ export async function readAnalyticsSummary(days = 30): Promise<AnalyticsSummary 
 					WHEN event_name = 'refund_completed' THEN -value
 					ELSE 0 END), 0) AS revenue
 				FROM analytics_events
-				WHERE occurred_at >= ? AND event_name IN ('checkout_completed', 'refund_completed')
+				WHERE occurred_at >= ?${scoped.sql} AND event_name IN ('checkout_completed', 'refund_completed')
 				GROUP BY COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct'), COALESCE(NULLIF(currency, ''), 'UNKNOWN')`,
-			args: [since],
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 		{
 			sql: `SELECT COUNT(*) AS abandoned FROM (
 				SELECT session_id FROM analytics_events
-				WHERE occurred_at >= ? AND session_id IS NOT NULL
+				WHERE occurred_at >= ?${scoped.sql} AND session_id IS NOT NULL
 				GROUP BY session_id
 				HAVING MAX(CASE WHEN event_name = 'checkout_started' THEN occurred_at ELSE NULL END) IS NOT NULL
 					AND MAX(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) = 0
 					AND MAX(CASE WHEN event_name = 'checkout_started' THEN occurred_at ELSE '' END) < ?
 			)`,
-			args: [since, abandonmentCutoff],
+			args: [since, ...scoped.args, abandonmentCutoff],
 			wantRows: true,
 		},
 		{
 			sql: `SELECT occurred_at, event_name, channel, COALESCE(source, 'direct') AS source,
 				COALESCE(value, 0) AS value, COALESCE(currency, '') AS currency
-				FROM analytics_events WHERE occurred_at >= ?
+				FROM analytics_events WHERE occurred_at >= ?${scoped.sql}
 				ORDER BY occurred_at DESC LIMIT 50`,
-			args: [since],
+			args: [since, ...scoped.args],
 			wantRows: true,
 		},
 	]);
@@ -520,6 +522,9 @@ async function ensureSchema(): Promise<void> {
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_occurred_idx ON analytics_events(occurred_at)",
 			},
+            {
+                sql: "CREATE INDEX IF NOT EXISTS analytics_channel_occurred_idx ON analytics_events(channel, occurred_at)",
+            },
 			{
 				sql: "CREATE INDEX IF NOT EXISTS analytics_traffic_idx ON analytics_events(traffic_type, source_group, occurred_at)",
 			},

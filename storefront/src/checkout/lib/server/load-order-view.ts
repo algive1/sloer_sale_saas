@@ -6,6 +6,7 @@ import type { ServerOrder } from "@/checkout/lib/checkout-types";
 import { fetchCheckoutUserOnServer } from "@/checkout/lib/server/fetch-checkout-user";
 import { fetchOrderOnServer } from "@/checkout/lib/server/fetch-order";
 import type { LocaleSlug } from "@/config/locale";
+import { isChannelAllowedForCurrentHost } from "@/lib/brand/request-scope";
 import {
 	classifyOrderViewKey,
 	emailsMatch,
@@ -64,6 +65,10 @@ export async function loadOrderView(
 		return null;
 	}
 	const order = fetched.order;
+
+  // A valid order HMAC/email credential cannot authorize reading another brand.
+  const channel = (order as { channel?: { slug?: string | null } | null }).channel?.slug;
+  if (!(await isChannelAllowedForCurrentHost(channel ?? ""))) return null;
 
 	const access: OrderViewAccess =
 		accessFromToken || (await canElevateToVerified(order)) ? "verified" : "public";

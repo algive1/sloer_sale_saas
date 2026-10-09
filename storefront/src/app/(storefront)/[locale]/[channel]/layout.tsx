@@ -1,5 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { isStorefrontLocaleSlug } from "@/config/locale";
 import { isAllowedStorefrontChannel } from "@/config/channels";
 import { getConfiguredLocaleChannelPairs, isAllowedLocaleChannelPair } from "@/config/locale-channel";
@@ -48,6 +50,11 @@ async function ChannelRouteGuard({
 }) {
 	const { locale, channel } = await params;
 	const allowedSlugs = await getStorefrontChannelSlugs();
+	if (brandSitesConfigured()) {
+		const host = (await headers()).get("host");
+		const site = brandSiteForHost(host);
+		if (!site || !site.channels.includes(channel)) notFound();
+	}
 
 	if (
 		!isStorefrontLocaleSlug(locale) ||

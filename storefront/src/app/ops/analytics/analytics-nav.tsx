@@ -9,17 +9,23 @@ const entries = [
   {label:"流量分析", href:"/ops/analytics/traffic", glyph:"⌁"},
   {label:"结账分析", href:"/ops/analytics/checkout", glyph:"◇"},
   {label:"商品分析", href:"/ops/analytics/products", glyph:"▧"},
+  {label:"品牌站点", href:"/ops/sites", glyph:"◧"},
   {label:"店铺装修", href:"/ops/themes", glyph:"▤"},
   {label:"系统插件", href:"/ops/plugins", glyph:"◈"},
 ] as const;
 
-export function AnalyticsNavigation() {
+export function AnalyticsNavigation({ allBrands = false }: { allBrands?: boolean }) {
   const pathname=usePathname();
   return <aside className="sticky top-0 z-10 flex h-auto flex-col bg-[#111315] text-white lg:h-screen lg:min-h-screen">
     <div className="hidden items-center gap-3 border-b border-white/10 px-5 py-6 lg:flex">
       <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-base font-bold text-[#111315]">Y</span>
       <div><p className="text-sm font-bold">悦动之心</p><p className="mt-0.5 text-xs text-white/50">Commerce Analytics</p></div>
     </div>
+    {allBrands ? (
+      <p className="mx-4 mt-3 rounded-md border border-white/15 px-3 py-2 text-xs text-white/70" role="status">
+        当前视图：平台全品牌汇总。单品牌筛选尚未开放。
+      </p>
+    ) : null}
     <p className="hidden px-6 pb-2 pt-7 text-[11px] font-semibold uppercase tracking-widest text-white/45 lg:block">Analytics</p>
     <nav aria-label="数据分析导航" className="flex gap-1 overflow-x-auto px-3 py-2 lg:flex-col lg:px-4 lg:py-0">
       {entries.map(item=>{

@@ -2,6 +2,7 @@ import "server-only";
 
 import { ensureAnalyticsSchema } from "@/plugins/analytics/first-party-store";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
+import { withAnalyticsChannelScope } from "./scoped-statements";
 
 export type TrafficBucket = "hour" | "day";
 export type MoneyTotal = { currency: string; value: number };
@@ -63,6 +64,7 @@ export async function readTrafficReport(input: {
 	from: Date;
 	to: Date;
 	bucket: TrafficBucket;
+	channels?: readonly string[] | null;
 }): Promise<TrafficReport> {
 	await ensureAnalyticsSchema();
 	const from = input.from.toISOString();
@@ -85,7 +87,7 @@ export async function readTrafficReport(input: {
 		sourceQualityResult,
 		sourceRevenueResult,
 		countryTrendResult,
-	] = await libsqlPipeline([
+	] = await libsqlPipeline(withAnalyticsChannelScope([
 		{
 			sql: `SELECT COUNT(DISTINCT ${sessionExpr}) AS sessions,
 				COUNT(DISTINCT CASE WHEN event_name = 'product_viewed' THEN ${sessionExpr} END) AS product_views,
@@ -212,7 +214,7 @@ export async function readTrafficReport(input: {
 			args: [from, to, from, to],
 			wantRows: true,
 		},
-	]);
+	], input.channels ?? null));
 
 	const countryRevenue = moneyMap(
 		hranaRowsToObjects(countryRevenueResult),

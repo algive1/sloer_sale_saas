@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const locale = request.nextUrl.searchParams.get("locale") || "";
   if (!(await validScope(channel, locale))) return respond({error:"Unknown store channel or locale"}, 400);
   try {
-    return respond({siteId:activeThemeSiteId(),channel,locale,...await readTheme(channel,locale)});
+    return respond({siteId:activeThemeSiteId(channel),channel,locale,...await readTheme(channel,locale)});
   } catch (error) {
     console.error("[theme-editor] Failed to read theme", error);
     return respond({error:"Theme storage unavailable"}, 503);

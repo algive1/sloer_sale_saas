@@ -16,6 +16,7 @@ import { CopyrightText } from "./copyright-text";
 import { FooterAttribution } from "./footer-attribution";
 import { FooterPhotoCredits } from "./footer-photo-credits";
 import { brandConfig } from "@/config/brand";
+import { brandSiteForChannel } from "@/config/brand-sites";
 import { Logo } from "./shared/logo";
 
 import { buildStorefrontPath } from "@/lib/storefront-path";
@@ -32,9 +33,12 @@ function legalPageUrl(slug: string | undefined, locale: string, channel: string)
 }
 
 export async function Footer({ locale, channel }: { locale: string; channel: string }) {
-	const resolvedSlugs = needsAsyncChannelDiscovery()
+	const site = brandSiteForChannel(channel);
+	const allSlugs = needsAsyncChannelDiscovery()
 		? await getStorefrontChannelSlugs()
 		: getStaticStorefrontChannelSlugs();
+
+	const resolvedSlugs = site ? allSlugs.filter((slug) => site.channels.includes(slug)) : allSlugs;
 
 	const [menuItems, channels, content] = await Promise.all([
 		getFooterMenuItems(channel, locale),
@@ -43,8 +47,8 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 	]);
 
 	const footerMenuItems = menuItems ?? [];
-	const privacyHref = legalPageUrl(process.env.STOREFRONT_PRIVACY_PAGE_SLUG, locale, channel);
-	const termsHref = legalPageUrl(process.env.STOREFRONT_TERMS_PAGE_SLUG, locale, channel);
+	const privacyHref = legalPageUrl(site ? site.privacyPageSlug : process.env.STOREFRONT_PRIVACY_PAGE_SLUG, locale, channel);
+	const termsHref = legalPageUrl(site ? site.termsPageSlug : process.env.STOREFRONT_TERMS_PAGE_SLUG, locale, channel);
 	const localeOptions = getStorefrontLocaleOptions();
 	const selectorChannels =
 		channels?.channels && resolvedSlugs.length > 0
@@ -59,9 +63,9 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 					{/* Brand */}
 					<div className="col-span-2 md:col-span-1">
 						<Link href={buildStorefrontPath(locale, channel)} className="mb-4 inline-block">
-							<Logo className="h-7 w-auto" inverted />
+							<Logo className="h-7 w-auto" inverted src={site?.logo} invertedSrc={site?.logoInverted} fallbackText={site?.name} ariaLabel={site?.name} />
 						</Link>
-						<p className="mt-4 max-w-xs text-sm leading-relaxed text-inverse-subtle">{brandConfig.tagline}</p>
+						<p className="mt-4 max-w-xs text-sm leading-relaxed text-inverse-subtle">{site?.description ?? brandConfig.tagline}</p>
 					</div>
 
 					<FooterMenuColumns items={footerMenuItems} />
@@ -70,7 +74,7 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 				{/* Language + market — hidden when only one option on each axis */}
 				{(localeOptions.length > 1 || selectorChannels.length > 1) && (
 					<div className="mt-10">
-						<StorefrontRegionPicker locales={localeOptions} channels={selectorChannels} variant="inverted" />
+						<StorefrontRegionPicker locales={localeOptions} channels={selectorChannels} allowedChannels={site?.channels} variant="inverted" />
 					</div>
 				)}
 
@@ -78,7 +82,7 @@ export async function Footer({ locale, channel }: { locale: string; channel: str
 				<div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-inverse pt-8 sm:flex-row">
 					<div className="flex flex-col items-center gap-2 text-center sm:items-start sm:text-left">
 						<p className="text-xs text-inverse-muted">
-							<CopyrightText />
+							<CopyrightText holder={site?.name} />
 						</p>
 						<FooterAttribution />
 						<FooterPhotoCredits credits={content.surfaces.homepage.photoCredits} />
