@@ -46,6 +46,19 @@ describe("locale-channel pairs", () => {
 		expect(getPairedChannelForLocale("de", "default-channel")).toBe("default-channel");
 	});
 
+	it("never selects another brand when changing language in a scoped market picker", () => {
+		vi.stubEnv("NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS",
+			"en:fashion-us,fr:fashion-eu,en:jewelry-us,ja:jewelry-jp");
+		expect(getPairedChannelForLocale("en", "jewelry-jp", ["jewelry-us","jewelry-jp"]))
+			.toBe("jewelry-us");
+		expect(getPairedChannelForLocale("fr", "jewelry-us", ["jewelry-us","jewelry-jp"]))
+			.toBe("jewelry-us"); // no valid translation: remain on own brand
+		expect(getPairedChannelForLocale("en", "fashion-eu", ["fashion-us","fashion-eu"]))
+			.toBe("fashion-us");
+		expect(getPairedChannelForLocale("en", "jewelry-us", ["jewelry-us","jewelry-jp"]))
+			.toBe("jewelry-us"); // prefer current market when it supports new language
+	});
+
 	it("lists locales allowed for a channel when matrix is configured", () => {
 		vi.stubEnv(
 			"NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS",
