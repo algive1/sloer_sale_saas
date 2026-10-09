@@ -44,6 +44,26 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     expect(jCount).toBeGreaterThan(0);
   });
 
+  test("Google Merchant feeds cannot publish products or links from a foreign brand", async ({ request }) => {
+    const [f, j, cross, unknownFeed] = await Promise.all([
+      request.get(origin + "/merchant/google.xml?channel=us&locale=en", { headers: fashion }),
+      request.get(origin + "/merchant/google.xml?channel=jewelry-us&locale=en", { headers: jewelry }),
+      request.get(origin + "/merchant/google.xml?channel=us&locale=en", { headers: jewelry }),
+      request.get(origin + "/merchant/google.xml?channel=us&locale=en", { headers: unknown }),
+    ]);
+    expect(f.status()).toBe(200);
+    expect(j.status()).toBe(200);
+    expect(cross.status()).toBe(400);
+    expect(unknownFeed.status()).toBe(404);
+    const fashionXml = await f.text();
+    const jewelryXml = await j.text();
+    expect(fashionXml).toContain("https://fashion.example.test/");
+    expect(jewelryXml).toContain("https://jewelry.example.test/");
+    expect(fashionXml).not.toContain("jewelry.example.test");
+    expect(jewelryXml).not.toContain("fashion.example.test");
+    expect(jewelryXml).toContain("<g:price>");
+  });
+
   test("an upstream Saleor checkout ID is not usable on another brand host in Paper", async ({ request }) => {
     const listing = await request.post(saleor, {
       data: { query: `query { products(first: 1, channel: "us") { edges { node { variants { id } } } } }` },
