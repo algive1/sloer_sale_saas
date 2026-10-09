@@ -4,6 +4,7 @@ import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { getStorefrontLocaleSlugs } from "@/config/locale";
 import { activeThemeSiteId, themeDatabaseConfigured } from "@/plugins/theme-builder/store";
 import { ThemeEditor } from "./theme-editor";
+import { getBrandSites } from "@/config/brand-sites";
 
 export const metadata: Metadata = {
   title: "店铺装修 | Commerce Ops",
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
 export default async function ThemeEditorPage() {
   const channels = await getStorefrontChannelSlugs();
   const locales = [...getStorefrontLocaleSlugs()];
+  const siteByChannel = Object.fromEntries((getBrandSites() ?? []).flatMap((site) =>
+    site.channels.map((channel) => [channel, { id: site.id, name: site.name, domain: site.domains[0] }]),
+  ));
   return (
     <main className="min-h-screen bg-[#f6f7f9] text-[#171717]">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 bg-white px-5 py-4 md:px-8">
@@ -26,7 +30,7 @@ export default async function ThemeEditorPage() {
         </Link>
       </header>
       <ThemeEditor channels={channels} locales={locales} siteId={channels[0] ? activeThemeSiteId(channels[0]) : "unconfigured"}
-        storageReady={themeDatabaseConfigured()} />
+        storageReady={themeDatabaseConfigured()} siteByChannel={siteByChannel} />
     </main>
   );
 }
