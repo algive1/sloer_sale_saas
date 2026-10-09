@@ -81,6 +81,8 @@ export function loadAIConfig(): AIConfig | null {
   const bots: BotBinding[] = [];
   const usedSites = new Set<string>();
   const usedInboxes = new Set<string>();
+  const usedWebhookSecrets = new Set<string>();
+  const usedApiTokens = new Set<string>();
   for (const item of rawBots) {
     const { siteId, accountId, inboxId, webhookSecret, apiToken } = item;
     if (typeof siteId !== "string" || !positiveId(accountId) || !positiveId(inboxId) ||
@@ -90,9 +92,12 @@ export function loadAIConfig(): AIConfig | null {
     if (getChatwootBinding(support, siteId)?.accountId !== accountId) {
       throw new Error("AI bot Account must belong to the configured storefront brand");
     }
-    if (usedSites.has(siteId) || usedInboxes.has(String(accountId) + ":" + String(inboxId))) {
+    if (usedSites.has(siteId) || usedInboxes.has(String(accountId) + ":" + String(inboxId)) ||
+        usedWebhookSecrets.has(webhookSecret) || usedApiTokens.has(apiToken)) {
       throw new Error("Duplicate AI bot site or Inbox");
     }
+    usedWebhookSecrets.add(webhookSecret);
+    usedApiTokens.add(apiToken);
     usedSites.add(siteId);
     usedInboxes.add(String(accountId) + ":" + String(inboxId));
     bots.push({ siteId, accountId, inboxId, webhookSecret, apiToken });
