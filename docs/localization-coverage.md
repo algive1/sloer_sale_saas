@@ -7,7 +7,7 @@ The code-owned Paper storefront UI uses \`storefront/messages/{locale}.json\` an
 \`\`\`bash
 node scripts/audit-locale-coverage.mjs --all
 NEXT_PUBLIC_STOREFRONT_LOCALES=en,de,fr node scripts/audit-locale-coverage.mjs --fail-incomplete
-node --test scripts/audit-locale-coverage.test.mjs
+node --test scripts/audit-locale-coverage.node-test.mjs
 \`\`\`
 
 \`--all\` is informational. \`--fail-incomplete\` blocks only locales selected via \`NEXT_PUBLIC_STOREFRONT_LOCALES\` (defaults to \`en\`) and checks structural key coverage. \`--json\` emits details for build pipelines. Equal-to-English values are **advisory**, not hard failures.
