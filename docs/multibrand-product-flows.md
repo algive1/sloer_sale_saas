@@ -51,9 +51,12 @@ Channel list in SQL, including session funnel, net revenue, source attribution
 and abandoned checkout sessions. The former global overview remains explicitly
 labelled platform-wide and is still restricted to platform operators.
 A composite `(channel, occurred_at)` index assists brand/time reporting.
-Brand-specific realtime, advanced traffic, products, checkout health and order
-management views are **not yet** site-scoped, so the application must not show
-them as brand-only views.
+Brand-specific advanced traffic, product performance and checkout-health reports
+are now available at `/ops/sites/[siteId]/insights`; every event table read
+(including nested CTEs and joins) is constrained to the server-resolved brand
+Channels with parameterized SQL. Realtime and order-management reports remain
+platform-wide until separately scoped. Brand-specific advertising destinations
+and business email rules also remain outstanding.
 
 ## Shopper journey and acceptance
 
@@ -104,3 +107,21 @@ them as brand-only views.
   and consent isolation exist.
 
 This document is the product acceptance contract, **not proof of completion**.
+
+## Shared-Core two-host integration gate
+
+Integration CI seeds both a full `us` fashion catalog and a smaller
+`jewelry-us` catalog in one real Saleor 3.23.40 Core. A second Next process,
+configured with two disjoint brand mappings and test domains, exercises:
+
+- Two successful brand homepage visits on their own Host
+- Opposite Host/Channel and unknown Host requests rejected with 404
+- Brand-specific sitemap and Google Merchant URLs, with rejected cross-host feed
+  Channel overrides and differentiated product listing counts
+- A real Saleor checkout created in the fashion Channel; Paper permits its ID on
+  fashion Host but rejects it on jewelry Host
+- The shared operations plane still requires platform credentials
+
+These tests do not establish direct GraphQL tenant isolation, brand-level
+customer profiles/addresses, real payment provider readiness, or DNS/TLS
+ownership. Those remain launch blockers, even if this test suite turns green.
