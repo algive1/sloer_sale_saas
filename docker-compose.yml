@@ -149,10 +149,39 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       PAYMENT_REMINDER_FROM: ${PAYMENT_REMINDER_FROM:-}
       PAYMENT_REMINDER_CRON_SECRET: ${PAYMENT_REMINDER_CRON_SECRET:-}
+      # Optional Chatwoot CE website chat and AI bot; never build into browser env.
+      SUPPORT_CHATWOOT_BASE_URL: ${SUPPORT_CHATWOOT_BASE_URL:-}
+      SUPPORT_CHATWOOT_SITES_JSON: ${SUPPORT_CHATWOOT_SITES_JSON:-}
+      SUPPORT_AI_BOTS_JSON: ${SUPPORT_AI_BOTS_JSON:-}
+      SUPPORT_AI_FAQS_JSON: ${SUPPORT_AI_FAQS_JSON:-}
+      SUPPORT_AI_MODEL_URL: ${SUPPORT_AI_MODEL_URL:-}
+      SUPPORT_AI_MODEL_NAME: ${SUPPORT_AI_MODEL_NAME:-}
+      SUPPORT_AI_MODEL_API_KEY: ${SUPPORT_AI_MODEL_API_KEY:-}
+      SUPPORT_AI_WORKER_SECRET: ${SUPPORT_AI_WORKER_SECRET:-}
     ports:
       - "3000:3000"
     depends_on:
       - api
+    networks: [backend]
+
+  # Opt-in only; Chatwoot CE itself is deployed separately.
+  support-ai-poller:
+    image: curlimages/curl:8.15.0
+    profiles: ["support-ai"]
+    restart: unless-stopped
+    environment:
+      SUPPORT_AI_WORKER_SECRET: ${SUPPORT_AI_WORKER_SECRET:?set SUPPORT_AI_WORKER_SECRET for support-ai profile}
+    entrypoint: ["/bin/sh", "-ec"]
+    command: >
+      while :; do
+        curl --fail --silent --show-error --max-time 30
+          --header "Authorization: Bearer ${SUPPORT_AI_WORKER_SECRET}"
+          --request POST
+          http://storefront:3000/api/plugins/customer-support/agent-bot-worker || true;
+        sleep 5;
+      done
+    depends_on:
+      - storefront
     networks: [backend]
 
 volumes:
