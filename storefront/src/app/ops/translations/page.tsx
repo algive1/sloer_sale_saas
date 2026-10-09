@@ -6,7 +6,40 @@ import { getStorefrontLocaleSlugs } from "@/config/locale";
 import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
 import { translationDatabaseConfigured } from "@/plugins/ai-translations/store";
 import { TranslationCenter } from "./translation-center";
-import english from "../../../../messages/en.json";
+import msg_en from "../../../../messages/en.json";
+import msg_de from "../../../../messages/de.json";
+import msg_fr from "../../../../messages/fr.json";
+import msg_nl from "../../../../messages/nl.json";
+import msg_da from "../../../../messages/da.json";
+import msg_sv from "../../../../messages/sv.json";
+import msg_es from "../../../../messages/es.json";
+import msg_it from "../../../../messages/it.json";
+import msg_pl from "../../../../messages/pl.json";
+import msg_pt from "../../../../messages/pt.json";
+import msg_cs from "../../../../messages/cs.json";
+import msg_ja from "../../../../messages/ja.json";
+import msg_fi from "../../../../messages/fi.json";
+import msg_nb from "../../../../messages/nb.json";
+import msg_ko from "../../../../messages/ko.json";
+
+// Explicit imports avoid Next server dynamic-import contexts during PPR replay.
+const UI_CATALOGS: Record<string, unknown> = {
+  en: msg_en,
+  de: msg_de,
+  fr: msg_fr,
+  nl: msg_nl,
+  da: msg_da,
+  sv: msg_sv,
+  es: msg_es,
+  it: msg_it,
+  pl: msg_pl,
+  pt: msg_pt,
+  cs: msg_cs,
+  ja: msg_ja,
+  fi: msg_fi,
+  nb: msg_nb,
+  ko: msg_ko,
+};
 
 export const metadata:Metadata={
   title:"多语言管理中心 | Commerce Ops",robots:{index:false,follow:false},
@@ -26,16 +59,13 @@ export default async function TranslationCenterPage() {
   }];
   const pairs=getConfiguredLocaleChannelPairs();
   const locales=getStorefrontLocaleSlugs();
-  const base=flatten(english),keys=Object.keys(base);
-  const coverage=await Promise.all(locales.map(async(locale)=>{
-    try {
-      // Existing checked-in next-intl catalogs; coverage is UI-only, not merchant data.
-      const mod=await import("../../../../messages/"+locale+".json");
-      const values=flatten(mod.default as unknown);
-      const present=keys.filter(k=>typeof values[k]==="string"&&values[k].trim()).length;
-      return {locale,present,total:keys.length};
-    }catch{return {locale,present:0,total:keys.length};}
-  }));
+  const base=flatten(msg_en),keys=Object.keys(base);
+  const coverage=locales.map(locale=>{
+    const catalog=UI_CATALOGS[locale];
+    const values=catalog?flatten(catalog):{};
+    const present=keys.filter(key=>typeof values[key]==="string"&&values[key].trim()).length;
+    return {locale,present,total:keys.length};
+  });
   const brands=sites.map(site=>({
     id:site.id,name:site.name,channels:site.channels.filter(c=>channels.includes(c)),
     localesByChannel:Object.fromEntries(site.channels.map(c=>[c,locales.filter(l=>
