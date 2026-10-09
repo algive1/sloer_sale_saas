@@ -1,6 +1,6 @@
-# Customer Support AI extension — design only (not implemented)
+# Customer Support AI Agent Bot — initial implementation and deployment gates
 
-This document defines a **separate, optional AI capability** for the existing system-level `customer-support` plugin. This is *not* a claim that AI chat is currently enabled.
+This document covers an **optional AI integration** for the system-level `customer-support` plugin. The source now contains a signed Agent Bot callback, grounded FAQ selection, message de-duplication and human handoff; it is disabled by default and has not passed live Chatwoot/model integration tests.
 
 ## Reuse and licensing
 
@@ -69,3 +69,36 @@ Chatwoot Account B / Inbox B --- webhook ---> our Agent Bot callback
 - No AI order details for anonymous chats; verified brand order can return only its authorized status.
 - OpenAI/model outage and Chatwoot outage fall back to human queue; storefront checkout/purchase hot path remains unaffected.
 - No actual AI model provider, webhook secret or bot token has been configured in phase 1. A green unit test does not equal a working end-to-end AI bot.
+
+## Code now implemented (prototype, NOT production approval)
+
+- `src/plugins/customer-support/ai/bot-config.ts` validates each branded Agent Bot Account and Inbox against the trusted Chatwoot site mapping; only selected brands need to enable AI.
+- `src/plugins/customer-support/ai/bot-policy.ts` verifies the raw-body HMAC/timestamp, rejects non-customer messages and routes obvious orders, payments and personal information to a human.
+- `src/plugins/customer-support/ai/bot-runtime.ts` retrieves and checks the current Chatwoot conversation from the branded Account before and after model selection; it atomically claims a message in libSQL and limits one conversation to 20 bot claims per day.
+- `POST /api/plugins/customer-support/agent-bot/[siteId]` receives brand-specific signed callbacks and returns without rendering storefront pages or accessing Saleor GraphQL.
+- The language model receives a short visitor question plus approved current-brand FAQ IDs, question titles and keywords. It may select an existing FAQ ID or none. Our server sends the published FAQ answer and URL, never model-generated policies.
+
+## Runtime setup
+
+Set these *server-only* variables with the corresponding existing Chatwoot support config:
+
+- `SUPPORT_AI_BOTS_JSON`: array of `{siteId, accountId, inboxId, webhookSecret, apiToken}`. Obtain real values from the pinned Chatwoot CE installation; keys must be separate for every brand.
+- `SUPPORT_AI_FAQS_JSON`: array of `{siteId, id, locale, question, answer, keywords, sourceUrl}`. A source URL must be HTTPS on that brand's configured domain.
+- `SUPPORT_AI_MODEL_URL`: explicit trusted HTTPS OpenAI-compatible `/v1/chat/completions` endpoint.
+- `SUPPORT_AI_MODEL_NAME` and `SUPPORT_AI_MODEL_API_KEY`: explicit model name and server-side token.
+- Existing `ANALYTICS_LIBSQL_URL` and `ANALYTICS_LIBSQL_AUTH_TOKEN`: durable event claims. Bot remains disabled without a working database.
+
+Connect the Chatwoot Agent Bot to that brand's Website Inbox and configure its callback as `https://store.example.com/api/plugins/customer-support/agent-bot/fashion` (example). The URL contains a route selector, not a proof of tenant identity. The HMAC and live Account/Inbox checks provide authorization.
+
+## Operational limitations
+
+- **Synchronous webhook MVP:** real high-volume deployment needs an asynchronous durable worker. A claimed failed message is not automatically retried to avoid duplicate answers; operators need a reconciliation procedure.
+- The `support_ai_delivery` table retains delivery IDs and processing statuses only, not raw chat content. Chatwoot owns conversations and attachments.
+- A model selects among up to 12 current-brand FAQ records, not an arbitrary internet search. Poor matches or model outages hand off to humans.
+- The `AI assistant` prefix identifies automated replies. Human handoff uses the documented Chatwoot `/toggle_status` route and requires real-version E2E verification.
+- No Saleor customer, checkout, order, payment or refund permissions are granted. Do not present this integration as a verified order-status assistant.
+- Never work around HMAC verification failures by disabling validation. Validate the actual Agent Bot secret on the pinned Chatwoot CE version.
+- Model provider data transfers require a separate legal, privacy and consent review before enabling. The conservative string detector does not replace a full sensitive-data policy.
+- Confirm actual account-scoped conversation GET, message POST, handoff POST, two-brand isolation, mobile behavior, duplicate delivery, human takeover and failure paths before production enablement.
+
+Run `pnpm --dir storefront exec vitest run src/plugins/customer-support/ai/bot-policy.test.ts src/plugins/customer-support/ai/bot-config.test.ts` and the full CI and browser suites before merging.
