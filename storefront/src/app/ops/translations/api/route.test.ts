@@ -39,6 +39,10 @@ describe("ops translation command scope",()=>{
       {...good,channel:"foreign"},
       {...good,locale:"en"},
       {...good,count:100},
+      {...good,count:0},
+      {...good,count:-2},
+      {...good,count:2.5},
+      {...good,count:Number.NaN},
     ]) {
       const res=await POST(req(invalid,"https://shop.example.com"));
       expect(res.status).toBe(400);

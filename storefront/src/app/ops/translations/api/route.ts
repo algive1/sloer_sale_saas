@@ -42,7 +42,7 @@ export async function POST(request:NextRequest) {
     const scope=validateScope(data);
     if(data.action==="create") {
       const count=data.count;
-      if(typeof count!=="number")return respond({error:"数量无效"},400);
+      if(typeof count!=="number"||!Number.isSafeInteger(count)||count<1||count>10)return respond({error:"每批商品数量必须在 1–10 之间"},400);
       return respond({job:await createJob(scope,count)},201);
     }
     if(typeof data.jobId!=="string"||!/^[0-9a-f-]{36}$/.test(data.jobId) ||
