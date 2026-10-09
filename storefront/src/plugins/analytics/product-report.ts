@@ -2,6 +2,7 @@ import "server-only";
 
 import { ensureAnalyticsSchema } from "@/plugins/analytics/first-party-store";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
+import { withAnalyticsChannelScope } from "./scoped-statements";
 
 export type ProductBucket = "hour" | "day";
 export type ProductMoney = { currency: string; value: number };
@@ -45,6 +46,7 @@ export async function readProductReport(input: {
 	from: Date;
 	to: Date;
 	bucket: ProductBucket;
+	channels?: readonly string[] | null;
 }): Promise<ProductReport> {
 	await ensureAnalyticsSchema();
 	const from = input.from.toISOString();
@@ -56,7 +58,7 @@ export async function readProductReport(input: {
 			? "substr(ae.occurred_at, 1, 13) || ':00'"
 			: "substr(ae.occurred_at, 1, 10)";
 
-	const [summaryResult, productsResult, revenueResult, trendResult] = await libsqlPipeline([
+	const [summaryResult, productsResult, revenueResult, trendResult] = await libsqlPipeline(withAnalyticsChannelScope([
 		{
 			sql: `SELECT
 				COUNT(DISTINCT ${itemKey}) AS tracked_products,
@@ -144,7 +146,7 @@ export async function readProductReport(input: {
 			args: [from, to, from, to],
 			wantRows: true,
 		},
-	]);
+	], input.channels ?? null));
 
 	const moneyByProduct = new Map<string, ProductMoney[]>();
 	for (const row of hranaRowsToObjects(revenueResult)) {
