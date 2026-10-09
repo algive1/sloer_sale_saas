@@ -4,8 +4,6 @@ import { incomingBotMessage, verifyChatwootSignature } from "@/plugins/customer-
 import { enqueueAIBotMessage } from "@/plugins/customer-support/ai/bot-runtime";
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 const MAX_WEBHOOK_BYTES = 20_000;
 
 export async function POST(request: Request, { params }: { params: Promise<{ siteId: string }> }) {
