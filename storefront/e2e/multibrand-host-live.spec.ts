@@ -49,6 +49,30 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     expect(jCount).toBeGreaterThan(0);
   });
 
+  test("filtered listing JSON cannot be fetched across brand domains", async ({ request }) => {
+    const listingUrl = (channel: string) =>
+      origin + "/api/listing?surface=all&locale=en&channel=" + encodeURIComponent(channel);
+    const [f, j, foreignFashion, foreignJewelry, unknownHost, forgedForwarded] = await Promise.all([
+      request.get(listingUrl("us"), { headers: fashion }),
+      request.get(listingUrl("jewelry-us"), { headers: jewelry }),
+      request.get(listingUrl("us"), { headers: jewelry }),
+      request.get(listingUrl("jewelry-us"), { headers: fashion }),
+      request.get(listingUrl("us"), { headers: unknown }),
+      request.get(listingUrl("jewelry-us"), {
+        headers: { ...fashion, "x-forwarded-host": "jewelry.example.test" },
+      }),
+    ]);
+    expect(f.status(), "Fashion listing API must remain functional").toBe(200);
+    expect(j.status(), "Jewelry listing API must remain functional").toBe(200);
+    expect((await f.json()).products.length).toBeGreaterThan(0);
+    expect((await j.json()).products.length).toBeGreaterThan(0);
+    expect(f.headers()["cache-control"]).toContain("no-store");
+    for (const response of [foreignFashion, foreignJewelry, unknownHost, forgedForwarded]) {
+      expect(response.status(), "Foreign/unknown Host must not expose catalog JSON").toBe(404);
+      expect(response.headers()["cache-control"]).toContain("no-store");
+    }
+  });
+
   test("Google Merchant feeds cannot publish products or links from a foreign brand", async ({ request }) => {
     const [f, j, cross, unknownFeed] = await Promise.all([
       request.get(origin + "/merchant/google.xml?channel=us&locale=en", { headers: fashion }),
