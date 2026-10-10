@@ -1,3 +1,20 @@
+## Staff-safe token verification in shared-Core guest mode (PR #47)
+
+Saleor's public `tokenVerify(token: ...)` receives the JWT as a GraphQL
+**argument**. Blocking the entire mutation at anonymous resolver entry
+prevented legitimate staff Dashboard token verification as well as customer
+verification. In shared-Core guest-only mode the middleware now delegates
+`tokenVerify` to the actual mutation, where a verified customer token is
+rejected with `JWT_INVALID_TOKEN` and no user/payload is returned.
+Staff (including supported app-issued staff tokens) remain verifiable.
+With the flag disabled, the upstream single-brand behavior is unchanged.
+Backend tests and live anonymous direct-GraphQL integration assertions
+cover both outcomes.
+
+This does not scope public Checkout IDs, staff applications or independent
+tenant operators. It only closes the customer-token argument path without
+breaking staff verification.
+
 ## Shared Saleor customer GraphQL containment (PR #44)
 
 A multi-brand deployment using one Saleor Core **must** set

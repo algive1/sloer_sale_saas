@@ -82,6 +82,19 @@ assert.equal(customerLogin.data?.tokenCreate?.token, null);
 assert.equal(customerLogin.data?.tokenCreate?.user, null);
 assert.equal(customerLogin.data?.tokenCreate?.errors?.[0]?.code, "INVALID_CREDENTIALS");
 
+const verifyMutation = `
+  mutation($token: String!) {
+    tokenVerify(token: $token) {
+      isValid user { email } errors { code }
+    }
+  }
+`;
+const verifyOldCustomer = await graphql(verifyMutation, { token: legacyToken });
+assert.equal(verifyOldCustomer.errors, undefined, JSON.stringify(verifyOldCustomer));
+assert.equal(verifyOldCustomer.data?.tokenVerify?.isValid, false);
+assert.equal(verifyOldCustomer.data?.tokenVerify?.user, null);
+assert.equal(verifyOldCustomer.data?.tokenVerify?.errors?.[0]?.code, "JWT_INVALID_TOKEN");
+
 const customerRefresh = await graphql(`
   mutation($refresh: String!) {
     tokenRefresh(refreshToken:$refresh) { token errors { code } }
@@ -102,7 +115,12 @@ assert.equal(staffLogin.errors, undefined, JSON.stringify(staffLogin));
 assert.ok(staffLogin.data?.tokenCreate?.token, JSON.stringify(staffLogin));
 assert.equal(staffLogin.data?.tokenCreate?.user?.email, staffEmail);
 assert.deepEqual(staffLogin.data?.tokenCreate?.errors, []);
+const verifiedStaff = await graphql(verifyMutation, { token: staffLogin.data.tokenCreate.token });
+assert.equal(verifiedStaff.errors, undefined, JSON.stringify(verifiedStaff));
+assert.equal(verifiedStaff.data?.tokenVerify?.isValid, true);
+assert.equal(verifiedStaff.data?.tokenVerify?.user?.email, staffEmail);
+assert.deepEqual(verifiedStaff.data?.tokenVerify?.errors, []);
 const staffMe = await graphql("{ me { email } }", undefined, staffLogin.data.tokenCreate.token);
 assert.equal(staffMe.data?.me?.email, staffEmail, JSON.stringify(staffMe));
 
-console.log("Shared Saleor Core guest-only GraphQL: guest catalog, direct-account denials, old JWT, refresh, staff login all passed.");
+console.log("Shared Saleor Core guest-only GraphQL: guest catalog, direct-account denials, old JWT, customer token verification, refresh, staff login/verification all passed.");

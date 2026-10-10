@@ -20,7 +20,6 @@ ERROR_CODE = "SHARED_CORE_CUSTOMER_ACCOUNTS_DISABLED"
 # names or aliases, are authoritative at resolver time (fragments cannot bypass).
 BLOCKED_MUTATIONS = frozenset(
     {
-        "tokenVerify",
         "tokensDeactivateAll",
         "requestPasswordReset",
         "sendConfirmationEmail",
@@ -86,7 +85,7 @@ class GuestOnlySharedCoreMiddleware:
             )
 
         # Staff/app requests retain their original permissions. TokenCreate and
-        # TokenRefresh have staff-only issuance guards in their mutations.
+        # TokenRefresh and TokenVerify have staff-only guards in their mutations.
         if (
             info.parent_type.name == "Mutation"
             and info.field_name in BLOCKED_MUTATIONS
