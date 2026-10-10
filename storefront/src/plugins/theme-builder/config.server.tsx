@@ -9,6 +9,7 @@ import { MediaHero } from "@/ui/sections/media-hero/media-hero";
 import { FeaturedCollectionSection } from "@/ui/sections/featured-collection-section/featured-collection-section";
 import { ImageWithText } from "@/ui/sections/image-with-text/image-with-text";
 import { RichTextBlock } from "@/ui/sections/rich-text-block/rich-text-block";
+import { FaqSection } from "@/ui/sections/faq/faq-section";
 
 /** Server components retain catalog SSR, SEO, product URLs and basket behavior. */
 async function PublishedHero({
@@ -63,6 +64,14 @@ async function PublishedFeaturedProduct({heading,slug,channel,locale}:{
 export function createPublishedThemeConfig(channel: string, locale: string): Config {
   return {
     components: {
+      Faq:{
+        render:({heading,question1,answer1,question2,answer2,question3,answer3})=>
+          <FaqSection heading={String(heading??"")} items={[
+            {question:String(question1??""),answer:String(answer1??"")},
+            {question:String(question2??""),answer:String(answer2??"")},
+            {question:String(question3??""),answer:String(answer3??"")},
+          ].filter(item=>item.question.trim()&&item.answer.trim())}/>,
+      },
       Product: {
         render: ({heading,productSlug})=><PublishedFeaturedProduct
           heading={String(heading??"")} slug={String(productSlug??"")}
