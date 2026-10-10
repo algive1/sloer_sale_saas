@@ -27,7 +27,7 @@
 		"test:e2e:instant": "playwright test e2e/instant-navigation.spec.ts",
 		"test:e2e:checkout": "playwright test e2e/checkout-step-back.spec.ts",
 		"typecheck": "tsc --noEmit",
-		"verify": "pnpm run docs:check && pnpm run lint:design-tokens && pnpm run lint:graphql-variants && pnpm run typecheck && pnpm run lint && pnpm run test:run && pnpm run test:brand-safety",
+		"verify": "pnpm run docs:check && pnpm run check:dependency-policy && pnpm run lint:design-tokens && pnpm run lint:graphql-variants && pnpm run typecheck && pnpm run lint && pnpm run test:run && pnpm run test:brand-safety",
 		"verify:quick": "pnpm run lint:design-tokens && pnpm run typecheck",
 		"docs:check": "node skills/saleor-paper-storefront/scripts/ensure-rule-frontmatter.mjs --check && node skills/saleor-paper-storefront/scripts/compile-agents.mjs --check",
 		"docs:compile": "node skills/saleor-paper-storefront/scripts/ensure-rule-frontmatter.mjs && node skills/saleor-paper-storefront/scripts/compile-agents.mjs",
@@ -56,7 +56,8 @@
 		"translations:ai:plan": "node scripts/ai-catalog-translate.mjs",
 		"translations:ai:generate": "node scripts/ai-catalog-translate.mjs --generate",
 		"translations:ai:export": "node scripts/ai-catalog-translate.mjs --export-approved",
-		"translations:ai:test": "node --test scripts/lib/ai-catalog-drafts.node-test.mjs"
+		"translations:ai:test": "node --test scripts/lib/ai-catalog-drafts.node-test.mjs",
+		"check:dependency-policy": "node scripts/check-dependency-policy.mjs"
 	},
 	"dependencies": {
 		"@puckeditor/core": "0.23.0",
