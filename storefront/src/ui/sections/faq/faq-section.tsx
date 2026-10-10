@@ -8,6 +8,7 @@ export interface FaqItem {
 }
 
 export interface FaqSectionProps {
+	headingId?: string;
 	heading?: string;
 	eyebrow?: string;
 	intro?: string;
@@ -20,12 +21,11 @@ export interface FaqSectionProps {
  * FAQ accordion built on native `<details>` — a Server Component with zero client JS,
  * keyboard-accessible and SEO-friendly by default. Constrained to a readable measure.
  */
-export function FaqSection({ heading, eyebrow, intro, items, tone = "default", className }: FaqSectionProps) {
+export function FaqSection({ heading, headingId = "faq-heading", eyebrow, intro, items, tone = "default", className }: FaqSectionProps) {
 	if (items.length === 0) {
 		return null;
 	}
 
-	const headingId = "faq-heading";
 
 	return (
 		<Section

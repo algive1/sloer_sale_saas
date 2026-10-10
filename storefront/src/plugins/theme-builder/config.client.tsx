@@ -40,7 +40,7 @@ const showcase = (title: string, imageUrl: string, children: ReactNode) => {
 export const fashionEditorConfig: Config = {
   categories: {
     merchandise: { title: "商品与营销", components: ["Hero", "Collection", "Product"] },
-    editorial: { title: "图文与品牌", components: ["Editorial", "Story"] },
+    editorial: { title: "图文与品牌", components: ["Editorial", "Story", "Faq"] },
   },
   components: {
     Hero: {
@@ -137,6 +137,39 @@ export const fashionEditorConfig: Config = {
       defaultProps: { heading: "Featured product", productSlug: "" },
       render: ({heading,productSlug})=><ProductCanvasPreview channel="" heading={String(heading??"")} slug={String(productSlug??"")}/>,
     },
+    Faq: {
+      label:"常见问题 FAQ",
+      fields:{
+        heading:{type:"text",label:"模块标题"},
+        question1:{type:"text",label:"问题 1"},
+        answer1:{type:"textarea",label:"回答 1"},
+        question2:{type:"text",label:"问题 2"},
+        answer2:{type:"textarea",label:"回答 2"},
+        question3:{type:"text",label:"问题 3"},
+        answer3:{type:"textarea",label:"回答 3"},
+      },
+      defaultProps:{
+        heading:"Frequently asked questions",
+        question1:"Where can I find more product details?",
+        answer1:"Please check the product description and options for specifications.",
+        question2:"Where can I find shipping information?",
+        answer2:"Please review our shipping policy for available delivery information.",
+        question3:"How can I get in touch?",
+        answer3:"Use the contact page or customer support link for assistance.",
+      },
+      render:({heading,question1,answer1,question2,answer2,question3,answer3})=>(
+        <section className="mx-auto max-w-3xl px-6 py-16">
+          <h2 className="mb-8 text-center text-3xl text-stone-900">{heading}</h2>
+          {[{q:question1,a:answer1},{q:question2,a:answer2},{q:question3,a:answer3}]
+            .filter(item=>item.q&&item.a).map((item,i)=>(
+              <details key={i} className="border-b border-stone-200 py-4">
+                <summary className="cursor-pointer text-base">{item.q}</summary>
+                <p className="pt-3 text-sm text-stone-600">{item.a}</p>
+              </details>
+            ))}
+        </section>
+      ),
+    },
     Story: {
       label: "品牌宣言",
       fields: {
@@ -199,7 +232,7 @@ export function createScopedFashionEditorConfig(channel:string,pageType:"home"|"
     ...scoped,
     categories: {
       merchandise:{title:"详情页商品推荐",components:["Collection","Product"]},
-      editorial:{title:"详情页图文内容",components:["Editorial","Story"]},
+      editorial:{title:"详情页图文内容",components:["Editorial","Story","Faq"]},
     },
     components:contentBlocks,
   };

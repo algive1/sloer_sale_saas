@@ -1,5 +1,5 @@
 import { expect, test, request as playwrightRequest } from "@playwright/test";
-import { FASHION_TEMPLATE, type ThemeData } from "../src/plugins/theme-builder/template";
+import { FASHION_TEMPLATE, JEWELRY_TEMPLATE, type ThemeData } from "../src/plugins/theme-builder/template";
 import { PRODUCT_DETAIL_TEMPLATE } from "../src/plugins/theme-builder/page-document";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
@@ -223,10 +223,12 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       const initial=await authorized.get(scope);
       expect(initial.status(),await initial.text()).toBe(200);
       const state=await initial.json() as {published:ThemeData|null;draftRevision:number};
-      expect(state.published).toBeNull();
-      expect(state.draftRevision).toBe(0);
+      // The isolated CI libSQL database is shared between tests and retries.
+      // Assert against the starting revision and published snapshot, not an empty DB.
+      const startingRevision=state.draftRevision;
+      const heading="CI PDP MATERIALS "+Date.now().toString(36).toUpperCase();
       const content=structuredClone(PRODUCT_DETAIL_TEMPLATE);
-      content.content[0]!.props.heading="CI PDP MATERIALS AND STORY";
+      content.content[0]!.props.heading=heading;
 
       const invalid=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
@@ -237,7 +239,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       const wrong=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
         data:{channel:"unknown",locale:"en",pageType:"product",template:"default",
-          action:"draft",expectedRevision:0,data:content},
+          action:"draft",expectedRevision:startingRevision,data:content},
       });
       expect(wrong.status()).toBe(400);
 
@@ -247,32 +249,36 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       expect(slug).toBeTruthy();
       const productPath="/en/us/products/"+slug;
       await page.goto(productPath);
-      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"})).toHaveCount(0);
+      await expect(page.getByRole("heading",{name:heading})).toHaveCount(0);
 
       const saved=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
         data:{channel:"us",locale:"en",pageType:"product",template:"default",
-          action:"draft",expectedRevision:0,data:content},
+          action:"draft",expectedRevision:startingRevision,data:content},
       });
       expect(saved.status(),await saved.text()).toBe(200);
+      const beforePublishing=await authorized.get(scope);
+      const beforeState=await beforePublishing.json() as {published:ThemeData|null;draftRevision:number};
+      expect(beforeState.published).toEqual(state.published);
+      expect(beforeState.draftRevision).toBe(startingRevision+1);
       await page.reload();
-      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"})).toHaveCount(0);
+      await expect(page.getByRole("heading",{name:heading})).toHaveCount(0);
 
       const stale=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
         data:{channel:"us",locale:"en",pageType:"product",template:"default",
-          action:"publish",expectedRevision:0,data:content},
+          action:"publish",expectedRevision:startingRevision,data:content},
       });
       expect(stale.status()).toBe(409);
 
       const published=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
         data:{channel:"us",locale:"en",pageType:"product",template:"default",
-          action:"publish",expectedRevision:1,data:content},
+          action:"publish",expectedRevision:startingRevision+1,data:content},
       });
       expect(published.status(),await published.text()).toBe(200);
       await page.goto(productPath,{waitUntil:"domcontentloaded"});
-      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"}))
+      await expect(page.getByRole("heading",{name:heading}))
         .toBeVisible({timeout:30_000});
       // Purchase area and main product heading must not disappear after publishing.
       await expect(page.getByRole("heading",{level:1})).toBeVisible();
@@ -285,10 +291,82 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       const foreignOrigin=await authorized.put(endpoint,{
         headers:{Origin:"https://outside.example"},
         data:{channel:"us",locale:"en",pageType:"product",template:"default",
-          action:"draft",expectedRevision:2,data:content},
+          action:"draft",expectedRevision:startingRevision+2,data:content},
       });
       expect(foreignOrigin.status()).toBe(403);
     }finally{
+      await page.close();
+      await context.close();
+      await authorized.dispose();
+    }
+  });
+
+
+  test("saved storefront templates stay scoped and never publish automatically",async({browser})=>{
+    test.skip(!password||!process.env.PLAYWRIGHT_THEME_DB_RESET_TOKEN,
+      "Requires authenticated Saleor + isolated theme storage");
+    const authorized=await playwrightRequest.newContext({
+      baseURL,httpCredentials:{username:"analytics",password:password!},
+    });
+    const context=await browser.newContext({
+      httpCredentials:{username:"analytics",password:password!},
+      viewport:{width:1366,height:860},
+    });
+    const page=await context.newPage();
+    const library="/ops/themes/templates/api";
+    const params="?channel=us&locale=en&pageType=home";
+    let createdId:string|undefined;
+    try{
+      const previous=await authorized.get(library+params);
+      expect(previous.status(),await previous.text()).toBe(200);
+      const title="Saved Jewelry Collection";
+      const created=await authorized.post(library,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"home",title,data:JEWELRY_TEMPLATE},
+      });
+      expect(created.status(),await created.text()).toBe(201);
+      const createdBody=await created.json() as {item:{id:string;title:string}};
+      expect(createdBody.item.title).toBe(title);
+      createdId=createdBody.item.id;
+      const listed=await authorized.get(library+params);
+      const listBody=await listed.json() as {items:{id:string;title:string}[]};
+      expect(listBody.items.some(item=>item.id===createdBody.item.id)).toBe(true);
+      const loaded=await authorized.get(library+params+"&id="+createdBody.item.id);
+      const savedBody=await loaded.json() as {data:ThemeData};
+      expect(savedBody.data.content[0]?.props.heading).toBe(JEWELRY_TEMPLATE.content[0]?.props.heading);
+
+      const foreignScope=await authorized.get(library+"?channel=not-a-store&locale=en&pageType=home");
+      expect(foreignScope.status()).toBe(400);
+      const unsafe=await authorized.post(library,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"product",title:"Unsafe Product Template",data:FASHION_TEMPLATE},
+      });
+      expect(unsafe.status()).toBe(400);
+      const foreignOrigin=await authorized.post(library,{
+        headers:{Origin:"https://other.example"},
+        data:{channel:"us",locale:"en",pageType:"home",title:"Bad",data:FASHION_TEMPLATE},
+      });
+      expect(foreignOrigin.status()).toBe(403);
+
+      // Operator can see the saved template without injecting changes into a published homepage.
+      await page.goto("/ops/themes");
+      await expect(page.getByRole("heading",{name:"品牌网站装修"})).toBeVisible();
+      await page.getByText("我的模板",{exact:true}).click();
+      await expect(page.getByLabel("已保存模板")).toContainText(title);
+      const before=await authorized.get("/ops/themes/api?channel=us&locale=en");
+      const beforeBody=await before.json() as {published:ThemeData|null};
+      await page.getByLabel("已保存模板").selectOption(createdBody.item.id);
+      await page.getByRole("button",{name:"应用到草稿"}).click();
+      await expect(page.getByRole("status").filter({hasText:"已应用模板至当前草稿"})).toBeVisible();
+      const after=await authorized.get("/ops/themes/api?channel=us&locale=en");
+      const afterBody=await after.json() as {published:ThemeData|null};
+      expect(afterBody.published).toEqual(beforeBody.published);
+    }finally{
+      if(createdId){
+        await authorized.delete(library+params+"&id="+encodeURIComponent(createdId),{
+          headers:{Origin:baseURL},
+        });
+      }
       await page.close();
       await context.close();
       await authorized.dispose();

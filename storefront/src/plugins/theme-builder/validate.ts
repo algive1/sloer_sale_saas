@@ -8,6 +8,7 @@ const FIELDS = {
   Editorial: ["eyebrow", "heading", "body", "imageUrl", "imagePosition", "ctaLabel", "ctaHref"],
   Story: ["eyebrow", "heading", "body", "tone", "align"],
   Product: ["heading", "productSlug"],
+  Faq: ["heading", "question1", "answer1", "question2", "answer2", "question3", "answer3"],
 } as const;
 
 export class ThemeValidationError extends Error {}

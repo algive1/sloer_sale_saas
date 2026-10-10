@@ -10,7 +10,7 @@ export type ThemePageType = "product" | "collection" | "landing";
 export const DEFAULT_PAGE_TEMPLATE_KEY = "default";
 export const ENABLED_PAGE_TYPES: readonly ThemePageType[] = ["product"];
 
-const PRODUCT_CONTENT_BLOCKS = new Set(["Collection", "Editorial", "Story", "Product"]);
+const PRODUCT_CONTENT_BLOCKS = new Set(["Collection", "Editorial", "Story", "Product", "Faq"]);
 
 export function isEditableThemePageType(value: string): value is ThemePageType {
   return ENABLED_PAGE_TYPES.some((type) => type === value);
