@@ -8,6 +8,7 @@ import type { CheckoutUser } from "@/checkout/lib/checkout-types";
 type CheckoutUserContextValue = {
 	user: CheckoutUser | null;
 	authenticated: boolean;
+	accountsEnabled: boolean;
 	loading: boolean;
 	refetch: () => Promise<void>;
 };
@@ -20,23 +21,26 @@ const CheckoutUserContext = createContext<CheckoutUserContextValue | null>(null)
  */
 export function CheckoutUserProvider({
 	initialUser,
+	accountsEnabled,
 	children,
 }: {
 	initialUser: CheckoutUser | null;
+	accountsEnabled: boolean;
 	children: ReactNode;
 }) {
 	const refreshCheckoutRsc = useRefreshCheckoutRsc();
 
 	const value = useMemo(
 		() => ({
-			user: initialUser,
-			authenticated: Boolean(initialUser?.id),
+			user: accountsEnabled ? initialUser : null,
+			accountsEnabled,
+			authenticated: accountsEnabled && Boolean(initialUser?.id),
 			loading: false,
 			refetch: async () => {
 				refreshCheckoutRsc();
 			},
 		}),
-		[initialUser, refreshCheckoutRsc],
+		[initialUser, accountsEnabled, refreshCheckoutRsc],
 	);
 
 	return <CheckoutUserContext value={value}>{children}</CheckoutUserContext>;

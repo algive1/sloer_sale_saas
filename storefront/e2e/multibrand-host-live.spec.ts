@@ -109,6 +109,30 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     expect(localizedForeignHost.status(), "Language parameters cannot override brand ownership").toBe(404);
   });
 
+  test("global customer account entry points are closed on both brands, guest paths stay available", async ({ request }) => {
+    for (const [host, channel] of [[fashion, "us"], [jewelry, "jewelry-us"]] as const) {
+      for (const path of [`/en/${channel}/login`, `/en/${channel}/account`,
+        `/en/${channel}/account/orders`, `/en/${channel}/account/addresses`,
+        `/en/${channel}/account/settings`]) {
+        const response = await request.get(origin + path, { headers: host });
+        expect(response.status(), path).toBe(404);
+        expect(response.headers()["cache-control"]).toContain("no-store");
+      }
+      for (const path of ["login","register","reset-password","set-password","confirm-account"]) {
+        const response = await request.post(origin + "/api/auth/" + path, {
+          headers: { ...host, "content-type": "application/json" }, data: "{invalid",
+        });
+        expect(response.status(), path).toBe(409);
+        expect(response.headers()["cache-control"]).toContain("no-store");
+        expect((await response.json()).errors?.[0]?.code).toBe("MULTI_BRAND_ACCOUNT_UNAVAILABLE");
+      }
+      const storefront = await request.get(origin + `/en/${channel}`, { headers:host });
+      expect(storefront.status()).toBe(200);
+      // /checkout is not account-gated. Actual checkout ID/host behavior is
+      // covered by the cross-brand checkout test above.
+    }
+  });
+
   test("administration stays password-protected irrespective of incoming brand Host", async ({ request }) => {
     expect((await request.get(origin + "/ops/sites", { headers: fashion })).status()).toBe(401);
     expect((await request.get(origin + "/ops/sites", { headers: jewelry })).status()).toBe(401);

@@ -40,6 +40,7 @@ type CheckoutAppProps = {
 	loadState: CheckoutLoadState;
 	initialCheckout: ServerCheckout | null;
 	initialUser: CheckoutUser | null;
+	accountsEnabled: boolean;
 	shippingCountries: ShippingCountries;
 	channelDefaultCountryCode: ChannelDefaultCountryCode;
 	checkoutContent: CheckoutContent;
@@ -56,6 +57,7 @@ export function CheckoutApp({
 	loadState,
 	initialCheckout,
 	initialUser,
+	accountsEnabled,
 	shippingCountries,
 	channelDefaultCountryCode,
 	checkoutContent,
@@ -69,7 +71,7 @@ export function CheckoutApp({
 					<CheckoutSessionCleanup />
 					<CheckoutStepUrlGuard />
 					<CheckoutPaymentHistoryGuard />
-					<CheckoutUserProvider initialUser={initialUser}>
+					<CheckoutUserProvider initialUser={initialUser} accountsEnabled={accountsEnabled}>
 						<CheckoutDataProvider
 							key={checkoutId ?? "none"}
 							checkoutId={checkoutId}

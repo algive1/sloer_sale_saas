@@ -1,3 +1,37 @@
+
+## Interim shared-customer identity containment (PR #40)
+
+**Security boundary, not finished tenant isolation:** Saleor Core stores the
+customer `me`, shipping address book, default addresses and password once per
+customer, not once per Channel. Filtering `me.orders` by Channel does not make
+`me.addresses` or `accountUpdate` brand-private.
+
+While `STOREFRONT_SITES_JSON` is configured the Paper storefront therefore
+denies `/{locale}/{channel}/login` and `/account/**` at the HTTP request
+boundary, denies all five `/api/auth/*` endpoints and refuses profile/address
+account actions before calling Saleor. Checkout does **not** hydrate Saleor
+global `me.addresses` or attach a logged-in account to a new checkout. Guest
+email, shipping/billing address for the current checkout, payment and
+cryptographically verified order status remain available. Shipping/billing
+updates force `saveAddress=false` to avoid mutating the global address book.
+Frontend guest checkout hides login, registration and password reset controls.
+The Saleor server-side auth SDK additionally receives a no-op token store on
+multi-brand storefronts: stale global access/refresh cookies are neither read
+nor forwarded on checkout mutations. The corresponding session-presence check
+returns guest, even if a browser still carries cookies from an older single-
+brand deployment. These guards are not a proxy in front of direct Saleor API.
+
+The single-brand path is unchanged.
+
+This is a temporary availability trade-off: shoppers cannot sign in, register
+or manage saved addresses on **any** brand of the shared-Core deployment.
+Do not describe this as independent customer login. Do not expose Saleor
+GraphQL directly with public mutation or login permissions that would bypass
+Paper's policy. To restore customer accounts, first establish per-brand
+identity/authorization in Saleor, including account mutations, login/reset,
+checkout ownership, addresses, email templates, refunds and third-party apps,
+then run the negative cross-host browser and GraphQL security tests.
+
 ## Architecture decision — Option A (approved 2026-10-09)
 
 **Decision:** One self-hosted Saleor Core and one primary operations plane,

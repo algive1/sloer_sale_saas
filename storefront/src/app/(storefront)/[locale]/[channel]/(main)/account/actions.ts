@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { sharedCustomerAccountsEnabled } from "@/lib/brand/customer-account-policy";
 import {
 	AccountUpdateDocument,
 	PasswordChangeDocument,
@@ -18,6 +19,9 @@ import { getFormString, getFormStringOptional } from "@/ui/components/account/fo
 import type { AccountActionResult } from "@/ui/components/account/account-action-result";
 
 export async function updateProfile(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const firstName = getFormString(formData, "firstName");
 	const lastName = getFormString(formData, "lastName");
 
@@ -42,6 +46,9 @@ export async function updateProfile(formData: FormData): Promise<AccountActionRe
 }
 
 export async function changePassword(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const oldPassword = getFormString(formData, "oldPassword");
 	const newPassword = getFormString(formData, "newPassword");
 	const confirmPassword = getFormString(formData, "confirmPassword");
@@ -74,6 +81,9 @@ export async function changePassword(formData: FormData): Promise<AccountActionR
 }
 
 export async function createAddress(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const input = extractAddressInput(formData);
 
 	const result = await executeAuthenticatedGraphQL(AccountAddressCreateDocument, {
@@ -97,6 +107,9 @@ export async function createAddress(formData: FormData): Promise<AccountActionRe
 }
 
 export async function updateAddress(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const id = getFormString(formData, "id");
 	const input = extractAddressInput(formData);
 
@@ -121,6 +134,9 @@ export async function updateAddress(formData: FormData): Promise<AccountActionRe
 }
 
 export async function deleteAddress(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const id = getFormString(formData, "id");
 
 	const result = await executeAuthenticatedGraphQL(AccountAddressDeleteDocument, {
@@ -144,6 +160,9 @@ export async function deleteAddress(formData: FormData): Promise<AccountActionRe
 }
 
 export async function setDefaultAddress(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const id = getFormString(formData, "id");
 	const type = getFormString(formData, "type");
 
@@ -170,6 +189,9 @@ export async function setDefaultAddress(formData: FormData): Promise<AccountActi
 }
 
 export async function requestAccountDeletion(formData: FormData): Promise<AccountActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { success: false, error: "Customer accounts are unavailable on multi-brand storefronts" };
+	}
 	const redirectUrl = getFormString(formData, "redirectUrl");
 	const channel = getFormStringOptional(formData, "channel");
 

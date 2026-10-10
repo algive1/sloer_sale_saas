@@ -14,6 +14,7 @@ import { ConfirmAccountMode } from "@/ui/components/auth/confirm-account-mode";
 import { useCheckoutTransition } from "@/checkout/hooks/use-checkout-transition";
 import type { CheckoutLoadState } from "@/checkout/providers/checkout-data";
 import { useCheckoutData } from "@/checkout/providers/checkout-data";
+import { useCheckoutUser } from "@/checkout/providers/checkout-user";
 import { createQueryString } from "@/checkout/lib/utils/url";
 import { PageNotFound } from "@/checkout/views/page-not-found";
 import {
@@ -48,6 +49,7 @@ export const RootViews = () => {
 	const { loadState, checkout } = useCheckoutData();
 	const transition = useCheckoutTransition();
 	const accountCredentials = getEmailAndTokenFromSearchParams(searchParams);
+	const { accountsEnabled } = useCheckoutUser();
 
 	// After checkoutComplete, cookie deletion re-renders this RSC tree with `not_found` while
 	// navigation to `/order/{hmac}` is still in flight — keep the processing screen up.
@@ -55,7 +57,7 @@ export const RootViews = () => {
 		return <PaymentCompletingScreen isShippingRequired={checkout?.isShippingRequired ?? true} />;
 	}
 
-	if (accountCredentials && shouldPrioritizeAccountConfirmation(searchParams, loadState)) {
+	if (accountsEnabled && accountCredentials && shouldPrioritizeAccountConfirmation(searchParams, loadState)) {
 		const channel = checkout?.channel.slug ?? DefaultChannelSlug ?? "default-channel";
 		const signInHref = buildStorefrontPath(storefrontLocale, channel, "/login");
 

@@ -1,3 +1,4 @@
+import { sharedCustomerAccountsEnabled, customerAccountUnavailableResponse } from "@/lib/brand/customer-account-policy";
 import { readAuthJsonObject } from "@/lib/auth/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { httpStatusForAuthErrors } from "@/lib/auth/auth-api-utils";
@@ -5,6 +6,10 @@ import { rejectIfRateLimited } from "@/lib/auth/auth-rate-limit";
 import { confirmAccountWithToken } from "@/lib/auth/confirm-account";
 
 export async function POST(request: NextRequest) {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return customerAccountUnavailableResponse();
+	}
+
 	const rateLimited = rejectIfRateLimited(request, "confirm-account", {
 		limit: 10,
 		windowMs: 15 * 60 * 1000,

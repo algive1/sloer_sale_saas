@@ -21,6 +21,7 @@ type OrderConfirmationAppProps = {
 	initialOrder: ServerOrder | null;
 	access: OrderViewAccess;
 	initialUser: CheckoutUser | null;
+	accountsEnabled: boolean;
 	storefrontLocale: LocaleSlug;
 	messages: CheckoutMessages;
 };
@@ -33,13 +34,14 @@ export function OrderConfirmationApp({
 	initialOrder,
 	access,
 	initialUser,
+	accountsEnabled,
 	storefrontLocale,
 	messages,
 }: OrderConfirmationAppProps) {
 	return (
 		<CheckoutIntlProvider locale={storefrontLocale} messages={messages}>
 			<CheckoutBrowseProvider locale={storefrontLocale}>
-				<CheckoutUserProvider initialUser={initialUser}>
+				<CheckoutUserProvider initialUser={initialUser} accountsEnabled={accountsEnabled}>
 					<OrderDataProvider orderId={orderId} initialOrder={initialOrder} access={access}>
 						<ErrorBoundary FallbackComponent={CheckoutCrashFallback}>
 							<Suspense fallback={<OrderConfirmationSkeleton />}>

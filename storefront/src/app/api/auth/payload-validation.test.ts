@@ -89,6 +89,28 @@ describe("public auth routes reject invalid payloads without upstream calls", ()
     });
   }
 
+  it("blocks every account endpoint before body, rate-limit or GraphQL in multi-brand mode", async () => {
+    const before = process.env.STOREFRONT_SITES_JSON;
+    process.env.STOREFRONT_SITES_JSON = '[{"id":"fashion"},{"id":"jewelry"}]';
+    try {
+      for (const endpoint of endpoints) {
+        const response = await endpoint.action(request(endpoint.name, "{invalid"));
+        expect(response.status, endpoint.name).toBe(409);
+        expect(response.headers.get("cache-control")).toContain("no-store");
+        const body = await response.json() as { errors?: Array<{ code?: string }> };
+        expect(body.errors?.[0]?.code).toBe("MULTI_BRAND_ACCOUNT_UNAVAILABLE");
+      }
+      expect(mocks.signIn).not.toHaveBeenCalled();
+      expect(mocks.reset).not.toHaveBeenCalled();
+      expect(mocks.confirm).not.toHaveBeenCalled();
+      expect(mocks.graphql).not.toHaveBeenCalled();
+      expect(mocks.rateLimit).not.toHaveBeenCalled();
+    } finally {
+      if (before === undefined) delete process.env.STOREFRONT_SITES_JSON;
+      else process.env.STOREFRONT_SITES_JSON = before;
+    }
+  });
+
   it("preserves successful login and token-based password/account actions", async () => {
     const email = "test@example.com", password = "password123", token = "valid-token";
     expect((await login(request("login", JSON.stringify({ email, password })))).status).toBe(200);

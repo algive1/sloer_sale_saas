@@ -13,6 +13,8 @@ import { contactFieldAttributes } from "@/checkout/lib/consts/input-attributes";
 export { FormInput, FieldError } from "@/checkout/views/saleor-checkout/address-form-fields";
 
 export interface GuestContactProps {
+	/** Hide global customer credentials when brands share a Saleor Core. */
+	accountsEnabled?: boolean;
 	/** Current email value */
 	email: string;
 	/** Called when email changes */
@@ -39,6 +41,7 @@ export interface GuestContactProps {
  * Guest checkout contact section.
  */
 export const GuestContact: FC<GuestContactProps> = ({
+	accountsEnabled = true,
 	email,
 	onEmailChange,
 	onEmailBlur,
@@ -58,7 +61,7 @@ export const GuestContact: FC<GuestContactProps> = ({
 		<section className="space-y-4">
 			<div className="flex items-center justify-between">
 				<h2 className="text-xl font-semibold">{tCheckout("contact.title")}</h2>
-				<p className="text-sm text-muted-foreground">
+				{accountsEnabled && <p className="text-sm text-muted-foreground">
 					{tCheckout("contact.haveAccount")}{" "}
 					<button
 						type="button"
@@ -67,7 +70,7 @@ export const GuestContact: FC<GuestContactProps> = ({
 					>
 						{tCheckout("actions.logIn")}
 					</button>
-				</p>
+				</p>}
 			</div>
 
 			<div className="space-y-1.5">
@@ -94,7 +97,7 @@ export const GuestContact: FC<GuestContactProps> = ({
 				)}
 			</div>
 
-			<div className="flex items-center gap-3">
+			{accountsEnabled && <div className="flex items-center gap-3">
 				<Checkbox
 					id="createAccount"
 					checked={createAccount}
@@ -103,9 +106,9 @@ export const GuestContact: FC<GuestContactProps> = ({
 				<Label htmlFor="createAccount" className="cursor-pointer text-sm text-muted-foreground">
 					{tCheckout("contact.createAccountLabel")}
 				</Label>
-			</div>
+			</div>}
 
-			{createAccount && (
+			{accountsEnabled && createAccount && (
 				<div className="space-y-3">
 					<div className="space-y-1.5">
 						<div className="relative">

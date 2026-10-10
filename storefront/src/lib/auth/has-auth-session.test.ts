@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { encodeCookieName } from "./constants";
 
@@ -30,7 +30,17 @@ function mockCookies(cookieList: Array<{ name: string; value: string }>) {
 	process.env.NEXT_PUBLIC_SALEOR_API_URL = apiUrl;
 }
 
+afterEach(() => { delete process.env.STOREFRONT_SITES_JSON; });
+
 describe("hasAuthSession", () => {
+	it("ignores inherited Saleor tokens when brand sites share the Core", async () => {
+		mockCookies([{ name: encodeCookieName(accessKey), value: "old-global-jwt" }]);
+		process.env.STOREFRONT_SITES_JSON = '[{"id":"fashion"},{"id":"jewelry"}]';
+		await expect(getAuthTokenPresence()).resolves.toEqual({ hasAccess: false, hasRefresh: false });
+		await expect(hasAuthSession()).resolves.toBe(false);
+		expect(cookies).not.toHaveBeenCalled();
+	});
+
 	it("detects access token via encoded SDK cookie name", async () => {
 		mockCookies([{ name: encodeCookieName(accessKey), value: "token-abc" }]);
 		await expect(hasAuthSession()).resolves.toBe(true);
