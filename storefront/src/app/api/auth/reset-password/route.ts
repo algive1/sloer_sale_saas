@@ -1,3 +1,4 @@
+import { sharedCustomerAccountsEnabled, customerAccountUnavailableResponse } from "@/lib/brand/customer-account-policy";
 import { readAuthJsonObject } from "@/lib/auth/request-body";
 import { NextRequest, NextResponse } from "next/server";
 import { rejectIfRateLimited } from "@/lib/auth/auth-rate-limit";
@@ -23,6 +24,10 @@ interface RequestPasswordResetResult {
 }
 
 export async function POST(request: NextRequest) {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return customerAccountUnavailableResponse();
+	}
+
 	const rateLimited = rejectIfRateLimited(request, "reset-password", { limit: 5, windowMs: 60 * 60 * 1000 });
 	if (rateLimited) {
 		return rateLimited;
