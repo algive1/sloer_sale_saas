@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { customerTokenStorageForDeployment } from "./customer-token-storage-policy";
-import type { TokenStorage } from "./cookie-token-storage";
 
-function storedToken(): TokenStorage & { getItem: ReturnType<typeof vi.fn>; setItem: ReturnType<typeof vi.fn>; removeItem: ReturnType<typeof vi.fn> } {
+function storedToken() {
 	const values = new Map<string, string>([["access", "old-customer-token"], ["refresh", "old-refresh-token"]]);
 	return {
 		getItem: vi.fn((key: string) => values.get(key) ?? null),
