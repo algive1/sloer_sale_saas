@@ -119,8 +119,8 @@ export function ThemeAiAssistant({
       if(!onApply(data.data,previous))throw new Error("页面已发生变化，请重新生成");
       setUndo(previous);
       const reply=data.message??"AI 已生成草稿，请检查中间预览。";
-      setHistory(prev=>[...prev,{role:"user",content:prompt.trim().slice(0,600)},
-        {role:"assistant",content:reply.slice(0,600)}].slice(-12));
+      setHistory(prev=>[...prev,{role:"user" as const,content:prompt.trim().slice(0,600)},
+        {role:"assistant" as const,content:reply.slice(0,600)}].slice(-12));
       setPrompt("");
       setMessage(reply+" 已预览，尚未保存或发布。");
       setRevision(v=>v+1);
