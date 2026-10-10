@@ -32,6 +32,17 @@ jobs:
       - name: Verify Paper pin
         run: bash scripts/verify-paper-pin.sh
 
+      # The lockfile must be reproducible by the pinned pnpm 10 release, not
+      # merely by a newer local pnpm 11 install. Never fall back to an
+      # unfrozen dependency install in the real build/test jobs.
+      - name: Verify pinned-pnpm lockfile reproducibility
+        env:
+          HUSKY: "0"
+        run: |
+          pnpm --dir storefront install --lockfile-only --no-frozen-lockfile --ignore-scripts
+          git diff --unified=0 -- storefront/pnpm-lock.yaml | head -n 120
+          git diff --exit-code -- storefront/pnpm-lock.yaml > /dev/null
+
       - name: Install dependencies
         env:
           HUSKY: "0"
