@@ -87,6 +87,23 @@ Playwright regression coverage.
 Saleor GraphQL catalog or checkout API. Direct GraphQL tenant isolation and
 customer/shopper identities are still launch blockers.
 
+## Batch 6: Shared Saleor Core GraphQL identity containment (PR #43)
+
+The Paper-only guest-account restriction from PR #40 could be bypassed by a
+direct call to public Saleor `/graphql/`. In multi-brand Compose deployments
+(`STOREFRONT_SITES_JSON` present), the Saleor API itself now enters
+`SALEOR_SHARED_CORE_GUEST_ONLY` mode. Root GraphQL operations carrying
+customer JWTs are rejected; anonymous global account/profile/password
+mutations, checkout/customer attachment and external auth mutations are
+blocked. Customer token create, refresh and verification cannot issue or
+validate globally scoped customer sessions. Platform staff GraphQL and
+ordinary anonymous catalog/guest checkout remain permitted. The negative
+upstream security suite executes against a seeded real Saleor database in CI.
+
+**Still blocked:** public Checkout bearer-ID read/write operations and global
+staff/app credential privileges are not isolated by brand. This is temporary
+customer identity containment, not complete tenant isolation.
+
 ## Next batches
 
 1. Complete live backend build and browser acceptance for the first batch.
