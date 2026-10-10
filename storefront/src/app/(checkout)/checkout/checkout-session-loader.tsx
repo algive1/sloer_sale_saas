@@ -117,6 +117,7 @@ export async function CheckoutSessionLoader({
 			loadState={loadState}
 			initialCheckout={initialCheckout}
 			initialUser={initialUser}
+			accountsEnabled={!brandSitesConfigured()}
 			shippingCountries={shippingCountries}
 			channelDefaultCountryCode={channelDefaultCountryCode}
 			checkoutContent={checkoutContent}
