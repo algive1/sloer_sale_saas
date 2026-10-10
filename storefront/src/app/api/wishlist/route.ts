@@ -59,6 +59,14 @@ export async function DELETE(request: NextRequest) {
 
 async function resolveOwner(request: NextRequest, scope: WishlistSiteScope): Promise<{ key: string; guestId?: string; mergeFrom?: string }> {
 	const guestId = request.cookies.get(OWNER_COOKIE)?.value || crypto.randomUUID();
+	// A Saleor Core customer account is global, not a brand-specific identity.
+	// The public wishlist must not look up `me` or implicitly bind guest records
+	// to that global account when there are multiple brands on a shared Core.
+	// scope.siteId was derived from the verified Host, not from request data.
+	if (scope.siteId) {
+		return { key: scopedWishlistOwnerKey(`guest:${guestId}`, scope), guestId };
+	}
+
 	const auth = await executeAuthenticatedGraphQL(CurrentUserDocument, { cache: "no-cache", maxRetries: 0, timeoutMs: 1_500 });
 	if (auth.ok && auth.data.me?.id) {
 		return { key: scopedWishlistOwnerKey(`user:${auth.data.me.id}`, scope), mergeFrom: scopedWishlistOwnerKey(`guest:${guestId}`, scope) };
