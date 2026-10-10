@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
-import { fashionEditorConfig } from "@/plugins/theme-builder/config.client";
+import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
 import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 
 type EditorProps = {
@@ -40,6 +40,7 @@ export function ThemeEditor({
 }: EditorProps) {
 	const [channel, setChannel] = useState(initialChannel || channels[0] || "");
 	const [locale, setLocale] = useState(initialLocale || locales[0] || "en");
+	const editorConfig = useMemo(() => createScopedFashionEditorConfig(channel), [channel]);
 	const [document, setDocument] = useState<ThemeData | null>(null);
 	const documentRef = useRef<Data>(BLANK_TEMPLATE);
 	const savedRef = useRef<Data>(BLANK_TEMPLATE);
@@ -311,7 +312,7 @@ export function ThemeEditor({
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-5 py-2 text-xs text-stone-600 md:px-8">
 				<span>
 					{storageReady
-						? "Drag blocks on the left, edit settings on the right, then Publish."
+						? "左侧拖入模块，右侧选择商品与图片，中间实时预览，确认后发布。"
 						: "Preview only: theme storage is not configured."}
 				</span>
 				<span>
@@ -342,7 +343,7 @@ export function ThemeEditor({
 			) : (
 				<Puck
 					key={channel + ":" + locale + ":" + generation}
-					config={fashionEditorConfig}
+					config={editorConfig}
 					data={document}
 					headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"}
 					headerPath={"/" + locale + "/" + channel}
