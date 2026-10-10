@@ -254,7 +254,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       const saved=await authorized.put(endpoint,{
         headers:{Origin:baseURL},
         data:{channel:"us",locale:"en",pageType:"product",template:"default",
-          action:"draft",expectedRevision:0,data:content},
+          action:"draft",expectedRevision:startingRevision,data:content},
       });
       expect(saved.status(),await saved.text()).toBe(200);
       const beforePublishing=await authorized.get(scope);
