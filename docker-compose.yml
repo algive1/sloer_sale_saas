@@ -209,13 +209,13 @@ services:
     environment:
       TRANSLATION_WORKER_SECRET: ${TRANSLATION_WORKER_SECRET:-}
     entrypoint: ["/bin/sh", "-ec"]
-    command: >
-      test "$${#TRANSLATION_WORKER_SECRET}" -ge 32 || { echo "Missing 32+ character translation worker secret" >&2; exit 1; };
+    command: |
+      test "$${#TRANSLATION_WORKER_SECRET}" -ge 32 || { echo "Missing 32+ character translation worker secret" >&2; exit 1; }
       while :; do
-        curl --fail --silent --show-error --max-time 35
-          -H "Authorization: Bearer $$TRANSLATION_WORKER_SECRET"
-          -X POST http://storefront:3000/api/plugins/ai-translations/worker || true;
-        sleep 15;
+        curl --fail --silent --show-error --max-time 35 \
+          -H "Authorization: Bearer $$TRANSLATION_WORKER_SECRET" \
+          -X POST http://storefront:3000/api/plugins/ai-translations/worker || true
+        sleep 15
       done
     depends_on:
       - storefront
