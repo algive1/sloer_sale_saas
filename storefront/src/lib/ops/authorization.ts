@@ -42,21 +42,24 @@ export function parseOpsOperators(raw: string | undefined, trustedSiteIds: reado
       (item.role !== "platform_admin" && item.role !== "brand_analyst")) {
       throw new Error("Invalid OPS_OPERATORS_JSON operator identity, role or password");
     }
-    if (usernames.has(item.username)) throw new Error("Duplicate OPS_OPERATORS_JSON username");
-    usernames.add(item.username);
+    const username = item.username as string;
+    const password = item.password as string;
+    const role = item.role as OpsRole;
+    if (usernames.has(username)) throw new Error("Duplicate OPS_OPERATORS_JSON username");
+    usernames.add(username);
     const sites = item.siteIds;
-    if (item.role === "platform_admin") {
+    if (role === "platform_admin") {
       if (sites !== undefined && (!Array.isArray(sites) || sites.length !== 0)) {
         throw new Error("Platform admin must not declare brand restrictions");
       }
-      return { username:item.username, password:item.password, role:item.role, siteIds:[] };
+      return { username, password, role, siteIds:[] };
     }
     if (!Array.isArray(sites) || sites.length === 0 || sites.length > trusted.size ||
       sites.some((value) => typeof value !== "string" || !SITE_ID.test(value) || !trusted.has(value)) ||
       new Set(sites).size !== sites.length) {
       throw new Error("Brand analyst must have unique, configured site IDs");
     }
-    return { username:item.username, password:item.password, role:item.role, siteIds:[...sites] };
+    return { username, password, role, siteIds:[...(sites as string[])] };
   });
 }
 
