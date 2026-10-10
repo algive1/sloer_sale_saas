@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { invariant } from "ts-invariant";
 import { ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE } from "./constants";
 import { createCookieTokenStorage } from "./cookie-token-storage";
+import { customerTokenStorageForDeployment } from "./customer-token-storage-policy";
 
 const saleorApiUrl = process.env.SALEOR_INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_SALEOR_API_URL;
 invariant(saleorApiUrl, "Missing SALEOR_INTERNAL_API_URL / NEXT_PUBLIC_SALEOR_API_URL env variable");
@@ -25,7 +26,8 @@ const createServerCookieStorage = async () => {
 };
 
 export const getServerAuthClient = async () => {
-	const serverCookieStorage = await createServerCookieStorage();
+	const cookieStorage = await createServerCookieStorage();
+	const serverCookieStorage = customerTokenStorageForDeployment(cookieStorage, process.env.STOREFRONT_SITES_JSON);
 	return createSaleorAuthClient({
 		saleorApiUrl,
 		refreshTokenStorage: serverCookieStorage,
