@@ -83,6 +83,7 @@ export function ThemeEditor({
 	const [revision, setRevision] = useState({ draft: 0, published: 0 });
 	const [preset, setPreset] = useState<Builtin>("fashion");
 	const [savedTemplates, setSavedTemplates] = useState<LibraryEntry[]>([]);
+	const [libraryScopeLoaded, setLibraryScopeLoaded] = useState("");
 	const [chosenTemplate, setChosenTemplate] = useState("");
 	const [newTemplateTitle, setNewTemplateTitle] = useState("");
 	const [libraryBusy, setLibraryBusy] = useState(false);
@@ -101,6 +102,7 @@ export function ThemeEditor({
 		(pageType==="product"?"&pageType=product&template=default":"");
 	const pageTitle = pageType==="home"?"首页":"商品详情页";
 	const templateScope="/ops/themes/templates/api?"+new URLSearchParams({channel,locale,pageType});
+	const visibleTemplates = libraryScopeLoaded===templateScope?savedTemplates:[];
 	const scopeRef = useRef(templateScope);
 	useEffect(()=>{scopeRef.current=templateScope;},[templateScope]);
 
@@ -164,8 +166,8 @@ export function ThemeEditor({
 				if(!response.ok)throw new Error(json.error??"无法读取模板库");
 				return json.items??[];
 			}).then(items=>{if(!controller.signal.aborted){
-				setSavedTemplates(items);setChosenTemplate("");
-			}}).catch(()=>{if(!controller.signal.aborted)setSavedTemplates([]);});
+				setSavedTemplates(items);setChosenTemplate("");setLibraryScopeLoaded(templateScope);
+			}}).catch(()=>{if(!controller.signal.aborted){setSavedTemplates([]);setLibraryScopeLoaded(templateScope);}});
 		return()=>controller.abort();
 	},[channel,locale,pageType,storageReady,templateScope]);
 
@@ -183,6 +185,7 @@ export function ThemeEditor({
 			if(!response.ok||!result.item)throw new Error(result.error??"保存模板失败");
 			if(scopeRef.current===templateScope){
 				setSavedTemplates(current=>[result.item!,...current]);
+				setLibraryScopeLoaded(templateScope);
 				setChosenTemplate(result.item.id);
 				setNewTemplateTitle("");
 				setStatus("已保存为我的模板，不影响现有草稿或线上页面。");
@@ -426,12 +429,12 @@ export function ThemeEditor({
                           className="w-full rounded bg-stone-900 px-3 py-2 text-sm text-white disabled:opacity-40">
                           {libraryBusy?"处理中…":"保存当前页面为模板"}
                         </button>
-                        <label className="block text-xs">已保存模板（{savedTemplates.length}/40）
+                        <label className="block text-xs">已保存模板（{visibleTemplates.length}/40）
                           <select aria-label="已保存模板" value={chosenTemplate}
                             onChange={event=>setChosenTemplate(event.target.value)}
                             className="mt-1 w-full rounded border border-stone-200 px-3 py-2 text-sm">
                             <option value="">请选择模板</option>
-                            {savedTemplates.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
+                            {visibleTemplates.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
                           </select>
                         </label>
                         <div className="flex gap-2">
