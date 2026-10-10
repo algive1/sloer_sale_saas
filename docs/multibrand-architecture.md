@@ -1,3 +1,29 @@
+## Public Saleor GraphQL boundary: still not a tenant gateway
+
+The self-hosted deployment currently publishes the Saleor GraphQL endpoint
+at `NEXT_PUBLIC_SALEOR_API_URL` (and the base Compose maps API port 8000).
+Saleor Core customer JWTs, `me`, addresses and account mutations are **global**
+to that Core instance. Blocking BFF and storefront routes cannot enforce
+per-tenant permissions on direct GraphQL requests, external apps or Dashboard
+sessions. Protect public GraphQL using the full upstream authorization policy
+and the reverse proxy/ingress controls appropriate for the deployment, rather
+than relying on client-side brand routing, CORS or hidden account buttons.
+Do not publish a shared-Core multi-brand customer login or enable production
+merchant tenancy until the direct GraphQL cross-brand read/write tests pass.
+The guest-only storefront containment is temporary and does not make the
+upstream API multi-tenant secure.
+
+## Multi-brand wishlist ownership
+
+When shared Saleor Core serves multiple brands, the cloud wishlist is
+**guest-owned only**. Each brand maps the host-derived brand ID and a
+host-only HttpOnly random guest cookie to a distinct storage namespace.
+Even if the request includes a Saleor customer session token, the wishlist
+API never queries global `me` or merges guest records into shared Saleor
+customer identity. Its personalized GET response is `private, no-store`.
+Single-brand stores retain their signed-in wishlist merge behavior. Guest
+favorites do not synchronize between devices in multi-brand mode; this is
+intentional until per-brand customer identities are available.
 
 ## Interim shared-customer identity containment (PR #40)
 
