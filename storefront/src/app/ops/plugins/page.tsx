@@ -68,7 +68,7 @@ export default function SystemPluginsPage() {
                   ))}
                 </div>
                 {details.href && (
-                  <Link href={details.href} className="mt-5 inline-block text-sm font-semibold text-stone-800 underline underline-offset-4 hover:text-black">
+                  <Link href={details.href} aria-label={`打开${details.name}`} className="mt-5 inline-block text-sm font-semibold text-stone-800 underline underline-offset-4 hover:text-black">
                     打开功能 →
                   </Link>
                 )}
