@@ -57,6 +57,7 @@ interface InformationStepProps {
 }
 
 interface InformationStepFormProps extends InformationStepProps {
+	accountsEnabled: boolean;
 	user: CheckoutUser | null;
 	authenticated: boolean;
 	userLoading: boolean;
@@ -69,7 +70,7 @@ interface InformationStepFormProps extends InformationStepProps {
 // =============================================================================
 
 export const InformationStep: FC<InformationStepProps> = (props) => {
-	const { user, authenticated, loading: userLoading } = useUser();
+	const { user, authenticated, loading: userLoading, accountsEnabled } = useUser();
 	const [isAwaitingAuthRefresh, setIsAwaitingAuthRefresh] = useState(false);
 	const linesKey = checkoutLinesSignature(props.checkout);
 	const formKey = userLoading
@@ -90,6 +91,7 @@ export const InformationStep: FC<InformationStepProps> = (props) => {
 			key={formKey}
 			{...props}
 			user={user}
+			accountsEnabled={accountsEnabled}
 			authenticated={authenticated}
 			userLoading={userLoading}
 			isAuthTransitionLoading={isAuthTransitionLoading}
@@ -102,6 +104,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 	checkout,
 	onComplete,
 	user,
+	accountsEnabled,
 	authenticated,
 	userLoading,
 	isAuthTransitionLoading,
@@ -284,7 +287,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 				if (!email) newErrors.email = tErrors("emailRequired");
 				else if (!validateEmail(email)) newErrors.email = tAccount("invalidEmail");
 
-				if (createAccount) {
+				if (accountsEnabled && createAccount) {
 					if (!accountPassword) newErrors.password = tAccount("passwordRequired");
 					else if (accountPassword.length < 8) newErrors.password = tAccount("passwordMinLength");
 				}
@@ -360,7 +363,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 						}
 					}
 
-					if (createAccount && accountPassword) {
+					if (accountsEnabled && createAccount && accountPassword) {
 						const registerResult = await registerCheckoutAccount({
 							email,
 							password: accountPassword,
@@ -452,6 +455,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 			isOrphaned,
 			email,
 			createAccount,
+			accountsEnabled,
 			accountPassword,
 			subscribeNews,
 			user?.addresses,
@@ -470,7 +474,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 	);
 
 	// ----- Render: Password Reset -----
-	if (contactView === "resetPassword") {
+	if (accountsEnabled && contactView === "resetPassword") {
 		return (
 			<div className="space-y-8">
 				<ResetPasswordForm
@@ -493,7 +497,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 	}
 
 	// ----- Render: Sign In -----
-	if (contactView === "signIn") {
+	if (accountsEnabled && contactView === "signIn") {
 		return (
 			<div className="space-y-8">
 				<SignInForm
@@ -532,9 +536,9 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 						>
 							{isRecovering ? t("preparingGuestCart") : t("continueAsGuest")}
 						</Button>
-						<Button type="button" variant="ghost" size="sm" onClick={() => setContactView("signIn")}>
+						{accountsEnabled && <Button type="button" variant="ghost" size="sm" onClick={() => setContactView("signIn")}>
 							{t("logIn")}
-						</Button>
+						</Button>}
 					</div>
 					{recoveryError ? <p className="text-sm text-destructive">{recoveryError}</p> : null}
 				</div>
@@ -543,6 +547,7 @@ const InformationStepForm: FC<InformationStepFormProps> = ({
 			{errors.form ? <p className="text-sm text-destructive">{errors.form}</p> : null}
 
 			<ContactSection
+				accountsEnabled={accountsEnabled}
 				isSignedIn={authenticated}
 				user={user}
 				checkoutId={checkout.id}
