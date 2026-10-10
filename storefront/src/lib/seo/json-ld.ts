@@ -1,5 +1,6 @@
-import { type WithContext, type Product } from "schema-dts";
+import type { WithContext, Product } from "schema-dts";
 import { serializeForInlineScript } from "@/lib/html/inline-script";
+import { brandSiteForChannel, brandSitesConfigured } from "@/config/brand-sites";
 import { seoConfig, getBaseUrl } from "./config";
 
 /**
@@ -12,6 +13,7 @@ import { seoConfig, getBaseUrl } from "./config";
  *
  * @example
  * const jsonLd = buildProductJsonLd({
+ *   channel: params.channel,
  *   name: product.name,
  *   description: product.seoDescription,
  *   images: product.media?.map(m => m.url),
@@ -26,6 +28,8 @@ import { seoConfig, getBaseUrl } from "./config";
  * <script {...jsonLdScriptProps(jsonLd)} />
  */
 export function buildProductJsonLd(options: {
+	/** Resolved route channel; brand mapping stays params-only and PPR-safe. */
+	channel: string;
 	name: string;
 	description?: string;
 	images?: string[];
@@ -63,8 +67,13 @@ export function buildProductJsonLd(options: {
 		variantCount,
 	} = options;
 
-	const baseUrl = getBaseUrl();
+	const site = brandSiteForChannel(options.channel);
+	// Unknown channels must never inherit another brand's global identity.
+	if (brandSitesConfigured() && !site) return null;
+	const baseUrl = site ? `https://${site.domains[0]}` : getBaseUrl().replace(/\/$/, "");
 	const fullUrl = url ? `${baseUrl}${url}` : undefined;
+	const sellerName = site?.name ?? seoConfig.organizationName;
+	const actualBrand = brand?.trim();
 
 	return {
 		"@context": "https://schema.org",
@@ -73,10 +82,7 @@ export function buildProductJsonLd(options: {
 		description: description || name,
 		image: images && images.length > 0 ? images : undefined,
 		...(sku && { sku }),
-		brand: {
-			"@type": "Brand",
-			name: brand || seoConfig.defaultBrand,
-		},
+		...(actualBrand && { brand: { "@type": "Brand" as const, name: actualBrand } }),
 		offers: price
 			? {
 					"@type": "Offer",
@@ -86,7 +92,7 @@ export function buildProductJsonLd(options: {
 					price: price.amount,
 					seller: {
 						"@type": "Organization",
-						name: seoConfig.organizationName,
+						name: sellerName,
 					},
 				}
 			: priceRange
@@ -100,7 +106,7 @@ export function buildProductJsonLd(options: {
 						offerCount: variantCount,
 						seller: {
 							"@type": "Organization",
-							name: seoConfig.organizationName,
+							name: sellerName,
 						},
 					}
 				: undefined,

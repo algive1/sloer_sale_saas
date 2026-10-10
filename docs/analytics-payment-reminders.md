@@ -50,3 +50,17 @@ curl --fail-with-body --silent --show-error --max-time 300 \
 - 如果邮件发送失败、超时或返回不明确，先检查邮件提供商日志，不要绕过唯一键直接再次触发。
 - 规则初始关闭；界面控制通过 /ops HTTP Basic 保护，人工 API 另要求自定义请求头；Cron API 另要求独立共享密钥。
 - 如果使用项目根目录的 Docker Compose 部署，应在根目录 `.env` 设置 `SALEOR_APP_TOKEN`、`ANALYTICS_LIBSQL_*`、`ANALYTICS_DASHBOARD_SECRET`、`RESEND_API_KEY`、`PAYMENT_REMINDER_FROM`、`PAYMENT_REMINDER_CRON_SECRET`。运行容器的环境变量已显式映射到 `storefront` 服务；只有写在 `storefront/.env.example` 不会让 Docker 运行时自动注入。
+
+## Multi-brand delivery safety
+
+When `STOREFRONT_SITES_JSON` is non-empty, the existing global reminder service is
+blocked. Manual, scheduled and direct service calls stop before reading orders,
+claiming database records or sending email. This applies to already-enabled rules
+and malformed brand configuration as well. Calls report
+`multi_brand_not_supported`; the operations page explains why sending is paused.
+Enabling a global rule is rejected by both the API and the service.
+
+This is containment, **not completion of per-brand reminders**. To enable that
+feature, first bind rules, sender identity, language, order lookup and delivery
+logs to a server-verified brand. Do not remove this guard merely because a UI
+brand selector exists. Existing single-brand installations retain their behavior.

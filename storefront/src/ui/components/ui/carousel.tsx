@@ -42,6 +42,32 @@ function useCarousel() {
 	return context;
 }
 
+/** Subscribe to Embla as an external store; snapshots also refresh after reInit. */
+export function useCarouselState(api: CarouselApi) {
+	const subscribe = React.useCallback(
+		(notify: () => void) => {
+			if (!api) return () => {};
+			api.on("select", notify);
+			api.on("reInit", notify);
+			return () => {
+				api.off("select", notify);
+				api.off("reInit", notify);
+			};
+		},
+		[api],
+	);
+	const getSnapshot = React.useCallback(
+		() =>
+			api
+				? `${api.selectedScrollSnap()},${Number(api.canScrollPrev())},${Number(api.canScrollNext())},${api.scrollSnapList().length}`
+				: "0,0,0,0",
+		[api],
+	);
+	const snapshot = React.useSyncExternalStore(subscribe, getSnapshot, () => "0,0,0,0");
+	const [selectedIndex, previous, next, slideCount] = snapshot.split(",").map(Number);
+	return { selectedIndex, canScrollPrev: Boolean(previous), canScrollNext: Boolean(next), slideCount };
+}
+
 const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & CarouselProps>(
 	({ orientation = "horizontal", opts, setApi, plugins, className, children, ...props }, ref) => {
 		const [carouselRef, api] = useEmblaCarousel(
@@ -51,18 +77,7 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
 			},
 			plugins,
 		);
-		const [canScrollPrev, setCanScrollPrev] = React.useState(false);
-		const [canScrollNext, setCanScrollNext] = React.useState(false);
-		const [selectedIndex, setSelectedIndex] = React.useState(0);
-		const [slideCount, setSlideCount] = React.useState(0);
-
-		const onSelect = React.useCallback((api: CarouselApi) => {
-			if (!api) return;
-
-			setSelectedIndex(api.selectedScrollSnap());
-			setCanScrollPrev(api.canScrollPrev());
-			setCanScrollNext(api.canScrollNext());
-		}, []);
+		const { canScrollPrev, canScrollNext, selectedIndex, slideCount } = useCarouselState(api);
 
 		const scrollPrev = React.useCallback(() => {
 			api?.scrollPrev();
@@ -97,19 +112,6 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
 
 			setApi(api);
 		}, [api, setApi]);
-
-		React.useEffect(() => {
-			if (!api) return;
-
-			setSlideCount(api.scrollSnapList().length);
-			onSelect(api);
-			api.on("reInit", onSelect);
-			api.on("select", onSelect);
-
-			return () => {
-				api?.off("select", onSelect);
-			};
-		}, [api, onSelect]);
 
 		return (
 			<CarouselContext.Provider

@@ -54,6 +54,9 @@ jobs:
       - name: Verify AI translation draft safety
         run: pnpm --dir storefront translations:ai:test
 
+      - name: Verify brand identity and reminder safety
+        run: pnpm --dir storefront test:brand-safety
+
       - name: ESLint source check
         env:
           # Same public Saleor schema endpoint used by upstream Paper lint CI.

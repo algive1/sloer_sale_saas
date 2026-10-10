@@ -67,7 +67,8 @@ export async function GET(request: Request): Promise<Response> {
 		channel,
 		locale,
 		storeName: site?.name ?? seoConfig.siteName,
-		defaultBrand: site?.name ?? seoConfig.defaultBrand,
+		// A storefront can resell other brands. Omit unknown product brands rather
+		// than silently assigning the store name (same policy as product JSON-LD).
 		excludeSkuPrefixes: parsePrefixes(process.env.GOOGLE_MERCHANT_EXCLUDE_SKU_PREFIXES),
 	});
 

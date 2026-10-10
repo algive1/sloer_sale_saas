@@ -12,6 +12,7 @@ import { resolveChannelCurrency } from "@/lib/channels/resolve-channel-currency"
 import { catalogPathSuffix, redirectToCanonicalCatalogSlug } from "@/lib/catalog/canonical-slug";
 import { CatalogIdentityBridge } from "@/lib/catalog/catalog-identity-bridge";
 import { getProductData } from "@/lib/catalog/get-product-data";
+import { productBrandName } from "@/lib/catalog/product-brand";
 import { buildCatalogPathSuffixByLocale, buildLocaleSlugMap } from "@/lib/catalog/locale-slugs";
 import { buildPolicyLabelValues } from "@/lib/content";
 import { getStorefrontContent } from "@/lib/content/server";
@@ -174,6 +175,7 @@ async function ProductShell({
 	];
 
 	const productJsonLd = buildProductJsonLd({
+		channel: params.channel,
 		name: product.name,
 		description: resolveSeoDescription({
 			seoDescription: product.seoDescription,
@@ -181,7 +183,7 @@ async function ProductShell({
 			fallbackName: product.name,
 		}),
 		images: defaultImages.length > 0 ? defaultImages.map((img) => img.url) : undefined,
-		brand: product.category?.name,
+		brand: productBrandName(product.brand),
 		url: browse(productPath),
 		priceRange: product.pricing?.priceRange?.start?.gross
 			? {

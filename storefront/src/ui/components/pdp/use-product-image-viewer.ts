@@ -6,9 +6,11 @@ import * as React from "react";
 export function useProductImageViewer(imagesKey: string) {
 	const [viewerIndex, setViewerIndex] = React.useState<number | null>(null);
 
-	React.useEffect(() => {
+	const [previousImagesKey, setPreviousImagesKey] = React.useState(imagesKey);
+	if (previousImagesKey !== imagesKey) {
+		setPreviousImagesKey(imagesKey);
 		setViewerIndex(null);
-	}, [imagesKey]);
+	}
 
 	return {
 		viewerIndex,

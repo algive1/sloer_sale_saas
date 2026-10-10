@@ -14,6 +14,10 @@ Do not enable the feed against a development catalog. Confirm all of the followi
 3. Products are intentionally published in that channel.
 4. Every sellable variant has a stable SKU.
 5. Use GTIN when the manufacturer provides one. Otherwise provide brand + MPN when applicable.
+   The product `brand` attribute (plain text or a single-choice display name) is
+   shared by PDP JSON-LD and the Merchant feed. Missing brands are omitted, not
+   inferred from a category or reseller/store name. Populate this attribute before
+   advertising branded products; an omitted field can require Merchant diagnostics.
 6. Product-level `Brand`, `Google Product Category`, `Gender`, and `Age Group` attributes are populated when relevant.
 7. Variant-level `Color`, `Size`, `GTIN`, and `MPN` attributes are populated when relevant.
 8. Product images are publicly reachable by Google.
@@ -71,6 +75,26 @@ After production data is ready:
 6. Only then link Merchant Center to Google Ads.
 
 The feed endpoint returns `X-Robots-Tag: noindex, nofollow`; it is a data source, not a search-result page.
+
+## Brand-aware product structured data
+
+The PDP reads `assignedAttribute(slug: "brand")` directly, independently of the
+50-attribute display limit. The JSON-LD builder receives the route Channel and
+resolves its configured brand without request-header reads or additional network
+calls. Product manufacturer and merchant/seller identity remain separate.
+Multi-brand Offer/AggregateOffer URLs use the brand's first registered domain,
+matching canonical metadata and the feed; unknown brand Channels produce no
+product JSON-LD rather than falling back to a global seller. Legacy single-brand
+deployments continue to use `NEXT_PUBLIC_STOREFRONT_URL` and the configured seller.
+
+Dependency-free regression gate (Node 24):
+
+```sh
+node --test storefront/scripts/audit-brand-safety.node-test.mjs
+```
+
+This gate checks production helper behavior; it does not replace GraphQL codegen,
+TypeScript, Vitest, a production build or storefront browser acceptance.
 
 ## Sitemap behavior
 

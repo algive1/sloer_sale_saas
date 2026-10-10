@@ -29,6 +29,7 @@
  * import { buildProductJsonLd, jsonLdScriptProps } from "@/lib/seo";
  *
  * const jsonLd = buildProductJsonLd({
+ *   channel: params.channel,
  *   name: product.name,
  *   price: { amount: 29.99, currency: "USD" },
  * });

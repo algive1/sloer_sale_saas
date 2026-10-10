@@ -27,7 +27,7 @@ const config: KnipConfig = {
 		"@graphql-typed-document-node/core", // Used by generated GraphQL code
 		"@graphql-codegen/typescript", // Used by codegen CLI
 		"@graphql-codegen/typescript-operations", // Used by codegen CLI
-		"@graphql-codegen/typescript-urql", // Used by codegen CLI
+		"@graphql-codegen/typed-document-node", // Used by codegen CLI
 	],
 
 	// Next.js plugin understands App Router conventions

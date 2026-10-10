@@ -11,6 +11,17 @@ query ProductDetails(
 		description
 		seoTitle
 		seoDescription
+		# Fetch by slug so Brand is not lost beyond the 50 displayed attributes.
+		brand: assignedAttribute(slug: "brand") {
+			... on AssignedPlainTextAttribute {
+				text: value
+			}
+			... on AssignedSingleChoiceAttribute {
+				choice: value {
+					name
+				}
+			}
+		}
 		isAvailable
 		translation(languageCode: $languageCode) {
 			name

@@ -6,7 +6,13 @@ import { PDP_IMMERSIVE_IMAGE_SIZES } from "@/lib/images";
 import { SaleorImage } from "@/ui/atoms/saleor-image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/ui/components/ui/button";
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/ui/components/ui/carousel";
+import {
+	Carousel,
+	CarouselContent,
+	CarouselItem,
+	type CarouselApi,
+	useCarouselState,
+} from "@/ui/components/ui/carousel";
 import { type ImageCarouselImage } from "@/ui/components/ui/image-carousel";
 import { galleryImageFrameClass } from "@/ui/components/shared/gallery-image-frame";
 import { GalleryImageZoomTrigger } from "@/ui/components/shared/gallery-image-zoom-trigger";
@@ -30,36 +36,12 @@ interface ImmersiveGalleryProps {
  */
 export function ImmersiveGallery({ images, productName }: ImmersiveGalleryProps) {
 	const [api, setApi] = React.useState<CarouselApi>();
-	const [selectedIndex, setSelectedIndex] = React.useState(0);
-	const [canScrollPrev, setCanScrollPrev] = React.useState(false);
-	const [canScrollNext, setCanScrollNext] = React.useState(false);
+	const { selectedIndex, canScrollPrev, canScrollNext } = useCarouselState(api);
 
 	const imagesKey = images.map((image) => image.url).join(",");
 	const { viewerIndex, isViewerOpen, openViewer, onViewerOpenChange } = useProductImageViewer(imagesKey);
 
-	const syncFromApi = React.useCallback((carouselApi: CarouselApi | undefined) => {
-		if (!carouselApi) return;
-		setSelectedIndex(carouselApi.selectedScrollSnap());
-		setCanScrollPrev(carouselApi.canScrollPrev());
-		setCanScrollNext(carouselApi.canScrollNext());
-	}, []);
-
 	React.useEffect(() => {
-		if (!api) return;
-
-		const onSelect = () => syncFromApi(api);
-		api.on("select", onSelect);
-		api.on("reInit", onSelect);
-		onSelect();
-
-		return () => {
-			api.off("select", onSelect);
-			api.off("reInit", onSelect);
-		};
-	}, [api, syncFromApi]);
-
-	React.useEffect(() => {
-		setSelectedIndex(0);
 		api?.scrollTo(0, true);
 	}, [imagesKey, api]);
 

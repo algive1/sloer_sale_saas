@@ -45,23 +45,10 @@ const config: CodegenConfig = {
 	generates: {
 		// Server-safe types + gql documents (no urql hooks / React context).
 		"src/checkout/graphql/generated/operations.ts": {
-			plugins: ["typescript", "typescript-operations", "typescript-urql"],
+			plugins: ["typescript", "typescript-operations", "typed-document-node"],
 			config: {
 				useTypeImports: true,
 				documentMode: "graphQLTag",
-				withHooks: false,
-				withComponent: false,
-				...scalarConfig,
-			},
-		},
-		// Client-only urql hooks; types and documents come from operations.ts.
-		"src/checkout/graphql/generated/index.ts": {
-			plugins: ["typescript-urql"],
-			config: {
-				useTypeImports: true,
-				documentMode: "external",
-				importOperationTypesFrom: "Operations",
-				importDocumentNodeExternallyFrom: "./operations",
 				...scalarConfig,
 			},
 		},
