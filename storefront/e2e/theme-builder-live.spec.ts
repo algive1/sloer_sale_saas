@@ -373,4 +373,32 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
     }
   });
 
+
+  test("AI design drawer exposes model switching without publishing or revealing API keys",async({browser})=>{
+    test.skip(!password,"Requires authenticated operations browser");
+    const context=await browser.newContext({
+      httpCredentials:{username:"analytics",password:password!},viewport:{width:1440,height:900},
+    });
+    const page=await context.newPage();
+    try{
+      await page.goto("/ops/themes");
+      await expect(page.getByRole("heading",{name:"品牌网站装修"})).toBeVisible();
+      await page.getByRole("button",{name:"打开 AI 装修助手"}).click();
+      const drawer=page.getByRole("complementary",{name:"AI 装修助手"});
+      await expect(drawer).toBeVisible();
+      await drawer.getByRole("button",{name:"模型设置"}).click();
+      await expect(drawer.getByLabel("AI 接口地址")).toBeVisible();
+      await expect(drawer.getByLabel("模型名称")).toBeVisible();
+      await expect(drawer.getByLabel("API Key")).toHaveAttribute("type","password");
+      await expect(drawer.getByLabel("AI 修改范围")).toBeVisible();
+      await drawer.getByLabel("AI 修改范围").selectOption("block");
+      await expect(drawer.getByLabel("AI 目标模块")).toBeVisible();
+      await expect(drawer.getByRole("button",{name:"生成并更新中间预览"})).toBeDisabled();
+      await drawer.getByRole("button",{name:"关闭 AI 面板"}).click();
+      await expect(drawer).toHaveCount(0);
+    }finally{
+      await context.close();
+    }
+  });
+
 });
