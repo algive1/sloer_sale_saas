@@ -894,7 +894,14 @@ def SENTRY_INIT(dsn: str, sentry_opts: dict):
 GRAPHQL_SPANS_MARK_SLOW_AFTER: float = 30.0
 
 GRAPHQL_PAGINATION_LIMIT = 100
-GRAPHQL_MIDDLEWARE: list[str] = []
+# A shared Saleor Core cannot isolate customer identity by Channel. The
+# deployment layer opts in automatically whenever STOREFRONT_SITES_JSON is set.
+# Single-brand Saleor, its Dashboard and staff sessions remain unchanged.
+SALEOR_SHARED_CORE_GUEST_ONLY = get_bool_from_env("SALEOR_SHARED_CORE_GUEST_ONLY", False)
+GRAPHQL_MIDDLEWARE: list[str] = (
+    ["saleor.graphql.shared_core_customer_guard.SharedCoreGuestCustomerGuard"]
+    if SALEOR_SHARED_CORE_GUEST_ONLY else []
+)
 GRAPHQL_ALIAS_COUNT_LIMIT: int = int(os.environ.get("GRAPHQL_ALIAS_COUNT_LIMIT", 100))
 GRAPHQL_MUTATION_COUNT_LIMIT: int = int(
     os.environ.get("GRAPHQL_MUTATION_COUNT_LIMIT", 4)
