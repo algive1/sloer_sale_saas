@@ -21,6 +21,7 @@ import {
 	CarouselDots,
 	useCarousel,
 	type CarouselApi,
+	useCarouselState,
 } from "@/ui/components/ui/carousel";
 
 export interface ImageCarouselImage {
@@ -76,33 +77,17 @@ export function ImageCarousel({
 	className,
 }: ImageCarouselProps) {
 	const [api, setApi] = React.useState<CarouselApi>();
-	const [selectedIndex, setSelectedIndex] = React.useState(0);
+	const { selectedIndex } = useCarouselState(api);
 
 	// Reset to first image when images array changes (e.g., variant switch)
 	const imagesKey = images.map((img) => img.url).join(",");
 	React.useEffect(() => {
-		setSelectedIndex(0);
 		api?.scrollTo(0, true); // true = instant scroll (no animation)
 	}, [imagesKey, api]);
 
-	// Sync selected index from carousel API
 	React.useEffect(() => {
-		if (!api) return;
-
-		const onSelect = () => {
-			const index = api.selectedScrollSnap();
-			setSelectedIndex(index);
-			onIndexChange?.(index);
-		};
-
-		api.on("select", onSelect);
-		// Set initial index
-		onSelect();
-
-		return () => {
-			api.off("select", onSelect);
-		};
-	}, [api, onIndexChange]);
+		onIndexChange?.(selectedIndex);
+	}, [selectedIndex, onIndexChange]);
 
 	const scrollToImage = (index: number) => {
 		api?.scrollTo(index);

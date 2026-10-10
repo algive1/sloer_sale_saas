@@ -24,3 +24,12 @@ overrides:
   "@babel/runtime": ">=7.26.10"
   "@babel/helpers": ">=7.26.10"
   "brace-expansion@>=2": ">=2.0.2"
+# Use registry-provided optional native binaries; do not run fallback install scripts.
+ignoredBuiltDependencies:
+  - "@parcel/watcher"
+  - "@swc/core"
+  - unrs-resolver
+allowBuilds:
+  "@parcel/watcher": false
+  "@swc/core": false
+  unrs-resolver: false

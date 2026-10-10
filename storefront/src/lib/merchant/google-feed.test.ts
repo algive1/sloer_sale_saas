@@ -33,6 +33,16 @@ const product: GoogleMerchantProduct = {
 };
 
 describe("buildGoogleMerchantXml", () => {
+	it("does not invent a manufacturer from the storefront name or an attribute slug", () => {
+		for (const brand of [null, { text: " " }, { choice: { slug: "internal-brand-id" } }]) {
+			const xml = buildGoogleMerchantXml([{ ...product, brand }], {
+				baseUrl: "https://reseller.example.com",
+				channel: "us", locale: "en", storeName: "Reseller Store",
+			});
+			expect(xml).not.toContain("<g:brand>");
+		}
+	});
+
 	it("emits variant-level Google Merchant fields and escapes XML", () => {
 		const xml = buildGoogleMerchantXml([product], {
 			baseUrl: "https://shop.example.com",

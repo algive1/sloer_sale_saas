@@ -39,11 +39,11 @@ export function ProductImageViewer({
 	const image = images[index];
 	const hasMultiple = images.length > 1;
 
-	React.useEffect(() => {
-		if (open) {
-			setIndex(initialIndex);
-		}
-	}, [open, initialIndex]);
+	const [previousInput, setPreviousInput] = React.useState({ open, initialIndex });
+	if (previousInput.open !== open || previousInput.initialIndex !== initialIndex) {
+		setPreviousInput({ open, initialIndex });
+		if (open) setIndex(initialIndex);
+	}
 
 	React.useEffect(() => {
 		transformRef.current?.resetTransform(0);

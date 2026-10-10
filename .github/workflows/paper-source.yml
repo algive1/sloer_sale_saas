@@ -37,6 +37,9 @@ jobs:
           HUSKY: "0"
         run: pnpm --dir storefront install --frozen-lockfile
 
+      - name: Verify security override parity
+        run: pnpm --dir storefront check:dependency-policy
+
       - name: Check Paper docs
         run: pnpm --dir storefront docs:check
 
@@ -53,6 +56,9 @@ jobs:
 
       - name: Verify AI translation draft safety
         run: pnpm --dir storefront translations:ai:test
+
+      - name: Verify brand identity and reminder safety
+        run: pnpm --dir storefront test:brand-safety
 
       - name: ESLint source check
         env:

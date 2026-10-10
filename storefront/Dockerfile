@@ -8,7 +8,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-COPY ./.npmrc package.json pnpm-lock.yaml ./
+COPY ./.npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm i --frozen-lockfile --prefer-offline
 
 COPY     ./global.d.ts     ./knip.config.ts     ./next.config.js     ./paper-version.json     ./postcss.config.cjs     ./tailwind.config.cjs     ./tsconfig.json     ./.graphqlrc.ts     ./

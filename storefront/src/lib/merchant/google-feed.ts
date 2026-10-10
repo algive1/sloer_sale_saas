@@ -1,5 +1,6 @@
 import { parseEditorJSToText } from "@/lib/editorjs";
 import { buildStorefrontPath } from "@/lib/storefront-path";
+import { productBrandName } from "@/lib/catalog/product-brand";
 
 export type MerchantAttribute = {
 	text?: string | null;
@@ -138,7 +139,7 @@ function itemXml(
 	const mpn = variantAttribute(variant.attributes, "mpn");
 	const color = variantAttribute(variant.attributes, "color") || variantAttribute(variant.attributes, "colour");
 	const size = variantAttribute(variant.attributes, "size");
-	const brand = attributeText(product.brand) || options.defaultBrand || null;
+	const brand = productBrandName(product.brand) || options.defaultBrand?.trim() || null;
 	const productCategory = attributeText(product.googleProductCategory);
 	const gender = normalizeGender(attributeText(product.gender));
 	const ageGroup = normalizeAgeGroup(attributeText(product.ageGroup));

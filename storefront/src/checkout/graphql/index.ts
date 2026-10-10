@@ -2,7 +2,7 @@
  * Re-export generated GraphQL types for checkout.
  *
  * Mutations and queries run via server actions (`src/app/(checkout)/actions.ts`),
- * not urql hooks. Hook exports live in `./generated/index.ts` for codegen only.
+ * using server-safe typed documents; no client hooks are generated.
  *
  * To regenerate types, run: pnpm generate:checkout
  */

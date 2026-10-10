@@ -1,4 +1,5 @@
 import "server-only";
+import { brandSitesConfigured } from "@/config/brand-sites";
 import { analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline } from "@/lib/storage/libsql-http";
 import { fetchSaleorOrdersPage, fetchSaleorOrder, type OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 import {reminderSkipReason,reminderDueStage,reminderCooldown} from "./policy";
@@ -8,7 +9,14 @@ export type ReminderResult = { status:"sent"|"skipped"|"failed"; reason?:string 
 const DEFAULT_RULE:PaymentReminderRule={enabled:false,firstAfterHours:24,secondAfterHours:72,dailyLimit:5};
 const fromEmail=()=>process.env.PAYMENT_REMINDER_FROM?.trim()??"";
 export function reminderEmailConfigured():boolean{
- return !!(process.env.RESEND_API_KEY?.trim()&&fromEmail()&&process.env.NEXT_PUBLIC_STOREFRONT_URL?.trim());
+ return reminderUnavailableReason() === null;
+}
+export function reminderUnavailableReason(): "multi_brand_not_supported" | "email_not_configured" | null {
+ // Shared rule/sender/order queries are not brand-scoped yet. Fail closed even
+ // for malformed brand JSON or previously enabled rules; no external I/O.
+ if(brandSitesConfigured())return "multi_brand_not_supported";
+ return process.env.RESEND_API_KEY?.trim()&&fromEmail()&&process.env.NEXT_PUBLIC_STOREFRONT_URL?.trim()
+  ? null : "email_not_configured";
 }
 let initialized:Promise<void>|null=null;
 async function schema(){
@@ -26,6 +34,7 @@ export async function getReminderRule():Promise<PaymentReminderRule>{
  return row?{enabled:Number(row.enabled)===1,firstAfterHours:Number(row.first_after_hours),secondAfterHours:Number(row.second_after_hours),dailyLimit:Number(row.daily_limit)}:DEFAULT_RULE;
 }
 export async function setReminderRule(rule:PaymentReminderRule):Promise<PaymentReminderRule>{
+ if(rule.enabled && brandSitesConfigured())throw new Error("multi_brand_not_supported");
  if(!Number.isInteger(rule.firstAfterHours)||rule.firstAfterHours<1||rule.firstAfterHours>168||
  !Number.isInteger(rule.secondAfterHours)||rule.secondAfterHours<=rule.firstAfterHours||rule.secondAfterHours>720||
  !Number.isInteger(rule.dailyLimit)||rule.dailyLimit<1||rule.dailyLimit>20)throw new Error("invalid_rule");
@@ -59,7 +68,8 @@ async function sendEmail(order:OpsOrder):Promise<string>{
  return result.id;
 }
 export async function sendReminder(order:Pick<OpsOrder,"id">,stage:"manual"|"first"|"second"):Promise<ReminderResult>{
- if(!reminderEmailConfigured())return {status:"skipped",reason:"email_not_configured"};
+ const unavailable=reminderUnavailableReason();
+ if(unavailable)return {status:"skipped",reason:unavailable};
  // Re-read the authoritative order immediately before claiming a send slot.
  // A stale analytics list can outlive a successful payment or cancellation.
  const live=await fetchSaleorOrder(order.id);
@@ -97,10 +107,12 @@ export async function sendManualReminder(orderId:string):Promise<ReminderResult>
  // Its validation still happens immediately before any email side effect.
  return sendReminder({id:orderId},"manual");
 }
-export type AutomaticReminderRun={sent:number;skipped:number;failed:number;scanned:number;truncated:boolean};
+export type AutomaticReminderRun={sent:number;skipped:number;failed:number;scanned:number;truncated:boolean;reason?:string};
 export async function runAutomaticReminders():Promise<AutomaticReminderRun>{
- const rule=await getReminderRule();
  const result:AutomaticReminderRun={sent:0,skipped:0,failed:0,scanned:0,truncated:false};
+ const unavailable=reminderUnavailableReason();
+ if(unavailable)return {...result,reason:unavailable};
+ const rule=await getReminderRule();
  if(!rule.enabled||!reminderEmailConfigured())return result;
  await schema();
  const [daily]=await libsqlPipeline([{sql:"SELECT COUNT(*) AS count FROM ops_reminder_delivery WHERE claimed_at>=?",args:[new Date(Date.now()-86400000).toISOString()],wantRows:true}]);
