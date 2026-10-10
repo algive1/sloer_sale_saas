@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
 import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
-import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/plugins/theme-builder/template";
+import { BLANK_TEMPLATE, freshTemplate, freshStarterTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 import { PRODUCT_DETAIL_TEMPLATE } from "@/plugins/theme-builder/page-document";
 
 type EditorProps = {
@@ -50,6 +50,9 @@ const EDITOR_DICTIONARY = {
 } as const;
 
 const homepageApi = "/ops/themes/api";
+type Builtin = "fashion"|"jewelry"|"minimal"|"blank"|"product";
+type LibraryEntry = {id:string;title:string;updatedAt:string};
+type LibraryResult = {items?:LibraryEntry[];data?:ThemeData;item?:LibraryEntry;error?:string};
 
 export function ThemeEditor({
 	channels,
@@ -78,6 +81,11 @@ export function ThemeEditor({
 	const [dirty, setDirty] = useState(false);
 	const [status, setStatus] = useState("");
 	const [revision, setRevision] = useState({ draft: 0, published: 0 });
+	const [preset, setPreset] = useState<Builtin>("fashion");
+	const [savedTemplates, setSavedTemplates] = useState<LibraryEntry[]>([]);
+	const [chosenTemplate, setChosenTemplate] = useState("");
+	const [newTemplateTitle, setNewTemplateTitle] = useState("");
+	const [libraryBusy, setLibraryBusy] = useState(false);
 	const selectedSite = siteByChannel[channel];
 	const brands = Object.values(siteByChannel).filter(
 		(site, index, all) => all.findIndex((other) => other.id === site.id) === index,
@@ -92,6 +100,9 @@ export function ThemeEditor({
 	const scope = "?channel=" + encodeURIComponent(channel) + "&locale=" + encodeURIComponent(locale) +
 		(pageType==="product"?"&pageType=product&template=default":"");
 	const pageTitle = pageType==="home"?"首页":"商品详情页";
+	const templateScope="/ops/themes/templates/api?"+new URLSearchParams({channel,locale,pageType});
+	const scopeRef = useRef(templateScope);
+	scopeRef.current = templateScope;
 
 	const [loadedScope, setLoadedScope] = useState(scope);
 	if (loadedScope !== scope) {
@@ -143,6 +154,69 @@ export function ThemeEditor({
 			});
 		return () => controller.abort();
 	}, [channel, locale, scope, storageReady, brands.length, api, pageType]);
+
+	useEffect(()=>{
+		if(!channel||!storageReady)return;
+		const controller=new AbortController();
+		fetch(templateScope,{signal:controller.signal,cache:"no-store"})
+			.then(async response=>{
+				const json=await response.json() as LibraryResult;
+				if(!response.ok)throw new Error(json.error??"无法读取模板库");
+				return json.items??[];
+			}).then(items=>{if(!controller.signal.aborted){
+				setSavedTemplates(items);setChosenTemplate("");
+			}}).catch(()=>{if(!controller.signal.aborted)setSavedTemplates([]);});
+		return()=>controller.abort();
+	},[channel,locale,pageType,storageReady,templateScope]);
+
+	async function saveCurrentAsTemplate(){
+		if(!storageReady||loading||!document||libraryBusy)return;
+		const title=newTemplateTitle.trim();
+		if(title.length<2||title.length>60){setStatus("请输入 2–60 字的模板名称。");return;}
+		setLibraryBusy(true);
+		try{
+			const response=await fetch("/ops/themes/templates/api",{
+				method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},
+				body:JSON.stringify({channel,locale,pageType,title,data:documentRef.current}),
+			});
+			const result=await response.json() as LibraryResult;
+			if(!response.ok||!result.item)throw new Error(result.error??"保存模板失败");
+			if(scopeRef.current===templateScope){
+				setSavedTemplates(current=>[result.item!,...current]);
+				setChosenTemplate(result.item.id);
+				setNewTemplateTitle("");
+				setStatus("已保存为我的模板，不影响现有草稿或线上页面。");
+			}
+		}catch(error){setStatus(error instanceof Error?error.message:"保存模板失败");}
+		finally{setLibraryBusy(false);}
+	}
+	async function applySavedTemplate(){
+		if(!chosenTemplate||saving||libraryBusy||!confirmNavigation())return;
+		setLibraryBusy(true);
+		try{
+			const response=await fetch(templateScope+"&id="+encodeURIComponent(chosenTemplate),{cache:"no-store"});
+			const result=await response.json() as LibraryResult;
+			if(!response.ok||!result.data)throw new Error(result.error??"模板加载失败");
+			if(scopeRef.current!==templateScope)return;
+			documentRef.current=result.data;setDocument(result.data);
+			setGeneration(v=>v+1);setDirty(true);
+			setStatus("已应用模板至当前草稿，发布前不会影响线上页面。");
+		}catch(error){setStatus(error instanceof Error?error.message:"模板加载失败");}
+		finally{setLibraryBusy(false);}
+	}
+	async function removeSavedTemplate(){
+		if(!chosenTemplate||libraryBusy||!window.confirm("确定删除这个自定义模板吗？当前页面不会改变。"))return;
+		setLibraryBusy(true);
+		try{
+			const response=await fetch(templateScope+"&id="+encodeURIComponent(chosenTemplate),{method:"DELETE",credentials:"same-origin"});
+			if(!response.ok)throw new Error("删除模板失败");
+			if(scopeRef.current===templateScope){
+				setSavedTemplates(items=>items.filter(item=>item.id!==chosenTemplate));
+				setChosenTemplate("");setStatus("模板已删除，当前草稿和线上页面不变。");
+			}
+		}catch(error){setStatus(error instanceof Error?error.message:"删除模板失败");}
+		finally{setLibraryBusy(false);}
+	}
 
 	useEffect(() => {
 		if (!dirty) return;
@@ -200,17 +274,16 @@ export function ThemeEditor({
 	function confirmNavigation(): boolean {
 		return !dirty || window.confirm("Unsaved edits will be discarded. Continue?");
 	}
-	function setTemplate(name: "fashion" | "blank" | "product") {
+	function setTemplate(name: Builtin) {
 		if (saving || !confirmNavigation()) return;
-		const next = name==="product" ? structuredClone(PRODUCT_DETAIL_TEMPLATE) : freshTemplate(name);
+		const next = name==="product" ? structuredClone(PRODUCT_DETAIL_TEMPLATE) : freshStarterTemplate(name);
 		documentRef.current = next;
 		setDocument(next);
 		setGeneration((current) => current + 1);
 		setDirty(true);
 		setStatus(
-			name === "fashion" ? "服饰首页模板已应用到草稿，发布前不会影响线上页面。"
-				: name==="product" ? "商品详情页模板已应用到草稿，购买区保持原样。"
-				: "已创建空白草稿，线上页面不受影响。",
+			name==="product" ? "商品详情页模板已应用到草稿，购买区保持原样。"
+				: "行业模板已应用到草稿，线上页面不受影响。",
 		);
 	}
 	function changePageType(value:"home"|"product") {
@@ -309,13 +382,27 @@ export function ThemeEditor({
 						))}
 					</select>
 				</label>
+                <label className="text-xs font-medium text-stone-600">
+                  行业模板
+                  <select aria-label="选择行业模板" value={pageType==="product"?"product":preset}
+                    disabled={saving||pageType==="product"}
+                    onChange={event=>setPreset(event.target.value as Builtin)}
+                    className="ml-2 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm">
+                    {pageType==="product"?<option value="product">默认商品详情</option>:<>
+                      <option value="fashion">服饰时尚</option>
+                      <option value="jewelry">珠宝首饰</option>
+                      <option value="minimal">极简通用</option>
+                      <option value="blank">空白</option>
+                    </>}
+                  </select>
+                </label>
 				<div className="ml-auto flex flex-wrap items-center gap-2">
 					<button
 						disabled={saving || !channel}
-						onClick={() => setTemplate(pageType==="product"?"product":"fashion")}
+						onClick={() => setTemplate(pageType==="product"?"product":preset)}
 						className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100"
 					>
-						{pageType==="product"?"套用详情页模板":"套用服饰模板"}
+						套用模板
 					</button>
 					<button
 						disabled={saving || !channel}
@@ -324,6 +411,39 @@ export function ThemeEditor({
 					>
 						空白页面
 					</button>
+                    <details className="relative">
+                      <summary className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-sm">我的模板</summary>
+                      <div className="absolute right-0 z-30 mt-2 w-80 max-w-[90vw] space-y-3 rounded-xl border border-stone-200 bg-white p-4 shadow-lg">
+                        <p className="text-sm font-semibold">模板保存与复用</p>
+                        <p className="text-xs text-stone-500">仅当前品牌、市场、语言及页面类型可见；保存模板不会发布页面。</p>
+                        <label className="block text-xs">模板名称
+                          <input aria-label="新模板名称" value={newTemplateTitle} maxLength={60}
+                            onChange={event=>setNewTemplateTitle(event.target.value)}
+                            placeholder="例如：秋季新品首页" className="mt-1 w-full rounded border border-stone-200 px-3 py-2 text-sm"/>
+                        </label>
+                        <button type="button" disabled={!storageReady||!document||libraryBusy||loading}
+                          onClick={()=>{void saveCurrentAsTemplate();}}
+                          className="w-full rounded bg-stone-900 px-3 py-2 text-sm text-white disabled:opacity-40">
+                          {libraryBusy?"处理中…":"保存当前页面为模板"}
+                        </button>
+                        <label className="block text-xs">已保存模板（{savedTemplates.length}/40）
+                          <select aria-label="已保存模板" value={chosenTemplate}
+                            onChange={event=>setChosenTemplate(event.target.value)}
+                            className="mt-1 w-full rounded border border-stone-200 px-3 py-2 text-sm">
+                            <option value="">请选择模板</option>
+                            {savedTemplates.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}
+                          </select>
+                        </label>
+                        <div className="flex gap-2">
+                          <button type="button" disabled={!chosenTemplate||libraryBusy||saving}
+                            onClick={()=>{void applySavedTemplate();}}
+                            className="flex-1 rounded border border-stone-200 px-3 py-2 text-xs disabled:opacity-40">应用到草稿</button>
+                          <button type="button" disabled={!chosenTemplate||libraryBusy}
+                            onClick={()=>{void removeSavedTemplate();}}
+                            className="rounded border border-stone-200 px-3 py-2 text-xs text-red-700 disabled:opacity-40">删除</button>
+                        </div>
+                      </div>
+                    </details>
 					<button
 						disabled={saving || loading || !document || !storageReady}
 						onClick={() => {
