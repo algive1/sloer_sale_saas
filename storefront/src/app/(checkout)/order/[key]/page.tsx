@@ -10,6 +10,7 @@ import { resolveBrowseLocaleForCheckout } from "@/lib/browse-locale-server";
 import { loadCheckoutMessages } from "@/i18n/load-messages";
 import { OrderConfirmationRouteFallback } from "@/checkout/views/order-confirmation/order-confirmation-route-fallback";
 import { formatPageTitle } from "@/config/brand";
+import { brandSitesConfigured } from "@/config/brand-sites";
 
 /** Per-request access check — no static shell worth showing first. */
 export const instant = false;
@@ -72,6 +73,7 @@ async function OrderViewApp({
 			initialOrder={loaded.order}
 			access={loaded.access}
 			initialUser={initialUser}
+			accountsEnabled={!brandSitesConfigured()}
 			storefrontLocale={storefrontLocale}
 			messages={messages}
 		/>
