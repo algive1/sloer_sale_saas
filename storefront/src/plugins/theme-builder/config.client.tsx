@@ -2,7 +2,7 @@
 
 import type { Config } from "@puckeditor/core";
 import type { ReactNode } from "react";
-import { collectionField, productField, imageField } from "./fields.client";
+import { collectionField, productField, imageField, linkField } from "./fields.client";
 import { ProductCanvasPreview } from "./product-preview.client";
 import { CollectionCanvasPreview } from "./collection-preview.client";
 
@@ -174,7 +174,8 @@ export function createScopedFashionEditorConfig(channel:string):Config {
     components: {
       ...blocks,
       Hero:{...blocks.Hero, fields:{...blocks.Hero.fields,
-        imageUrl:imageField(channel),collectionSlug:collectionField(channel)}},
+        imageUrl:imageField(channel),collectionSlug:collectionField(channel),
+        ctaHref:linkField(channel)}},
       Collection:{...blocks.Collection,fields:{...blocks.Collection.fields,
         collectionSlug:collectionField(channel)},
         render:({eyebrow,heading,intro,collectionSlug,limit})=><CollectionCanvasPreview
@@ -182,7 +183,7 @@ export function createScopedFashionEditorConfig(channel:string):Config {
           eyebrow={String(eyebrow??"")} heading={String(heading??"")}
           intro={String(intro??"")} limit={Number(limit)||8}/>},
       Editorial:{...blocks.Editorial,fields:{...blocks.Editorial.fields,
-        imageUrl:imageField(channel)}},
+        imageUrl:imageField(channel),ctaHref:linkField(channel)}},
       Product:{...blocks.Product,fields:{...blocks.Product.fields,
         productSlug:productField(channel)},
         render:({heading,productSlug})=><ProductCanvasPreview channel={channel}
