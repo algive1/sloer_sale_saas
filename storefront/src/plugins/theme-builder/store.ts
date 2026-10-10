@@ -14,7 +14,7 @@ const empty: StoredTheme = { draft: null, published: null, draftRevision: 0, pub
 export class ThemeConflictError extends Error {}
 let schemaPromise: Promise<void> | undefined;
 
-function themeConnection() {
+export function themeConnection() {
   const dedicatedUrl = process.env.THEME_LIBSQL_URL?.trim();
   const dedicatedToken = process.env.THEME_LIBSQL_AUTH_TOKEN?.trim();
   // Do not silently pair a dedicated URL with unrelated analytics credentials.
