@@ -21,6 +21,7 @@ type User = {
 // =============================================================================
 
 interface ContactSectionProps {
+	accountsEnabled?: boolean;
 	// Auth state
 	isSignedIn: boolean;
 	user: User | null | undefined;
@@ -53,6 +54,7 @@ interface ContactSectionProps {
 // =============================================================================
 
 export const ContactSection: FC<ContactSectionProps> = ({
+	accountsEnabled = true,
 	isSignedIn,
 	user,
 	checkoutId,
@@ -93,6 +95,7 @@ export const ContactSection: FC<ContactSectionProps> = ({
 			) : (
 				<>
 					<GuestContact
+						accountsEnabled={accountsEnabled}
 						email={email}
 						onEmailChange={onEmailChange}
 						onEmailBlur={onEmailBlur}
