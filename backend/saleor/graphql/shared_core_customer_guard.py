@@ -57,7 +57,16 @@ class SharedCoreGuestCustomerGuard:
         parent_type = info.parent_type.name
         field = info.field_name
 
-        if parent_type == "Query" and field == "me" and user and not is_staff:
+        # Existing customer JWTs (including cookies from a previously deployed
+        # single-brand site) are global. Reject the whole root operation under
+        # a customer identity; the same visitor can use anonymous catalog and
+        # guest checkout without forwarding any customer credentials.
+        if (
+            parent_type in {"Query", "Mutation"}
+            and user
+            and getattr(user, "is_authenticated", False)
+            and not is_staff
+        ):
             raise GraphQLError(
                 "Customer accounts are unavailable in shared-Core guest-only mode.",
                 extensions={"code": CUSTOMER_IDENTITY_UNAVAILABLE},
