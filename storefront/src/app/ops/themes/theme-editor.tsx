@@ -26,6 +26,27 @@ type APIResponse = {
 	draftRevision?: number;
 	publishedRevision?: number;
 };
+const EDITOR_DICTIONARY = {
+  "header-publish":"发布上线",
+  "header-undo":"撤销",
+  "header-redo":"重做",
+  "header-toggle-leftsidebar":"切换模块面板",
+  "header-toggle-rightsidebar":"切换属性面板",
+  "action-duplicate":"复制模块",
+  "action-delete":"删除模块",
+  "label-page":"页面",
+  "outline-header-title":"页面结构",
+  "outline-empty":"暂无模块",
+  "outline-item-duplicate":"复制模块",
+  "outline-item-delete":"删除模块",
+  "plugin-blocks":"添加模块",
+  "plugin-outline":"页面结构",
+  "plugin-fields":"模块设置",
+  "plugin-components":"组件",
+  "viewport-switch":"切换到{label}预览",
+  "drawer-category-other":"其他模块",
+} as const;
+
 const api = "/ops/themes/api";
 
 export function ThemeEditor({
@@ -344,13 +365,14 @@ export function ThemeEditor({
 				<Puck
 					key={channel + ":" + locale + ":" + generation}
 					config={editorConfig}
+					dictionary={EDITOR_DICTIONARY}
 					data={document}
 					headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"}
 					headerPath={"/" + locale + "/" + channel}
 					height="calc(100vh - 215px)"
 					viewports={[
-						{ width: 1440, height: "auto", label: "Desktop" },
-						{ width: 390, height: "auto", label: "Mobile" },
+						{ width: 1440, height: "auto", label: "桌面" },
+						{ width: 390, height: "auto", label: "手机" },
 					]}
 					onChange={(data) => {
 						documentRef.current = data;
