@@ -894,7 +894,14 @@ def SENTRY_INIT(dsn: str, sentry_opts: dict):
 GRAPHQL_SPANS_MARK_SLOW_AFTER: float = 30.0
 
 GRAPHQL_PAGINATION_LIMIT = 100
-GRAPHQL_MIDDLEWARE: list[str] = []
+# A shared Saleor Core has global customer identities, irrespective of Channels.
+# Reject direct customer GraphQL while multi-brand storefronts are guest-only.
+SHARED_CORE_GUEST_ONLY = get_bool_from_env("SALEOR_SHARED_CORE_GUEST_ONLY", False)
+GRAPHQL_MIDDLEWARE: list[str] = (
+    ["saleor.graphql.shared_core_guest_guard.GuestOnlySharedCoreMiddleware"]
+    if SHARED_CORE_GUEST_ONLY
+    else []
+)
 GRAPHQL_ALIAS_COUNT_LIMIT: int = int(os.environ.get("GRAPHQL_ALIAS_COUNT_LIMIT", 100))
 GRAPHQL_MUTATION_COUNT_LIMIT: int = int(
     os.environ.get("GRAPHQL_MUTATION_COUNT_LIMIT", 4)
