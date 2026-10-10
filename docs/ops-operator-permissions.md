@@ -45,9 +45,12 @@ and excludes unauthorized brands, not merely CSS-hidden. Navigation links to
 global pages intentionally return 403 for readers.
 
 Root Docker Compose passes `OPS_OPERATORS_JSON` to the storefront container;
-configure it on the server and recreate that container. Retain
-`ANALYTICS_DASHBOARD_SECRET` if you need it for cron/legacy integrations, but
-it is **not** a fallback interactive login while operator mode is active.
+configure it on the server and recreate that container. When operator mode is
+active, every `/ops` route, including cron `/ops/api/analytics/reminders/run`,
+requires a valid `platform_admin` account. Update the cron Basic username and
+password accordingly (in addition to its independent cron secret); a retained
+`ANALYTICS_DASHBOARD_SECRET` is **not** a fallback for either browser or cron
+access. See `docs/analytics-payment-reminders.md`.
 If your reverse proxy or CDN caches any `/ops` response, disable that caching
 regardless of the application's `private, no-store` response headers.
 HTTP Basic browsers may cache credentials: use separate private windows or
