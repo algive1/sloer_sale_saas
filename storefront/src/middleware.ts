@@ -98,6 +98,9 @@ export async function middleware(request: NextRequest) {
 				status: 403, headers: { "Cache-Control": "private, no-store" },
 			});
 		}
+		return NextResponse.next({
+			headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+		});
 	}
 
 
