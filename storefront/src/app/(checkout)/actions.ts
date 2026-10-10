@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { sharedCustomerAccountsEnabled } from "@/lib/brand/customer-account-policy";
 import {
 	AddressValidationRulesDocument,
 	CheckoutAddPromoCodeDocument,
@@ -257,7 +258,8 @@ export async function updateCheckoutShippingAddress(
 		variables: {
 			checkoutId,
 			shippingAddress,
-			saveAddress,
+			// Checkout address is still used for delivery; do not persist it globally.
+			saveAddress: sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON) ? saveAddress : false,
 			languageCode: await checkoutGraphqlLanguageCode(),
 		},
 		cache: "no-cache",
@@ -271,6 +273,7 @@ export async function updateCheckoutShippingAddress(
 }
 
 export async function attachCustomerToCheckout(checkoutId: string): Promise<CheckoutActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Customer account attachment is disabled for multi-brand checkouts" };
 	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutCustomerAttachDocument, {
 		variables: {
@@ -293,6 +296,7 @@ export async function registerCheckoutAccount(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Customer account registration is unavailable on multi-brand storefronts" };
 	await requireChannelForCurrentHost(input.channel);
 	// Confirmation emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
@@ -462,7 +466,7 @@ export async function updateCheckoutBillingAddress(input: {
 		variables: {
 			checkoutId: input.checkoutId,
 			billingAddress: input.billingAddress,
-			saveAddress: input.saveAddress,
+			saveAddress: sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON) ? input.saveAddress : false,
 			languageCode: await checkoutGraphqlLanguageCode(),
 		},
 		cache: "no-cache",
@@ -752,6 +756,7 @@ export async function requestCheckoutPasswordReset(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Shared password reset is unavailable on multi-brand storefronts" };
 	await requireChannelForCurrentHost(input.channel);
 	// Reset emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
@@ -788,6 +793,7 @@ export async function setUserDefaultAddress(
 	addressId: string,
 	type: AddressTypeEnum,
 ): Promise<SimpleActionResult> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Saved account addresses are unavailable on multi-brand storefronts" };
 	const result = await executeAuthenticatedGraphQL(userSetDefaultAddressDocument, {
 		variables: { id: addressId, type },
 		cache: "no-cache",
