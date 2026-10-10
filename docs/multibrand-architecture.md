@@ -1,5 +1,22 @@
 ## Public Saleor GraphQL boundary: still not a tenant gateway
 
+**Upstream containment (PR #43):** When `STOREFRONT_SITES_JSON` is present,
+Docker Compose now enables `SALEOR_SHARED_CORE_GUEST_ONLY` inside Saleor
+itself. A GraphQL resolver middleware rejects all root operations bearing a
+customer JWT (including old single-brand tokens, aliases and fragments), blocks
+anonymous global customer account/password/address mutations and checkout
+customer attachment, and refuses customer token creation, renewal and
+verification. Staff credentials continue to work for the Saleor Dashboard;
+anonymous catalog and guest checkout work normally. External auth plugin entry
+points are disabled in this mode. The guard is backend-side and cannot be
+bypassed simply by skipping Paper or changing an HTTP Host header. Deployments
+running Saleor outside the included Compose must set the flag explicitly
+wherever the API serves GraphQL. CI exercises the backend directly.
+
+**Important:** This does NOT scope Checkout bearer IDs, global merchant staff
+permissions, privileged app tokens or arbitrary guest order/checkout GraphQL
+requests to brand domains. It does not deliver independent per-brand accounts.
+
 The self-hosted deployment currently publishes the Saleor GraphQL endpoint
 at `NEXT_PUBLIC_SALEOR_API_URL` (and the base Compose maps API port 8000).
 Saleor Core customer JWTs, `me`, addresses and account mutations are **global**
