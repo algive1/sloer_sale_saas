@@ -15,6 +15,12 @@ email, shipping/billing address for the current checkout, payment and
 cryptographically verified order status remain available. Shipping/billing
 updates force `saveAddress=false` to avoid mutating the global address book.
 Frontend guest checkout hides login, registration and password reset controls.
+The Saleor server-side auth SDK additionally receives a no-op token store on
+multi-brand storefronts: stale global access/refresh cookies are neither read
+nor forwarded on checkout mutations. The corresponding session-presence check
+returns guest, even if a browser still carries cookies from an older single-
+brand deployment. These guards are not a proxy in front of direct Saleor API.
+
 The single-brand path is unchanged.
 
 This is a temporary availability trade-off: shoppers cannot sign in, register
