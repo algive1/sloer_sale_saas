@@ -154,6 +154,15 @@ export async function middleware(request: NextRequest) {
   // In multi-brand mode an /{locale}/{channel}/... pathname is inaccessible
   // unless the incoming verified Host explicitly owns that Channel.
   if (brandSitesConfigured() && site) {
+    // Saleor customer profiles/addresses/passwords are global, not Channel scoped.
+    // In multi-brand mode refuse account pages at the request boundary, including
+    // direct Next server-action POST requests and cached RSC/prefetch responses.
+    // Verified order credentials and guest checkout are separate routes.
+    if (isLocaleSlug(first) && second && ["account", "login"].includes(rest[0] ?? "")) {
+      return new NextResponse("Customer accounts are unavailable; continue as a guest", {
+        status: 404, headers: { "Cache-Control": "private, no-store" },
+      });
+    }
     if (isLocaleSlug(first) && second && !site.channels.includes(second)) {
       return new NextResponse("Store channel not found", { status: 404 });
     }
