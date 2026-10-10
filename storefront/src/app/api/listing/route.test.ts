@@ -48,7 +48,8 @@ describe("multi-brand listing API authorization", () => {
       const response = await GET(listingRequest(host, channel));
       expect(response.status).toBe(200);
       expect(response.headers.get("cache-control")).toContain("no-store");
-      expect((await response.json()).products).toHaveLength(1);
+      const payload = (await response.json()) as { products: unknown[] };
+      expect(payload.products).toHaveLength(1);
     }
     expect(mocks.listing).toHaveBeenCalledTimes(2);
     expect(mocks.listing.mock.calls[0]?.[0]).toMatchObject({ channel: "us", locale: "en", surface: "all" });
