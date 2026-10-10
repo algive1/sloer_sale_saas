@@ -15,8 +15,8 @@ const check = (authorization:string|null, pathname:string, method="GET", operato
 
 describe("operations operator accounts", () => {
   it("preserves the original shared administrator when no operator configuration exists", () => {
-    expect(check(basic("analytics",shared),"/ops/translations","POST",undefined)).toBe("allowed");
-    expect(check(basic("analytics","wrong"),"/ops/analytics","GET",undefined)).toBe("unauthenticated");
+    expect(check(basic("analytics",shared),"/ops/translations","POST","")).toBe("allowed");
+    expect(check(basic("analytics","wrong"),"/ops/analytics","GET","")).toBe("unauthenticated");
     expect(authorizeOpsRequest({authorization:basic("analytics",shared),pathname:"/ops",method:"GET",operatorsJson:undefined,legacySecret:undefined,trustedSiteIds:[]})).toBe("disabled");
   });
 
