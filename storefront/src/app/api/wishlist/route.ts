@@ -25,6 +25,8 @@ export async function GET(request: NextRequest) {
 	if (owner.mergeFrom) await mergeWishlistOwners(owner.mergeFrom, owner.key);
 	const items = (await listWishlist(owner.key)).filter((item) => wishlistItemBelongsToSite(item, scope));
 	const response = NextResponse.json({ items, cloud: true });
+	// Wishlist data is user-/guest-private even if a CDN proxies the API.
+	response.headers.set("Cache-Control", "private, no-store");
 	setGuestCookie(response, owner);
 	return response;
 }
