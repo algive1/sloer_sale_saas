@@ -40,7 +40,12 @@ jobs:
           HUSKY: "0"
         run: |
           pnpm --dir storefront install --lockfile-only --no-frozen-lockfile --ignore-scripts
-          git diff --unified=0 -- storefront/pnpm-lock.yaml | head -n 120
+          git diff --unified=0 -- storefront/pnpm-lock.yaml | head -n 80
+          # Temporary diagnostic: capture the exact pnpm-10 generated public
+          # lockfile for inspection without allowing an unfrozen CI install.
+          echo LOCK_B64_BEGIN
+          base64 -w0 storefront/pnpm-lock.yaml | fold -w 512 | sed 's/^/LOCK_B64:/'
+          echo LOCK_B64_END
           git diff --exit-code -- storefront/pnpm-lock.yaml > /dev/null
 
       - name: Install dependencies
