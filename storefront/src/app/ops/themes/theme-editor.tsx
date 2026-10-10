@@ -102,7 +102,7 @@ export function ThemeEditor({
 	const pageTitle = pageType==="home"?"首页":"商品详情页";
 	const templateScope="/ops/themes/templates/api?"+new URLSearchParams({channel,locale,pageType});
 	const scopeRef = useRef(templateScope);
-	scopeRef.current = templateScope;
+	useEffect(()=>{scopeRef.current=templateScope;},[templateScope]);
 
 	const [loadedScope, setLoadedScope] = useState(scope);
 	if (loadedScope !== scope) {
