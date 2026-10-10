@@ -76,7 +76,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
       // Confirm the actual Puck block sidebar mounted, not just our server shell.
-      await expect(page.getByText("Saleor product collection", {exact:true}).first()).toBeVisible({timeout:30_000});
+      await expect(page.getByText("商品集合", {exact:true}).first()).toBeVisible({timeout:30_000});
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";
