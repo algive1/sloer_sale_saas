@@ -109,6 +109,55 @@ function ImagePicker({channel,value,onChange,readOnly}:Binding&{channel:string})
   </div>;
 }
 
+type LinkKind = "home" | "all" | "product" | "collection" | "custom";
+function kindForValue(value:string):LinkKind {
+  if(value==="/")return "home";
+  if(value==="/products"||!value)return "all";
+  if(value.startsWith("/products/"))return "product";
+  if(value.startsWith("/collections/"))return "collection";
+  return "custom";
+}
+function LinkPicker({channel,value,onChange,readOnly}:Binding&{channel:string}) {
+  const [kind,setKind]=useState<LinkKind>(()=>kindForValue(value??"/products"));
+  function switchKind(next:LinkKind) {
+    setKind(next);
+    if(next==="home")onChange("/");
+    else if(next==="all")onChange("/products");
+    else if(next==="product"||next==="collection")onChange("");
+    else onChange(value||"/");
+  }
+  return <div className="space-y-2">
+    <label className="block text-xs font-medium text-stone-700">按钮跳转目标</label>
+    <select aria-label="跳转类型" value={kind} disabled={readOnly}
+      className="w-full rounded border border-stone-200 bg-white px-2 py-2 text-sm"
+      onChange={e=>switchKind(e.target.value as LinkKind)}>
+      <option value="home">网站首页</option>
+      <option value="all">全部商品</option>
+      <option value="collection">指定商品集合</option>
+      <option value="product">指定商品</option>
+      <option value="custom">其他站内页面（高级）</option>
+    </select>
+    {kind==="collection"?
+      <Picker channel={channel} kind="collections"
+        value={value?.startsWith("/collections/")?value.slice("/collections/".length):""}
+        onChange={slug=>onChange("/collections/"+slug)} readOnly={readOnly}/>:null}
+    {kind==="product"?
+      <Picker channel={channel} kind="products"
+        value={value?.startsWith("/products/")?value.slice("/products/".length):""}
+        onChange={slug=>onChange("/products/"+slug)} readOnly={readOnly}/>:null}
+    {kind==="custom"?
+      <input aria-label="其他站内页面路径" className="w-full rounded border border-stone-200 px-2 py-2 text-sm"
+        value={value??""} placeholder="/pages/about-us" disabled={readOnly}
+        onChange={e=>onChange(e.target.value)}/>:null}
+    <p className="text-xs text-stone-500">页面链接自动使用当前店铺的域名、市场和语言，不会跳转到其他品牌。</p>
+  </div>;
+}
+export function linkField(channel:string) {
+  return {type:"custom" as const,label:"选择站内跳转",
+    render:({value,onChange,readOnly}:Binding)=><LinkPicker channel={channel}
+      value={value} onChange={onChange} readOnly={readOnly}/>};
+}
+
 export function collectionField(channel:string) {
   return {type:"custom" as const,label:"选择商品集合",
     render:({value,onChange,readOnly}:Binding)=><Picker kind="collections" channel={channel}
