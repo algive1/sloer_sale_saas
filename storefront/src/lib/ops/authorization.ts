@@ -16,6 +16,14 @@ type Operator = Readonly<{
 }>;
 
 export type OpsAuthorization = "allowed" | "unauthenticated" | "forbidden" | "disabled";
+export type OpsViewer = Readonly<{ role: OpsRole; siteIds: readonly string[] }>;
+
+export type OpsIdentityInput = {
+  authorization: string | null;
+  operatorsJson: string | undefined;
+  legacySecret: string | undefined;
+  trustedSiteIds: readonly string[];
+};
 
 const USERNAME = /^[a-z][a-z0-9_-]{2,63}$/;
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -83,32 +91,32 @@ function equalConstantTime(left: string, right: string): boolean {
   return mismatch === 0;
 }
 
-export function authorizeOpsRequest(input: {
-  authorization: string | null;
-  pathname: string;
-  method: string;
-  operatorsJson: string | undefined;
-  legacySecret: string | undefined;
-  trustedSiteIds: readonly string[];
-}): OpsAuthorization {
+/** Derive the logged-in role exclusively from server-held accounts and Basic auth. */
+export function resolveOpsViewer(input: OpsIdentityInput): OpsViewer | null {
   const operators = parseOpsOperators(input.operatorsJson, input.trustedSiteIds);
   const creds = credentials(input.authorization);
   if (operators) {
-    if (!creds) return "unauthenticated";
-    const operator = operators.find((entry) => entry.username === creds.username);
-    if (!operator || !equalConstantTime(creds.password, operator.password)) return "unauthenticated";
-    if (operator.role === "platform_admin") return "allowed";
-    // A brand-scoped analyst cannot access any platform-wide dashboard,
-    // listing, plugin, editor, translation, reminders or API endpoint.
-    if (input.method !== "GET" && input.method !== "HEAD") return "forbidden";
-    const match = BRAND_READ_ROUTE.exec(input.pathname);
-    return match && operator.siteIds.includes(match[1] ?? "") ? "allowed" : "forbidden";
+    if (!creds) return null;
+    const account = operators.find((entry) => entry.username === creds.username);
+    if (!account || !equalConstantTime(creds.password, account.password)) return null;
+    return { role: account.role, siteIds: account.siteIds };
   }
-
-  // Existing single-administrator deployments keep their old credentials.
-  // There is no fallback to this password when operatorsJson is configured.
-  if (!input.legacySecret?.trim()) return "disabled";
+  if (!input.legacySecret?.trim()) return null;
   if (!creds || creds.username !== "analytics" ||
-    !equalConstantTime(creds.password, input.legacySecret.trim())) return "unauthenticated";
-  return "allowed";
+    !equalConstantTime(creds.password, input.legacySecret.trim())) return null;
+  return { role: "platform_admin", siteIds: [] };
+}
+
+export function authorizeOpsRequest(input: OpsIdentityInput & {
+  pathname: string;
+  method: string;
+}): OpsAuthorization {
+  if (!input.operatorsJson?.trim() && !input.legacySecret?.trim()) return "disabled";
+  const viewer = resolveOpsViewer(input);
+  if (!viewer) return "unauthenticated";
+  if (viewer.role === "platform_admin") return "allowed";
+  if (input.method !== "GET" && input.method !== "HEAD") return "forbidden";
+  if (input.pathname === "/ops/sites" || input.pathname === "/ops/sites/") return "allowed";
+  const match = BRAND_READ_ROUTE.exec(input.pathname);
+  return match && viewer.siteIds.includes(match[1] ?? "") ? "allowed" : "forbidden";
 }
