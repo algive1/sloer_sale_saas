@@ -4,6 +4,7 @@ import type { Config } from "@puckeditor/core";
 import type { ReactNode } from "react";
 import { collectionField, productField, imageField } from "./fields.client";
 import { ProductCanvasPreview } from "./product-preview.client";
+import { CollectionCanvasPreview } from "./collection-preview.client";
 
 const showcase = (title: string, imageUrl: string, children: ReactNode) => {
   const hasPhoto = imageUrl.startsWith("https://");
@@ -89,21 +90,9 @@ export const fashionEditorConfig: Config = {
         limit: 8,
       },
       render: ({ eyebrow, heading, intro, collectionSlug, limit }) => (
-        <section className="mx-auto max-w-7xl px-6 py-20">
-          <p className="text-xs uppercase tracking-[0.25em] text-stone-500">{eyebrow}</p>
-          <h2 className="mt-3 text-4xl text-stone-900">{heading}</h2>
-          <p className="mt-3 text-stone-600">{intro}</p>
-          <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-4">
-            {Array.from({ length: Math.min(Number(limit) || 4, 8) }, (_, index) => (
-              <div key={index} className="min-w-0">
-                <div className="aspect-[3/4] bg-stone-100" />
-                <div className="mt-3 h-3 w-3/4 rounded bg-stone-100" />
-                <div className="mt-2 h-3 w-1/3 rounded bg-stone-100" />
-              </div>
-            ))}
-          </div>
-          <p className="mt-5 text-xs text-stone-500">Live products will be loaded from Saleor collection: {collectionSlug}</p>
-        </section>
+        <CollectionCanvasPreview channel="" collectionSlug={String(collectionSlug??"")}
+          eyebrow={String(eyebrow??"")} heading={String(heading??"")}
+          intro={String(intro??"")} limit={Number(limit)||8}/>
       ),
     },
     Editorial: {
@@ -187,7 +176,11 @@ export function createScopedFashionEditorConfig(channel:string):Config {
       Hero:{...blocks.Hero, fields:{...blocks.Hero.fields,
         imageUrl:imageField(channel),collectionSlug:collectionField(channel)}},
       Collection:{...blocks.Collection,fields:{...blocks.Collection.fields,
-        collectionSlug:collectionField(channel)}},
+        collectionSlug:collectionField(channel)},
+        render:({eyebrow,heading,intro,collectionSlug,limit})=><CollectionCanvasPreview
+          channel={channel} collectionSlug={String(collectionSlug??"")}
+          eyebrow={String(eyebrow??"")} heading={String(heading??"")}
+          intro={String(intro??"")} limit={Number(limit)||8}/>},
       Editorial:{...blocks.Editorial,fields:{...blocks.Editorial.fields,
         imageUrl:imageField(channel)}},
       Product:{...blocks.Product,fields:{...blocks.Product.fields,
