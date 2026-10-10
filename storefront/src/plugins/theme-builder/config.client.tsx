@@ -2,6 +2,8 @@
 
 import type { Config } from "@puckeditor/core";
 import type { ReactNode } from "react";
+import { collectionField, productField, imageField } from "./fields.client";
+import { ProductCanvasPreview } from "./product-preview.client";
 
 const showcase = (title: string, imageUrl: string, children: ReactNode) => {
   const hasPhoto = imageUrl.startsWith("https://");
@@ -36,8 +38,8 @@ const showcase = (title: string, imageUrl: string, children: ReactNode) => {
  */
 export const fashionEditorConfig: Config = {
   categories: {
-    merchandise: { title: "Shop & merchandise", components: ["Hero", "Collection"] },
-    editorial: { title: "Brand storytelling", components: ["Editorial", "Story"] },
+    merchandise: { title: "商品与营销", components: ["Hero", "Collection", "Product"] },
+    editorial: { title: "图文与品牌", components: ["Editorial", "Story"] },
   },
   components: {
     Hero: {
@@ -137,6 +139,15 @@ export const fashionEditorConfig: Config = {
         </section>
       ),
     },
+    Product: {
+      label: "精选单品",
+      fields: {
+        heading: { type: "text", label: "区域标题" },
+        productSlug: { type: "text", label: "商品" },
+      },
+      defaultProps: { heading: "Featured product", productSlug: "" },
+      render: ({heading,productSlug})=><ProductCanvasPreview channel="" heading={String(heading??"")} slug={String(productSlug??"")}/>,
+    },
     Story: {
       label: "Brand statement",
       fields: {
@@ -165,3 +176,24 @@ export const fashionEditorConfig: Config = {
     },
   },
 };
+
+/** The editor fields bind to the selected Saleor Channel; public rendering stays server-only. */
+export function createScopedFashionEditorConfig(channel:string):Config {
+  const blocks=fashionEditorConfig.components;
+  return {
+    ...fashionEditorConfig,
+    components: {
+      ...blocks,
+      Hero:{...blocks.Hero, fields:{...blocks.Hero.fields,
+        imageUrl:imageField(channel),collectionSlug:collectionField(channel)}},
+      Collection:{...blocks.Collection,fields:{...blocks.Collection.fields,
+        collectionSlug:collectionField(channel)}},
+      Editorial:{...blocks.Editorial,fields:{...blocks.Editorial.fields,
+        imageUrl:imageField(channel)}},
+      Product:{...blocks.Product,fields:{...blocks.Product.fields,
+        productSlug:productField(channel)},
+        render:({heading,productSlug})=><ProductCanvasPreview channel={channel}
+          heading={String(heading??"")} slug={String(productSlug??"")}/>},
+    },
+  };
+}
