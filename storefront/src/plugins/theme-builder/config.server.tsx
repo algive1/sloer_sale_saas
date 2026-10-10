@@ -65,8 +65,8 @@ export function createPublishedThemeConfig(channel: string, locale: string): Con
   return {
     components: {
       Faq:{
-        render:({heading,question1,answer1,question2,answer2,question3,answer3})=>
-          <FaqSection heading={String(heading??"")} items={[
+        render:({id,heading,question1,answer1,question2,answer2,question3,answer3})=>
+          <FaqSection headingId={"theme-"+String(id)+"-faq-heading"} heading={String(heading??"")} items={[
             {question:String(question1??""),answer:String(answer1??"")},
             {question:String(question2??""),answer:String(answer2??"")},
             {question:String(question3??""),answer:String(answer3??"")},
