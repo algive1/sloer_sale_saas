@@ -1,3 +1,16 @@
+
+## Multi-brand wishlist ownership
+
+When shared Saleor Core serves multiple brands, the cloud wishlist is
+**guest-owned only**. Each brand maps the host-derived brand ID and a
+host-only HttpOnly random guest cookie to a distinct storage namespace.
+Even if the request includes a Saleor customer session token, the wishlist
+API never queries global `me` or merges guest records into shared Saleor
+customer identity. Its personalized GET response is `private, no-store`.
+Single-brand stores retain their signed-in wishlist merge behavior. Guest
+favorites do not synchronize between devices in multi-brand mode; this is
+intentional until per-brand customer identities are available.
+
 ## Architecture decision — Option A (approved 2026-10-09)
 
 **Decision:** One self-hosted Saleor Core and one primary operations plane,
