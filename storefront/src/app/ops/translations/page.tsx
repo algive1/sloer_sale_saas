@@ -41,6 +41,10 @@ const UI_CATALOGS: Record<string, unknown> = {
   ko: msg_ko,
 };
 
+// The operations dashboard reads service credentials and brand configuration at
+// request time. Pre-rendering would freeze the configured/unconfigured state.
+export const dynamic = "force-dynamic";
+
 export const metadata:Metadata={
   title:"多语言管理中心 | Commerce Ops",robots:{index:false,follow:false},
 };
