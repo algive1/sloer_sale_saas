@@ -3,7 +3,7 @@
  * Puck owns ordering and editing, while Saleor continues to own all commerce data.
  */
 export type ThemeBlock = {
-  type: "Hero" | "Collection" | "Editorial" | "Story";
+  type: "Hero" | "Collection" | "Editorial" | "Story" | "Product";
   props: { id: string; [key: string]: string | number };
 };
 export type ThemeData = {

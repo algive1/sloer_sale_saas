@@ -1,4 +1,8 @@
 import type { Config } from "@puckeditor/core";
+import Link from "next/link";
+import { SaleorImage } from "@/ui/atoms/saleor-image";
+import { getProductData } from "@/lib/catalog/get-product-data";
+import { buildStorefrontPath } from "@/lib/storefront-path";
 import { getFeaturedProducts } from "@/lib/catalog/get-featured-products";
 import { EditorialHero } from "@/ui/sections/editorial-hero/editorial-hero";
 import { MediaHero } from "@/ui/sections/media-hero/media-hero";
@@ -26,6 +30,32 @@ async function PublishedHero({
     image={products[0]?.thumbnail?.url || null} primaryCta={cta} />;
 }
 
+async function PublishedFeaturedProduct({heading,slug,channel,locale}:{
+  heading:string;slug:string;channel:string;locale:string;
+}) {
+  if(!slug)return null;
+  const product=await getProductData(slug,channel,locale);
+  if(!product)return null;
+  const gross=product.pricing?.priceRange?.start?.gross;
+  const price=gross?new Intl.NumberFormat(locale,{style:"currency",currency:gross.currency}).format(gross.amount):null;
+  return <section className="mx-auto max-w-5xl px-6 py-16">
+    {heading?<h2 className="mb-8 text-3xl">{heading}</h2>:null}
+    <div className="grid gap-8 md:grid-cols-2">
+      <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
+        {product.thumbnail?.url?
+          <SaleorImage src={product.thumbnail.url} alt={product.thumbnail.alt??product.name}
+            sizes="(max-width: 768px) 100vw, 50vw" className="object-cover"/>:null}
+      </div>
+      <div className="flex flex-col justify-center gap-4">
+        <h3 className="text-2xl font-medium">{product.name}</h3>
+        {price?<p className="text-xl">{price}</p>:null}
+        <Link href={buildStorefrontPath(locale,channel,"/products/"+product.slug)}
+          className="w-fit bg-stone-900 px-8 py-3 text-sm text-white">查看商品详情</Link>
+      </div>
+    </div>
+  </section>;
+}
+
 /**
  * Puck's <Render> is server-compatible. Keep the server config separate from the
  * client editor, so server-only Saleor queries never enter the browser bundle.
@@ -33,6 +63,11 @@ async function PublishedHero({
 export function createPublishedThemeConfig(channel: string, locale: string): Config {
   return {
     components: {
+      Product: {
+        render: ({heading,productSlug})=><PublishedFeaturedProduct
+          heading={String(heading??"")} slug={String(productSlug??"")}
+          channel={channel} locale={locale}/>,
+      },
       Hero: {
         render: ({ id, eyebrow, heading, subheading, imageUrl, collectionSlug, ctaLabel, ctaHref }) => (
           <PublishedHero id={String(id)} locale={locale} channel={channel} eyebrow={eyebrow ?? ""}

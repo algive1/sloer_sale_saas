@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
-import { fashionEditorConfig } from "@/plugins/theme-builder/config.client";
+import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
 import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 
 type EditorProps = {
@@ -26,6 +26,27 @@ type APIResponse = {
 	draftRevision?: number;
 	publishedRevision?: number;
 };
+const EDITOR_DICTIONARY = {
+  "header-publish":"发布上线",
+  "header-undo":"撤销",
+  "header-redo":"重做",
+  "header-toggle-leftsidebar":"切换模块面板",
+  "header-toggle-rightsidebar":"切换属性面板",
+  "action-duplicate":"复制模块",
+  "action-delete":"删除模块",
+  "label-page":"页面",
+  "outline-header-title":"页面结构",
+  "outline-empty":"暂无模块",
+  "outline-item-duplicate":"复制模块",
+  "outline-item-delete":"删除模块",
+  "plugin-blocks":"添加模块",
+  "plugin-outline":"页面结构",
+  "plugin-fields":"模块设置",
+  "plugin-components":"组件",
+  "viewport-switch":"切换到{label}预览",
+  "drawer-category-other":"其他模块",
+} as const;
+
 const api = "/ops/themes/api";
 
 export function ThemeEditor({
@@ -40,6 +61,7 @@ export function ThemeEditor({
 }: EditorProps) {
 	const [channel, setChannel] = useState(initialChannel || channels[0] || "");
 	const [locale, setLocale] = useState(initialLocale || locales[0] || "en");
+	const editorConfig = useMemo(() => createScopedFashionEditorConfig(channel), [channel]);
 	const [document, setDocument] = useState<ThemeData | null>(null);
 	const documentRef = useRef<Data>(BLANK_TEMPLATE);
 	const savedRef = useRef<Data>(BLANK_TEMPLATE);
@@ -311,7 +333,7 @@ export function ThemeEditor({
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-5 py-2 text-xs text-stone-600 md:px-8">
 				<span>
 					{storageReady
-						? "Drag blocks on the left, edit settings on the right, then Publish."
+						? "左侧拖入模块，右侧选择商品与图片，中间实时预览，确认后发布。"
 						: "Preview only: theme storage is not configured."}
 				</span>
 				<span>
@@ -342,14 +364,15 @@ export function ThemeEditor({
 			) : (
 				<Puck
 					key={channel + ":" + locale + ":" + generation}
-					config={fashionEditorConfig}
+					config={editorConfig}
+					dictionary={EDITOR_DICTIONARY}
 					data={document}
 					headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"}
 					headerPath={"/" + locale + "/" + channel}
 					height="calc(100vh - 215px)"
 					viewports={[
-						{ width: 1440, height: "auto", label: "Desktop" },
-						{ width: 390, height: "auto", label: "Mobile" },
+						{ width: 1440, height: "auto", label: "桌面" },
+						{ width: 390, height: "auto", label: "手机" },
 					]}
 					onChange={(data) => {
 						documentRef.current = data;

@@ -29,6 +29,9 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
     const unauth = await playwrightRequest.newContext({ baseURL });
     const blocked = await unauth.get(scope);
     expect(blocked.status()).toBe(401);
+    // New editor catalog endpoints must remain behind the same operations boundary.
+    const blockedCatalog = await unauth.get("/ops/themes/catalog?kind=collections&channel=us");
+    expect(blockedCatalog.status()).toBe(401);
     await unauth.dispose();
 
     const authorized = await playwrightRequest.newContext({
@@ -76,7 +79,35 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
       // Confirm the actual Puck block sidebar mounted, not just our server shell.
-      await expect(page.getByText("Saleor product collection", {exact:true}).first()).toBeVisible({timeout:30_000});
+      await expect(page.getByText("商品集合", {exact:true}).first()).toBeVisible({timeout:30_000});
+      // Verify the editor preview API pulls actual Saleor merchandise from this Channel.
+      const actualCollection = await authorized.get(
+        "/ops/themes/catalog?kind=collection-products&channel=us&slug=featured-products",
+      );
+      expect(actualCollection.status(), await actualCollection.text()).toBe(200);
+      const merchandise = await actualCollection.json() as {
+        collection: {slug:string;products:{slug:string;image:string|null;price:{amount:number;currency:string}|null}[]}|null;
+      };
+      expect(merchandise.collection?.slug).toBe("featured-products");
+      expect(merchandise.collection?.products.length).toBeGreaterThan(0);
+      expect(actualCollection.headers()["cache-control"]).toContain("no-store");
+      // Smoke-test both operator single-product and searchable catalog queries
+      // against real Saleor, not just mocked Vitest GraphQL fixtures.
+      const firstProduct = merchandise.collection?.products[0];
+      expect(firstProduct?.slug).toBeTruthy();
+      const selected = await authorized.get(
+        "/ops/themes/catalog?kind=product&channel=us&slug=" + encodeURIComponent(firstProduct!.slug),
+      );
+      expect(selected.status(), await selected.text()).toBe(200);
+      const selectedBody = await selected.json() as {item:{slug:string;name:string;image:string|null}|null};
+      expect(selectedBody.item?.slug).toBe(firstProduct!.slug);
+      const search = await authorized.get(
+        "/ops/themes/catalog?kind=products&channel=us&q=" + encodeURIComponent(selectedBody.item!.name),
+      );
+      expect(search.status(), await search.text()).toBe(200);
+      const searchBody = await search.json() as {items:{slug:string}[]};
+      expect(searchBody.items.some(item=>item.slug===firstProduct!.slug)).toBe(true);
+
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";

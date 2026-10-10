@@ -7,6 +7,7 @@ const FIELDS = {
   Collection: ["eyebrow", "heading", "intro", "collectionSlug", "limit"],
   Editorial: ["eyebrow", "heading", "body", "imageUrl", "imagePosition", "ctaLabel", "ctaHref"],
   Story: ["eyebrow", "heading", "body", "tone", "align"],
+  Product: ["heading", "productSlug"],
 } as const;
 
 export class ThemeValidationError extends Error {}
@@ -31,6 +32,9 @@ function validateField(field: string, value: unknown): string | number {
   }
   if (field === "imageUrl" && text && (!/^https:\/\/[\w.-]+(?::\d+)?(?:\/[^\s]*)?$/i.test(text) || text.includes("@"))) {
     throw new ThemeValidationError("Images must use valid HTTPS URLs");
+  }
+  if (field === "productSlug" && text && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(text)) {
+    throw new ThemeValidationError("Invalid Saleor product slug");
   }
   if (field === "collectionSlug" && !/^[a-z0-9][a-z0-9-]{0,79}$/.test(text)) {
     throw new ThemeValidationError("Invalid Saleor collection slug");
