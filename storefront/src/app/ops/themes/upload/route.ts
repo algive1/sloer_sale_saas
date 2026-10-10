@@ -14,6 +14,26 @@ function mimeFromBytes(bytes:Uint8Array):string|null {
     String.fromCharCode(...bytes.slice(8,12))==="WEBP")return "image/webp";
   return null;
 }
+/**
+ * Saleor in Docker can generate an HTTP URL using its internal API address.
+ * Only /media/ paths returned by that exact internal origin may be rewritten
+ * to the configured public HTTPS Saleor host; arbitrary upstream URLs cannot.
+ */
+export function publicUploadedMediaUrl(raw:string,internalApi:string,publicApi:string|undefined):string|null {
+  try {
+    const file=new URL(raw);
+    if(file.username||file.password||file.hash)return null;
+    if(file.protocol==="https:")return file.href;
+    const internal=new URL(internalApi);
+    if(file.protocol!=="http:"||file.origin!==internal.origin||!file.pathname.startsWith("/media/"))
+      return null;
+    const publicEndpoint=publicApi?new URL(publicApi):null;
+    if(!publicEndpoint||publicEndpoint.protocol!=="https:"||publicEndpoint.username||publicEndpoint.password)
+      return null;
+    return new URL(file.pathname+file.search,publicEndpoint.origin).href;
+  } catch {return null;}
+}
+
 export async function POST(request:NextRequest) {
   const origin=request.headers.get("origin");
   const fetchSite=request.headers.get("sec-fetch-site");
@@ -52,8 +72,8 @@ export async function POST(request:NextRequest) {
     };
     const url=json.data?.fileUpload?.uploadedFile?.url;
     if(json.errors?.length||json.data?.fileUpload?.uploadErrors?.length||!url)return respond({error:"File upload failed"},502);
-    if(!/^https:\/\/[\w.-]+(?::\d+)?(?:\/[^\s]*)?$/i.test(url)||url.includes("@"))
-      return respond({error:"Saleor media must have a public HTTPS URL"},502);
-    return respond({url});
+    const publicUrl=publicUploadedMediaUrl(url,api,process.env.NEXT_PUBLIC_SALEOR_API_URL);
+    if(!publicUrl)return respond({error:"Saleor media needs a valid public HTTPS URL; configure NEXT_PUBLIC_SALEOR_API_URL"},502);
+    return respond({url:publicUrl});
   }catch{return respond({error:"Image upload temporarily unavailable"},503);}
 }
