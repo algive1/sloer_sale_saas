@@ -1,4 +1,5 @@
 import "server-only";
+import { sharedCustomerAccountsEnabled } from "@/lib/brand/customer-account-policy";
 
 import {
 	UserDocument,
@@ -13,6 +14,8 @@ const userQueryDocument = toTypedDocument<UserQuery, UserQueryVariables>(UserDoc
 
 /** Customer profile for checkout — same server auth path as storefront account. */
 export async function fetchCheckoutUserOnServer(): Promise<CheckoutUser | null> {
+	// Saleor me.addresses are global and not scoped to the current brand.
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return null;
 	const result = await fetchAuthenticatedUserIfSession(userQueryDocument, {
 		cache: "no-cache",
 	});
