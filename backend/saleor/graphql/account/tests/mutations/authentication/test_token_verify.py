@@ -1,3 +1,4 @@
+from django.test import override_settings
 from ......account.error_codes import AccountErrorCode
 from ......core.jwt import (
     PERMISSIONS_FIELD,
@@ -87,3 +88,37 @@ def test_verify_token_invalidated_by_user(api_client, customer_user):
     assert data["isValid"] is False
     assert len(errors) == 1
     assert errors[0]["code"] == AccountErrorCode.JWT_INVALID_TOKEN.name
+
+
+@override_settings(SHARED_CORE_GUEST_ONLY=True)
+def test_shared_core_rejects_customer_token_verify_argument(api_client, customer_user):
+    # The verified token is a GraphQL argument, not a JWT on the request.
+    variables = {"token": create_access_token(customer_user)}
+    response = api_client.post_graphql(MUTATION_TOKEN_VERIFY, variables)
+    content = get_graphql_content(response)
+    data = content["data"]["tokenVerify"]
+    assert data["isValid"] is False
+    assert data["user"] is None
+    assert data["errors"][0]["code"] == AccountErrorCode.JWT_INVALID_TOKEN.name
+
+
+@override_settings(SHARED_CORE_GUEST_ONLY=True)
+def test_shared_core_keeps_staff_token_verification(api_client, staff_user):
+    variables = {"token": create_access_token(staff_user)}
+    response = api_client.post_graphql(MUTATION_TOKEN_VERIFY, variables)
+    content = get_graphql_content(response)
+    data = content["data"]["tokenVerify"]
+    assert data["isValid"] is True
+    assert data["user"]["email"] == staff_user.email
+    assert data["errors"] == []
+
+
+@override_settings(SHARED_CORE_GUEST_ONLY=True)
+def test_shared_core_keeps_staff_app_token_verification(api_client, staff_user, app):
+    variables = {"token": create_access_token_for_app(app, staff_user)}
+    response = api_client.post_graphql(MUTATION_TOKEN_VERIFY, variables)
+    content = get_graphql_content(response)
+    data = content["data"]["tokenVerify"]
+    assert data["isValid"] is True
+    assert data["user"]["email"] == staff_user.email
+    assert data["errors"] == []
