@@ -1,4 +1,5 @@
 import graphene
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from graphene.types.generic import GenericScalar
 
@@ -52,4 +53,13 @@ class VerifyToken(BaseMutation):
     ):
         payload = cls.get_payload(token)
         user = cls.get_user(payload)
+        if settings.SALEOR_SHARED_CORE_GUEST_ONLY and not user.is_staff:
+            raise ValidationError(
+                {
+                    "token": ValidationError(
+                        "Customer login is unavailable on this storefront.",
+                        code="jwt_invalid_token",
+                    )
+                }
+            )
         return cls(errors=[], user=user, is_valid=True, payload=payload)
