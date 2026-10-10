@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from graphene.types.generic import GenericScalar
 
+from .....account.error_codes import AccountErrorCode
 from ....core import ResolveInfo
 from ....core.doc_category import DOC_CATEGORY_AUTH
 from ....core.mutations import BaseMutation
@@ -58,7 +59,7 @@ class VerifyToken(BaseMutation):
                 {
                     "token": ValidationError(
                         "Customer login is unavailable on this storefront.",
-                        code="jwt_invalid_token",
+                        code=AccountErrorCode.JWT_INVALID_TOKEN.value,
                     )
                 }
             )
