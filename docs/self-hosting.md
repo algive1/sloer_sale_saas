@@ -86,6 +86,25 @@ SALEOR_EMAIL_URL=smtp://USER:PASSWORD@smtp.example.com:587/?tls=True
 
 The storefront container also receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/` at runtime so server-side rendering calls Saleor over the private Docker network while browsers use the public API URL. During the Docker image build, `SALEOR_BUILD_API_URL` defaults to `http://127.0.0.1:8000/graphql/`; the deploy script therefore builds and starts Saleor first, applies migrations, waits for GraphQL, and only then builds Dashboard and Storefront.
 
+## Shared-Core multi-brand security
+
+When you configure `STOREFRONT_SITES_JSON`, the supplied Docker Compose files
+automatically enable `SALEOR_SHARED_CORE_GUEST_ONLY=true` for Saleor Core.
+This is **not** a customer-account system: every brand must use guest checkout
+until Saleor gains a verified per-brand identity model. Existing customer
+access/refresh tokens cannot access or renew a global customer session via
+GraphQL; staff Dashboard login still works. External authentication plugins
+are unavailable in this mode. If running Saleor outside the included Compose,
+set `SALEOR_SHARED_CORE_GUEST_ONLY=true` on the **Saleor API** as well; setting
+it on Next.js alone has no effect.
+
+The direct GraphQL API is still not tenant-confidential for Checkout bearer
+IDs and staff/app operations. Domain routing and CORS cannot fix that. **Do
+not onboard independent merchants as isolated tenants on shared Core** until
+the direct Checkout/Order GraphQL negative security tests and app permission
+boundaries have passed. Brand data and API credentials must remain under the
+same merchant operator during the interim stage.
+
 ## Reverse proxy and TLS
 
 Use Nginx, Caddy, Traefik or another reverse proxy. Only the reverse proxy should normally expose ports 80/443 publicly. Restrict direct access to database and cache services with the host firewall.
