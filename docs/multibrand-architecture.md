@@ -1,4 +1,4 @@
-## Shared Saleor customer GraphQL containment (PR #43)
+## Shared Saleor customer GraphQL containment (PR #44)
 
 A multi-brand deployment using one Saleor Core **must** set
 `SALEOR_SHARED_CORE_GUEST_ONLY=true` in the production `.env` and restart the
