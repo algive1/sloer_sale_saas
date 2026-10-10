@@ -136,6 +136,14 @@ jobs:
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_multibrand_ci.py
 
+      - name: Verify shared-Core guest-only GraphQL security with live Saleor
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T \
+            -e SALEOR_SHARED_CORE_GUEST_ONLY=true api \
+            python3 manage.py shell < infra/saleor/verify_shared_core_guest_guard.py
+
       - name: Start vendored Saleor API and worker
         shell: bash
         run: |
