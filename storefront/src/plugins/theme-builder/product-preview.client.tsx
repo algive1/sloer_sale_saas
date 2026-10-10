@@ -4,20 +4,19 @@ import { useEffect, useState } from "react";
 type Item={slug:string;name:string;image:string|null;price:{amount:number;currency:string}|null};
 export function ProductCanvasPreview({channel,slug,heading}:{channel:string;slug:string;heading:string}) {
   const [item,setItem]=useState<Item|null>(null);
-  const [loading,setLoading]=useState(false);
   useEffect(()=>{
     if(!slug||!channel)return;
     const controller=new AbortController();
-    setLoading(true);
     fetch("/ops/themes/catalog?"+new URLSearchParams({kind:"product",channel,slug}),{
       signal:controller.signal,cache:"no-store",
     }).then(async r=>r.ok?await r.json() as {item:Item|null}:null)
       .then(data=>{if(!controller.signal.aborted)setItem(data?.item??null);})
       .catch(()=>{if(!controller.signal.aborted)setItem(null);})
-      .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+.catch(()=>{});
     return()=>controller.abort();
   },[channel,slug]);
-  const selected=item?.slug===slug?item:null;\n  const price=selected?.price;
+  const selected=item?.slug===slug?item:null;
+  const price=selected?.price;
   const formatted=price?new Intl.NumberFormat("en",{style:"currency",currency:price.currency}).format(price.amount):"";
   return <section className="mx-auto max-w-5xl px-6 py-16">
     <h2 className="mb-8 text-3xl text-stone-900">{heading}</h2>
