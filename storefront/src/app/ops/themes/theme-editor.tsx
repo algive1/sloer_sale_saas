@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
 import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
+import { ThemeAiAssistant } from "@/plugins/theme-builder/ai-assistant.client";
 import { BLANK_TEMPLATE, freshTemplate, freshStarterTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 import { PRODUCT_DETAIL_TEMPLATE } from "@/plugins/theme-builder/page-document";
 
@@ -87,6 +88,8 @@ export function ThemeEditor({
 	const [chosenTemplate, setChosenTemplate] = useState("");
 	const [newTemplateTitle, setNewTemplateTitle] = useState("");
 	const [libraryBusy, setLibraryBusy] = useState(false);
+	const [aiOpen,setAiOpen] = useState(false);
+	const [,setAiSelectionVersion] = useState(0);
 	const selectedSite = siteByChannel[channel];
 	const brands = Object.values(siteByChannel).filter(
 		(site, index, all) => all.findIndex((other) => other.id === site.id) === index,
@@ -414,6 +417,11 @@ export function ThemeEditor({
 					>
 						空白页面
 					</button>
+                    <button type="button" aria-label="打开 AI 装修助手"
+                      onClick={()=>setAiOpen(v=>!v)}
+                      className="rounded-lg border border-stone-200 px-3 py-2 text-sm">
+                      ✦ AI 设计
+                    </button>
                     <details className="relative">
                       <summary className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-sm">我的模板</summary>
                       <div className="absolute right-0 z-30 mt-2 w-80 max-w-[90vw] space-y-3 rounded-xl border border-stone-200 bg-white p-4 shadow-lg">
@@ -495,6 +503,20 @@ export function ThemeEditor({
 					{status}
 				</p>
 			)}
+            {channel&&document?<ThemeAiAssistant
+              key={pageType+":"+channel+":"+locale}
+              open={aiOpen} onClose={()=>setAiOpen(false)}
+              channel={channel} locale={locale} pageType={pageType}
+              getDocument={()=>documentRef.current as ThemeData}
+              onApply={(next,original)=>{
+                if(JSON.stringify(documentRef.current)!==JSON.stringify(original))return false;
+                documentRef.current=next;
+                setDocument(next);
+                setGeneration(v=>v+1);
+                setDirty(JSON.stringify(next)!==JSON.stringify(savedRef.current));
+                return true;
+              }}
+            />:null}
 			{!channel ? (
 				<div className="mx-auto max-w-6xl p-12 text-sm text-stone-700">
 					没有可装修的销售渠道。请先在 Saleor 中启用该品牌对应的 Channel，并检查站点配置。
@@ -523,6 +545,7 @@ export function ThemeEditor({
 					]}
 					onChange={(data) => {
 						documentRef.current = data;
+						if(aiOpen)setAiSelectionVersion(v=>v+1);
 						setDirty(JSON.stringify(data) !== JSON.stringify(savedRef.current));
 					}}
 					onPublish={async (data) => {
