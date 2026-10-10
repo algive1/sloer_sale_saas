@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 const mocks=vi.hoisted(()=>({channels:vi.fn(),site:vi.fn()}));
 vi.mock("@/lib/channel-slugs",()=>({getStorefrontChannelSlugs:mocks.channels}));
 vi.mock("@/plugins/theme-builder/store",()=>({activeThemeSiteId:mocks.site}));
-import { POST } from "./route";
+import { POST, publicUploadedMediaUrl } from "./route";
 
 function request(file:File,origin="http://localhost") {
   const form=new FormData();form.append("file",file);
@@ -20,6 +20,22 @@ beforeEach(()=>{
 });
 afterEach(()=>{vi.unstubAllEnvs();vi.unstubAllGlobals();});
 describe("theme image uploads",()=>{
+  it("rewrites only Docker-internal media URLs to trusted external HTTPS Saleor host",()=>{
+    expect(publicUploadedMediaUrl(
+      "http://saleor.test/media/file_upload/photo.png?x=1",
+      "http://saleor.test/graphql/","https://api.store.example/graphql/",
+    )).toBe("https://api.store.example/media/file_upload/photo.png?x=1");
+    expect(publicUploadedMediaUrl("http://evil.test/media/a.png",
+      "http://saleor.test/graphql/","https://api.store.example/graphql/")).toBeNull();
+    expect(publicUploadedMediaUrl("http://saleor.test/graphql",
+      "http://saleor.test/graphql/","https://api.store.example/graphql/")).toBeNull();
+    expect(publicUploadedMediaUrl("http://saleor.test/media/a.png",
+      "http://saleor.test/graphql/","http://api.store.example/graphql/")).toBeNull();
+    expect(publicUploadedMediaUrl("https://cdn.example.org/media/a.png",
+      "http://saleor.test/graphql/","https://api.store.example/graphql/"))
+      .toBe("https://cdn.example.org/media/a.png");
+  });
+
   it("rejects cross-origin POST before Saleor I/O",async()=>{
     const remote=vi.fn();vi.stubGlobal("fetch",remote);
     const file=new File([new Uint8Array([137,80,78,71,13,10,26,10,0])],"photo.png",{type:"image/png"});
@@ -43,6 +59,17 @@ describe("theme image uploads",()=>{
     const response=await POST(request(file));
     expect(response.status).toBe(502);
     expect((await response.json() as {url?:string}).url).toBeUndefined();
+  });
+  it("maps real Saleor Docker HTTP media links to the configured public HTTPS host",async()=>{
+    vi.stubEnv("NEXT_PUBLIC_SALEOR_API_URL","https://api.store.example/graphql/");
+    const upstream=vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data:{fileUpload:{uploadedFile:{url:"http://saleor.test/media/file_upload/banner_123.png"},uploadErrors:[]}},
+    }),{status:200,headers:{"Content-Type":"application/json"}}));
+    vi.stubGlobal("fetch",upstream);
+    const file=new File([new Uint8Array([137,80,78,71,13,10,26,10,0])],"banner.png",{type:"image/png"});
+    const response=await POST(request(file));
+    expect(response.status).toBe(200);
+    expect((await response.json() as {url:string}).url).toBe("https://api.store.example/media/file_upload/banner_123.png");
   });
   it("uses only a server-side app token and returns the upstream HTTPS media URL",async()=>{
     const remote=vi.fn().mockResolvedValue(new Response(JSON.stringify({
