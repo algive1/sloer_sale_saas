@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { brandSitesConfigured, channelBelongsToHost } from "@/config/brand-sites";
 import { isStorefrontLocaleSlug } from "@/config/locale";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { loadListing } from "@/lib/catalog/fetch-filtered-listing";
@@ -29,6 +30,16 @@ export async function GET(request: NextRequest) {
 	}
 	if (!isStorefrontLocaleSlug(locale)) {
 		return Response.json({ error: "Invalid locale" }, { status: 400 });
+	}
+
+	// The configured channel list is shared by all brands. Check the trusted
+	// request Host before any catalog lookup (including cached listing reads),
+	// otherwise one domain can query another brand's listing through this API.
+	if (brandSitesConfigured() && !channelBelongsToHost(channel, request.headers.get("host"))) {
+		return Response.json({ error: "Not found" }, {
+			status: 404,
+			headers: { "Cache-Control": "private, no-store" },
+		});
 	}
 
 	const channels = await getStorefrontChannelSlugs();
