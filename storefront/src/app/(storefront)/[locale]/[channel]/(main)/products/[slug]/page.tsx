@@ -12,6 +12,7 @@ import { resolveChannelCurrency } from "@/lib/channels/resolve-channel-currency"
 import { catalogPathSuffix, redirectToCanonicalCatalogSlug } from "@/lib/catalog/canonical-slug";
 import { CatalogIdentityBridge } from "@/lib/catalog/catalog-identity-bridge";
 import { getProductData } from "@/lib/catalog/get-product-data";
+import { renderPublishedProductTheme } from "@/plugins/theme-builder/entry.server";
 import { productBrandName } from "@/lib/catalog/product-brand";
 import { buildCatalogPathSuffixByLocale, buildLocaleSlugMap } from "@/lib/catalog/locale-slugs";
 import { buildPolicyLabelValues } from "@/lib/content";
@@ -317,6 +318,11 @@ async function ProductShell({
 					)}
 				</div>
 			</div>
+			{/* The commerce zone above is immutable in the page editor. Only append
+			    published marketing content here, with independent Suspense and fail-open behavior. */}
+			<Suspense fallback={null}>
+				{renderPublishedProductTheme(params.channel,params.locale)}
+			</Suspense>
 		</div>
 	);
 }
