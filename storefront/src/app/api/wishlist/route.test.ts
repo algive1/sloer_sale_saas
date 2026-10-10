@@ -55,6 +55,8 @@ describe("wishlist customer identity boundary", () => {
     const jewelry = await GET(request("GET", "jewelry.example.test"));
     expect(fashion.status).toBe(200);
     expect(jewelry.status).toBe(200);
+    expect(fashion.headers.get("Cache-Control")).toContain("no-store");
+    expect(jewelry.headers.get("Cache-Control")).toContain("no-store");
     expect(mocks.list).toHaveBeenNthCalledWith(1,`site:fashion:guest:${guestId}`);
     expect(mocks.list).toHaveBeenNthCalledWith(2,`site:jewelry:guest:${guestId}`);
     expect(mocks.graphql).not.toHaveBeenCalled();
