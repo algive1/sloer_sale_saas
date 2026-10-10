@@ -97,7 +97,8 @@ describe("public auth routes reject invalid payloads without upstream calls", ()
         const response = await endpoint.action(request(endpoint.name, "{invalid"));
         expect(response.status, endpoint.name).toBe(409);
         expect(response.headers.get("cache-control")).toContain("no-store");
-        expect((await response.json()).errors?.[0]?.code).toBe("MULTI_BRAND_ACCOUNT_UNAVAILABLE");
+        const body = await response.json() as { errors?: Array<{ code?: string }> };
+        expect(body.errors?.[0]?.code).toBe("MULTI_BRAND_ACCOUNT_UNAVAILABLE");
       }
       expect(mocks.signIn).not.toHaveBeenCalled();
       expect(mocks.reset).not.toHaveBeenCalled();
