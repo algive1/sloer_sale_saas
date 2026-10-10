@@ -38,7 +38,7 @@ export async function POST(request:NextRequest) {
     const file=new File([buffer],incoming.name,{type:mime});
     const upload=new FormData();
     upload.append("operations",JSON.stringify({
-      query:"mutation ThemeFileUpload($file:Upload!){fileUpload(file:$file){uploadedFile{url}errors{message}}}",
+      query:"mutation ThemeFileUpload($file:Upload!){fileUpload(file:$file){uploadedFile{url}uploadErrors{message}}}",
       variables:{file:null},
     }));
     upload.append("map",JSON.stringify({"0":["variables.file"]}));
@@ -48,10 +48,10 @@ export async function POST(request:NextRequest) {
     if(!response.ok)return respond({error:"Saleor rejected upload"},502);
     const json=await response.json() as {
       errors?:{message:string}[];
-      data?:{fileUpload?:{uploadedFile?:{url:string}|null;errors?:{message:string}[]}};
+      data?:{fileUpload?:{uploadedFile?:{url:string}|null;uploadErrors?:{message:string}[]}};
     };
     const url=json.data?.fileUpload?.uploadedFile?.url;
-    if(json.errors?.length||json.data?.fileUpload?.errors?.length||!url)return respond({error:"File upload failed"},502);
+    if(json.errors?.length||json.data?.fileUpload?.uploadErrors?.length||!url)return respond({error:"File upload failed"},502);
     if(!/^https:\/\/[\w.-]+(?::\d+)?(?:\/[^\s]*)?$/i.test(url)||url.includes("@"))
       return respond({error:"Saleor media must have a public HTTPS URL"},502);
     return respond({url});
