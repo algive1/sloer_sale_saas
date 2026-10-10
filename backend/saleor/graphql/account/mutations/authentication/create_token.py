@@ -1,6 +1,7 @@
 from typing import Any
 
 import graphene
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from .....account.error_codes import AccountErrorCode
@@ -105,6 +106,18 @@ class CreateToken(BaseMutation):
             refresh_additional_payload["aud"] = f"custom:{audience}"
 
         user = cls.get_user(info, email, password)
+
+        # Block direct GraphQL customer login on shared Core while retaining
+        # staff token issuance for Dashboard and platform operators.
+        if settings.SALEOR_SHARED_CORE_GUEST_ONLY and not user.is_staff:
+            raise ValidationError(
+                {
+                    "email": ValidationError(
+                        "Customer login is unavailable on this storefront.",
+                        code=AccountErrorCode.INVALID_CREDENTIALS.value,
+                    )
+                }
+            )
 
         access_token = create_access_token(user, additional_payload=additional_payload)
         refresh_token = create_refresh_token(
