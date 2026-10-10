@@ -68,6 +68,25 @@ GraphQL permissions, plugin credentials and third-party data boundaries are
 still required before commercial multi-tenant use. Guest checkout requires
 live full-flow CI. Production payment credentials were not tested here.
 
+## Batch 5: public catalog listing API Host boundary (PR #42)
+
+The shared `/api/listing` JSON route previously validated its requested
+Channel against the **union of all Saleor storefront Channels**. A browser on
+one brand host could request a different brand's Channel directly, bypassing
+page-route and Merchant-feed host validation.
+
+The API now verifies the requested Channel belongs to the configured brand
+for the trusted HTTP `Host`, **before channel discovery and catalog/cache
+reads**. Foreign Channels and unknown hosts return 404 with `private,
+no-store`, including requests that spoof `x-forwarded-host`. Existing
+single-brand behavior and the own-brand filtered/sorted/paginated listing
+contract are unchanged. Added route unit tests and real two-domain
+Playwright regression coverage.
+
+**Remaining:** This protects the Paper BFF endpoint, **not** the public
+Saleor GraphQL catalog or checkout API. Direct GraphQL tenant isolation and
+customer/shopper identities are still launch blockers.
+
 ## Next batches
 
 1. Complete live backend build and browser acceptance for the first batch.
