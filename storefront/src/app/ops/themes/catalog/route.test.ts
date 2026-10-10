@@ -46,6 +46,24 @@ describe("theme catalog picker",()=>{
     expect(String(outgoing.body)).toContain('"channel":"fashion-us"');
     expect(String(outgoing.body)).not.toContain("SALEOR_APP_TOKEN");
   });
+  it("renders a selected collection's channel-filtered products, not a placeholder",async()=>{
+    const fetchSpy=vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data:{collection:{slug:"featured-products",products:{edges:[{node:{
+        slug:"ring-1",name:"Silver Ring",thumbnail:{url:"https://cdn.example/ring.webp"},
+        pricing:{priceRange:{start:{gross:{amount:35,currency:"USD"}}}},
+      }}]}}},
+    }),{status:200,headers:{"Content-Type":"application/json"}}));
+    vi.stubGlobal("fetch",fetchSpy);
+    const response=await GET(new NextRequest(
+      "http://localhost/ops/themes/catalog?kind=collection-products&channel=fashion-us&slug=featured-products"));
+    expect(response.status).toBe(200);
+    const data=await response.json() as {collection:{slug:string;products:{name:string}[]}};
+    expect(data.collection.slug).toBe("featured-products");
+    expect(data.collection.products[0]?.name).toBe("Silver Ring");
+    const forwarded=fetchSpy.mock.calls[0]?.[1] as RequestInit;
+    expect(String(forwarded.body)).toContain('"channel":"fashion-us"');
+    expect(String(forwarded.body)).toContain('"slug":"featured-products"');
+  });
   it("rejects bad selected slugs before requesting catalog data",async()=>{
     const fetchSpy=vi.fn();
     vi.stubGlobal("fetch",fetchSpy);
