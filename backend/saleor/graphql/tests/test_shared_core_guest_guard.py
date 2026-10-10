@@ -98,3 +98,4 @@ def test_high_risk_account_mutations_list_is_intentionally_explicit():
     assert {"accountRegister", "requestPasswordReset", "setPassword", "accountDelete", "checkoutCustomerAttach"} <= BLOCKED_MUTATIONS
     assert "checkoutCreate" not in BLOCKED_MUTATIONS
     assert "tokenCreate" not in BLOCKED_MUTATIONS  # Guarded at mutation issuance to keep staff login.
+    assert "tokenVerify" not in BLOCKED_MUTATIONS  # Mutation guards its token argument to keep staff verification.
