@@ -60,6 +60,9 @@ jobs:
       - name: Verify brand identity and reminder safety
         run: pnpm --dir storefront test:brand-safety
 
+      - name: Verify operations identity and brand read permissions
+        run: pnpm --dir storefront exec vitest run src/lib/ops/authorization.test.ts
+
       - name: ESLint source check
         env:
           # Same public Saleor schema endpoint used by upstream Paper lint CI.

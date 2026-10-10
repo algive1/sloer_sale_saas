@@ -124,7 +124,11 @@ The example does not create real merchant policy pages.
   and some global static metadata are single-domain-oriented.
 - **Admin**: central merchant-owned brand switcher, site-specific RBAC when brand
   operators are introduced, all CRUD API reads and writes checked server-side.
-  The current Basic Auth secret is one platform administrator, not tenant RBAC.
+  The legacy Basic Auth secret is one platform administrator, not tenant RBAC.
+  Optional `OPS_OPERATORS_JSON` now permits separate platform administrators and
+  read-only brand analysts on assigned `/ops/sites/:siteId` pages only; it is not
+  full tenant RBAC or a credential for Saleor Dashboard. See
+  `docs/ops-operator-permissions.md`.
 - **Test gate**: two configured hosts, separate channels/products/analytics,
   negative cross-host browsing, cross-brand checkout/account/ops boundaries,
   privacy content, theme publish, webhook and payment E2E, plus production build.

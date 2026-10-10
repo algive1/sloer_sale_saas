@@ -400,6 +400,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
           STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
           STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
           GOOGLE_MERCHANT_FEED_ENABLED: "true"
@@ -429,6 +430,11 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           SALEOR_API_URL: http://127.0.0.1:8000/graphql/
         run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts --workers=1
+
+      - name: Multi-brand operator scope and no-cache E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/ops-operator-live.spec.ts --workers=1
 
       - name: Multi-brand localized browser, market and SEO E2E
         env:

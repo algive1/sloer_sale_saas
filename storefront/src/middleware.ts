@@ -4,10 +4,11 @@ import { getStaticStorefrontChannelSlugs, isAllowedStorefrontChannel } from "@/c
 import { getDefaultLocaleSlug, isLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { BROWSE_LOCALE_COOKIE, getBrowseLocaleCookieOptions } from "@/lib/browse-locale";
 import { buildStorefrontPath } from "@/lib/storefront-path";
-import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
+import { brandSitesConfigured, brandSiteForHost, getBrandSites } from "@/config/brand-sites";
 import { verifyCheckoutHostAtRequestBoundary } from "@/lib/brand/checkout-host-guard";
 import { channelForExplicitLocale, localeForChannel, resolveEntryLocalization, verifiedCountryFromHeader } from "@/lib/entry-localization";
 import { isAllowedLocaleChannelPair } from "@/config/locale-channel";
+import { authorizeOpsRequest } from "@/lib/ops/authorization";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
@@ -63,16 +64,45 @@ export async function middleware(request: NextRequest) {
   }
 
 	if (pathname === "/ops" || pathname.startsWith("/ops/")) {
-		const secret = process.env.ANALYTICS_DASHBOARD_SECRET?.trim();
-		if (!secret) return new NextResponse("Not found", { status: 404 });
-		const auth = request.headers.get("authorization");
-		if (!validBasicAuth(auth, secret)) {
-			return new NextResponse("Authentication required", {
-				status: 401,
-				headers: { "WWW-Authenticate": 'Basic realm="Analytics", charset="UTF-8"' },
+		let decision: ReturnType<typeof authorizeOpsRequest>;
+		try {
+			// Brand IDs come from trusted deployment config, not a query, cookie
+			// or client-supplied operator/brand header.
+			const operatorConfig = process.env.OPS_OPERATORS_JSON;
+			decision = authorizeOpsRequest({
+				authorization: request.headers.get("authorization"),
+				pathname,
+				method: request.method,
+				operatorsJson: operatorConfig,
+				legacySecret: process.env.ANALYTICS_DASHBOARD_SECRET,
+				trustedSiteIds: operatorConfig?.trim() ? (getBrandSites()?.map((site) => site.id) ?? []) : [],
+			});
+		} catch (error) {
+			console.error("[ops-auth] Invalid operator configuration", error instanceof Error ? error.message : "unknown");
+			return new NextResponse("Operations configuration unavailable", {
+				status: 503, headers: { "Cache-Control": "private, no-store" },
 			});
 		}
+		if (decision === "disabled") return new NextResponse("Not found", { status: 404 });
+		if (decision === "unauthenticated") {
+			return new NextResponse("Authentication required", {
+				status: 401,
+				headers: {
+					"WWW-Authenticate": 'Basic realm="Commerce Ops", charset="UTF-8"',
+					"Cache-Control": "private, no-store",
+				},
+			});
+		}
+		if (decision === "forbidden") {
+			return new NextResponse("Insufficient operator permissions", {
+				status: 403, headers: { "Cache-Control": "private, no-store" },
+			});
+		}
+		return NextResponse.next({
+			headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+		});
 	}
+
 
 	if (
 		pathname.startsWith("/_next") ||
@@ -193,33 +223,10 @@ export async function middleware(request: NextRequest) {
 	return NextResponse.next();
 }
 
-function validBasicAuth(header: string | null, expectedPassword: string): boolean {
-	if (!header?.startsWith("Basic ")) return false;
-	try {
-		const decoded = atob(header.slice(6));
-		const separator = decoded.indexOf(":");
-		if (separator === -1) return false;
-		const username = decoded.slice(0, separator);
-		const password = decoded.slice(separator + 1);
-		return username === "analytics" && constantTimeEqual(password, expectedPassword);
-	} catch {
-		return false;
-	}
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-	if (left.length !== right.length) return false;
-	let mismatch = 0;
-	for (let index = 0; index < left.length; index++) {
-		mismatch |= left.charCodeAt(index) ^ right.charCodeAt(index);
-	}
-	return mismatch === 0;
-}
-
 export const config = {
 	/**
 	 * API/order routes, static assets, and Next internals should not incur middleware
 	 * overhead. Checkout is included so its cross-brand guards run before rendering.
 	 */
-	matcher: ["/((?!api/|api$|order/|order$|_next/|.*\\.[\\w]+$).*)"],
+	matcher: ["/ops/:path*", "/((?!api/|api$|order/|order$|_next/|.*\\.[\\w]+$).*)"],
 };
