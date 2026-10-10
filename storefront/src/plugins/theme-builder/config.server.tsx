@@ -1,6 +1,6 @@
 import type { Config } from "@puckeditor/core";
 import Link from "next/link";
-import Image from "next/image";
+import { SaleorImage } from "@/ui/atoms/saleor-image";
 import { getProductData } from "@/lib/catalog/get-product-data";
 import { buildStorefrontPath } from "@/lib/storefront-path";
 import { getFeaturedProducts } from "@/lib/catalog/get-featured-products";
@@ -41,10 +41,11 @@ async function PublishedFeaturedProduct({heading,slug,channel,locale}:{
   return <section className="mx-auto max-w-5xl px-6 py-16">
     {heading?<h2 className="mb-8 text-3xl">{heading}</h2>:null}
     <div className="grid gap-8 md:grid-cols-2">
-      {product.thumbnail?.url?
-        <Image unoptimized src={product.thumbnail.url} alt={product.thumbnail.alt??product.name}
-          width={640} height={800} className="aspect-[4/5] w-full object-cover"/>:
-        <div className="aspect-[4/5] bg-stone-100"/>}
+      <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
+        {product.thumbnail?.url?
+          <SaleorImage src={product.thumbnail.url} alt={product.thumbnail.alt??product.name}
+            sizes="(max-width: 768px) 100vw, 50vw" className="object-cover"/>:null}
+      </div>
       <div className="flex flex-col justify-center gap-4">
         <h3 className="text-2xl font-medium">{product.name}</h3>
         {price?<p className="text-xl">{price}</p>:null}
