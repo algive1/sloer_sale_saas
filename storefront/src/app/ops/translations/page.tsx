@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import Link from "next/link";
 import { getBrandSites, siteIdForChannel } from "@/config/brand-sites";
@@ -52,7 +53,19 @@ const flatten=(value:unknown,prefix="",out:Record<string,string>={})=>{
   }
   return out;
 };
-export default async function TranslationCenterPage() {
+export default function TranslationCenterPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen bg-[#f6f7f9] px-4 py-6 text-[#171717] md:px-10 md:py-8">
+        <p role="status" className="mx-auto max-w-7xl text-sm text-stone-600">正在加载多语言管理中心…</p>
+      </main>
+    }>
+      <TranslationCenterRuntime />
+    </Suspense>
+  );
+}
+
+async function TranslationCenterRuntime() {
   // Runtime secrets and feature flags must not be frozen during static build.
   await connection();
   const channels=getStaticStorefrontChannelSlugs();
