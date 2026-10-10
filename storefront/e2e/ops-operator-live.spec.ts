@@ -30,6 +30,7 @@ test.describe("multi-brand back-office authorization", () => {
 
   test("brand reader sees only their own reports and no privileged routes", async ({ request }) => {
     for (const path of [
+      "/ops/sites",
       "/ops/sites/fashion-ci",
       "/ops/sites/fashion-ci/insights",
       "/ops/sites/fashion-ci/readiness",
@@ -40,8 +41,21 @@ test.describe("multi-brand back-office authorization", () => {
       expect(res.status(), "Allowed: " + path).toBe(200);
       expect(res.headers()["cache-control"]).toContain("no-store");
     }
+    const index = await request.get(origin + "/ops/sites", {
+      headers: { ...host, Authorization: reader, "x-ops-role":"platform_admin", "x-ops-brand":"jewelry-ci" },
+    });
+    expect(index.status()).toBe(200);
+    expect(index.headers()["cache-control"]).toContain("no-store");
+    const html = await index.text();
+    expect(html).toContain("Fashion CI");
+    expect(html).not.toContain("Jewelry CI");
+    expect(html).not.toContain("装修此品牌首页");
+    const readiness = await request.get(origin + "/ops/sites/fashion-ci/readiness", {
+      headers: { ...host, Authorization: reader },
+    });
+    expect((await readiness.text())).not.toContain("前往首页装修");
     for (const path of [
-      "/ops/sites", "/ops/sites/jewelry-ci", "/ops/sites/jewelry-ci/insights",
+      "/ops/sites/jewelry-ci", "/ops/sites/jewelry-ci/insights",
       "/ops/analytics", "/ops/plugins", "/ops/themes", "/ops/themes/api?channel=us&locale=en",
       "/ops/translations", "/ops/translations/api?siteId=fashion-ci", "/ops/unknown.json",
       "/ops/api/analytics/reminders/rules",

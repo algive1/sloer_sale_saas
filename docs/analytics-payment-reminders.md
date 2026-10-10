@@ -14,7 +14,7 @@
 
 1. `SALEOR_APP_TOKEN`：具备 `MANAGE_ORDERS`，且 API 地址为 `NEXT_PUBLIC_SALEOR_API_URL`。
 2. `SALEOR_DASHBOARD_URL`：已经部署的 Saleor 后台根地址，用于「编辑商品」「去发货」「查看」。
-3. `ANALYTICS_LIBSQL_URL`、`ANALYTICS_LIBSQL_AUTH_TOKEN`、`ANALYTICS_DASHBOARD_SECRET`：已有分析数据库及 /ops HTTP Basic 认证。
+3. `ANALYTICS_LIBSQL_URL`、`ANALYTICS_LIBSQL_AUTH_TOKEN`：已有分析数据库。`/ops` 认证使用 legacy 模式下的 `ANALYTICS_DASHBOARD_SECRET`，或启用 `OPS_OPERATORS_JSON` 后的 `platform_admin` 账号。
 4. `RESEND_API_KEY`、`PAYMENT_REMINDER_FROM`：Resend 账号 API Key 与已验证发件域名。邮件不含营销信息，提供订单自助查询地址。
 5. `NEXT_PUBLIC_STOREFRONT_URL`：客户可访问的正式网站域名，用于邮件中的 `/order/find` 链接。
 6. `PAYMENT_REMINDER_CRON_SECRET`：另外生成随机长密钥，只供定时任务调用。
@@ -23,18 +23,19 @@
 
 ## 自建服务器 Cron
 
-以下示例为每小时执行一次（具体时间由服务器时区决定）。Basic auth 使用你已有的 ANALYTICS_DASHBOARD_SECRET，而 Cron 请求还必须提供 PAYMENT_REMINDER_CRON_SECRET。建议把密钥放在 root-only 环境文件，避免写在 crontab 明文里。
+以下示例为每小时执行一次（具体时间由服务器时区决定）。Basic auth 在 legacy 模式使用 `analytics` / `ANALYTICS_DASHBOARD_SECRET`；开启 `OPS_OPERATORS_JSON` 后**必须改用一组 `platform_admin` 凭证**，旧凭证不会回退。Cron 请求还必须提供 `PAYMENT_REMINDER_CRON_SECRET`。建议把密钥放在 root-only 环境文件，避免写在 crontab 明文里。
 
 ```sh
 # /etc/commerce-reminder.env 权限设置为 0600
-# ANALYTICS_DASHBOARD_SECRET=...
+# OPS_BASIC_USER=analytics               # 启用 OPS_OPERATORS_JSON 后改成 platform_admin 的 username
+# OPS_BASIC_PASSWORD=...                  # 对应的 Basic password (legacy 模式可使用 ANALYTICS_DASHBOARD_SECRET)
 # PAYMENT_REMINDER_CRON_SECRET=...
 # OPS_BASE_URL=https://shop.example.com
 set -a
 . /etc/commerce-reminder.env
 set +a
 curl --fail-with-body --silent --show-error --max-time 300 \
-  -u "analytics:$ANALYTICS_DASHBOARD_SECRET" \
+  -u "$OPS_BASIC_USER:$OPS_BASIC_PASSWORD" \
   -H "x-reminder-cron-secret: $PAYMENT_REMINDER_CRON_SECRET" \
   -X POST "$OPS_BASE_URL/ops/api/analytics/reminders/run"
 ```
@@ -49,7 +50,7 @@ curl --fail-with-body --silent --show-error --max-time 300 \
 - 必须遵循收件人的本地法规、店铺服务条款及适用的事务邮件要求，处理投诉与误催付反馈。
 - 如果邮件发送失败、超时或返回不明确，先检查邮件提供商日志，不要绕过唯一键直接再次触发。
 - 规则初始关闭；界面控制通过 /ops HTTP Basic 保护，人工 API 另要求自定义请求头；Cron API 另要求独立共享密钥。
-- 如果使用项目根目录的 Docker Compose 部署，应在根目录 `.env` 设置 `SALEOR_APP_TOKEN`、`ANALYTICS_LIBSQL_*`、`ANALYTICS_DASHBOARD_SECRET`、`RESEND_API_KEY`、`PAYMENT_REMINDER_FROM`、`PAYMENT_REMINDER_CRON_SECRET`。运行容器的环境变量已显式映射到 `storefront` 服务；只有写在 `storefront/.env.example` 不会让 Docker 运行时自动注入。
+- 如果使用项目根目录的 Docker Compose 部署，应在根目录 `.env` 设置 `SALEOR_APP_TOKEN`、`ANALYTICS_LIBSQL_*`、`ANALYTICS_DASHBOARD_SECRET`（legacy）或 `OPS_OPERATORS_JSON`（新账号）、`RESEND_API_KEY`、`PAYMENT_REMINDER_FROM`、`PAYMENT_REMINDER_CRON_SECRET`。运行容器的环境变量已显式映射到 `storefront` 服务；只有写在 `storefront/.env.example` 不会让 Docker 运行时自动注入。
 
 ## Multi-brand delivery safety
 

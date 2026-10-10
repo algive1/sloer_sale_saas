@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { io } from "next/cache";
+import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
 import { getBrandSites } from "@/config/brand-sites";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
 import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
@@ -30,6 +31,8 @@ export default function BrandReadinessPage({ params }: { params: Promise<{ siteI
 
 async function BrandReadinessPageContent({ params }: { params: Promise<{ siteId: string }> }) {
   await io();
+  const viewer = await currentOpsViewer();
+  if (!viewer) notFound();
   const { siteId } = await params;
   const site = getBrandSites()?.find((item) => item.id === siteId);
   if (!site) notFound();
@@ -150,7 +153,7 @@ async function BrandReadinessPageContent({ params }: { params: Promise<{ siteId:
         ))}
       </section>
       <div className="mt-6 flex flex-wrap gap-4 text-sm">
-        {enabledLocales.length > 0 && (
+        {viewer.role === "platform_admin" && enabledLocales.length > 0 && (
           <Link className="font-semibold underline underline-offset-4"
             href={`/ops/themes?channel=${encodeURIComponent(site.defaultChannel)}&locale=${encodeURIComponent(locale)}`}>
             前往首页装修 →
