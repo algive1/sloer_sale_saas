@@ -59,7 +59,7 @@ export const SYSTEM_PLUGINS = {
     scope: "system",
     availability: "all-stores",
     integration: "partial",
-    capabilities: ["catalog.ai-translation-drafts", "catalog.translation-review-export"],
+    capabilities: ["catalog.ai-translation-drafts", "catalog.translation-review-export", "ops.translation-queue", "ops.translation-review"],
   },
   "seo-merchant": {
     id: "seo-merchant",

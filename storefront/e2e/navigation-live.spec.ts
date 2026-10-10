@@ -29,6 +29,7 @@ const operationsRoutes = [
   "/ops/themes",
   "/ops/sites",
   "/ops/plugins",
+  "/ops/translations",
   "/ops/support",
 ] as const;
 
@@ -100,8 +101,9 @@ test.describe("live storefront navigation and operational pages", () => {
     });
     try {
       for (const path of operationsRoutes) {
-        const page = await context.request.get(path);
-        expect(page.status(), `Ops page ${path} returned ${page.status()}`).toBe(200);
+        console.log("[ops-navigation] GET", path);
+        const response = await context.request.get(path, { timeout: 12_000 });
+        expect(response.status(), `Ops page ${path} returned ${response.status()}`).toBe(200);
       }
       // Actual client-side menu navigation, not only direct URL requests.
       const page = await context.newPage();
@@ -113,6 +115,9 @@ test.describe("live storefront navigation and operational pages", () => {
       await page.getByRole("link", { name: /系统插件/ }).click();
       await expect(page).toHaveURL(/\/ops\/plugins$/);
       await expect(page.getByRole("heading", { name: "系统插件" })).toBeVisible();
+      await page.getByRole("link", { name: /AI 多语言管理中心/ }).click({ timeout: 12_000 });
+      await expect(page).toHaveURL(/\/ops\/translations$/);
+      await expect(page.getByRole("heading", { name: "多语言管理中心" })).toBeVisible();
       await page.goto("/ops/analytics");
       await page.getByRole("link", { name: /品牌站点/ }).click();
       await expect(page).toHaveURL(/\/ops\/sites$/);

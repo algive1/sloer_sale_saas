@@ -165,6 +165,15 @@ services:
       SUPPORT_AI_MODEL_NAME: ${SUPPORT_AI_MODEL_NAME:-}
       SUPPORT_AI_MODEL_API_KEY: ${SUPPORT_AI_MODEL_API_KEY:-}
       SUPPORT_AI_WORKER_SECRET: ${SUPPORT_AI_WORKER_SECRET:-}
+      # Server-only ops translation worker and review. Disabled without credentials.
+      TRANSLATION_SALEOR_TOKEN: ${TRANSLATION_SALEOR_TOKEN:-}
+      TRANSLATION_LIBSQL_URL: ${TRANSLATION_LIBSQL_URL:-}
+      TRANSLATION_LIBSQL_AUTH_TOKEN: ${TRANSLATION_LIBSQL_AUTH_TOKEN:-}
+      TRANSLATION_AI_BASE_URL: ${TRANSLATION_AI_BASE_URL:-}
+      TRANSLATION_AI_API_KEY: ${TRANSLATION_AI_API_KEY:-}
+      TRANSLATION_AI_MODEL: ${TRANSLATION_AI_MODEL:-}
+      TRANSLATION_WORKER_SECRET: ${TRANSLATION_WORKER_SECRET:-}
+      TRANSLATION_PUBLISH_ENABLED: ${TRANSLATION_PUBLISH_ENABLED:-0}
     ports:
       - "3000:3000"
     depends_on:
@@ -187,6 +196,26 @@ services:
           --request POST
           http://storefront:3000/api/plugins/customer-support/agent-bot-worker || true;
         sleep 5;
+      done
+    depends_on:
+      - storefront
+    networks: [backend]
+
+  # Opt-in external worker; only this container invokes the AI model.
+  translations-ai-poller:
+    image: curlimages/curl:8.15.0
+    profiles: ["translations-ai"]
+    restart: unless-stopped
+    environment:
+      TRANSLATION_WORKER_SECRET: ${TRANSLATION_WORKER_SECRET:-}
+    entrypoint: ["/bin/sh", "-ec"]
+    command: |
+      test "$${#TRANSLATION_WORKER_SECRET}" -ge 32 || { echo "Missing 32+ character translation worker secret" >&2; exit 1; }
+      while :; do
+        curl --fail --silent --show-error --max-time 35 \
+          -H "Authorization: Bearer $$TRANSLATION_WORKER_SECRET" \
+          -X POST http://storefront:3000/api/plugins/ai-translations/worker || true
+        sleep 15
       done
     depends_on:
       - storefront
