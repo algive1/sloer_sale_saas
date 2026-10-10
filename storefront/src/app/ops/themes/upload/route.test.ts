@@ -34,9 +34,19 @@ describe("theme image uploads",()=>{
     expect(response.status).toBe(415);
     expect(remote).not.toHaveBeenCalled();
   });
+  it("rejects a Saleor upload error without returning an image URL",async()=>{
+    const upstream=vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      data:{fileUpload:{uploadedFile:null,uploadErrors:[{message:"Invalid file"}]}},
+    }),{status:200,headers:{"Content-Type":"application/json"}}));
+    vi.stubGlobal("fetch",upstream);
+    const file=new File([new Uint8Array([137,80,78,71,13,10,26,10,0])],"photo.png",{type:"image/png"});
+    const response=await POST(request(file));
+    expect(response.status).toBe(502);
+    expect((await response.json() as {url?:string}).url).toBeUndefined();
+  });
   it("uses only a server-side app token and returns the upstream HTTPS media URL",async()=>{
     const remote=vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      data:{fileUpload:{uploadedFile:{url:"https://media.example/img.png"},errors:[]}},
+      data:{fileUpload:{uploadedFile:{url:"https://media.example/img.png"},uploadErrors:[]}},
     }),{status:200,headers:{"Content-Type":"application/json"}}));
     vi.stubGlobal("fetch",remote);
     const file=new File([new Uint8Array([137,80,78,71,13,10,26,10,0,0])],"photo.png",{type:"image/png"});
@@ -45,5 +55,10 @@ describe("theme image uploads",()=>{
     expect((await response.json() as {url:string}).url).toBe("https://media.example/img.png");
     const init=remote.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(init.headers).get("Authorization")).toBe("Bearer test-server-only-token");
+    const body=init.body as FormData;
+    const operations=JSON.parse(String(body.get("operations"))) as {query:string};
+    expect(operations.query).toContain("uploadErrors");
+    expect(operations.query).not.toContain("errors{message}");
+
   });
 });
