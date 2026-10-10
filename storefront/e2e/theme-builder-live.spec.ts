@@ -91,6 +91,23 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       expect(merchandise.collection?.slug).toBe("featured-products");
       expect(merchandise.collection?.products.length).toBeGreaterThan(0);
       expect(actualCollection.headers()["cache-control"]).toContain("no-store");
+      // Smoke-test both operator single-product and searchable catalog queries
+      // against real Saleor, not just mocked Vitest GraphQL fixtures.
+      const firstProduct = merchandise.collection?.products[0];
+      expect(firstProduct?.slug).toBeTruthy();
+      const selected = await authorized.get(
+        "/ops/themes/catalog?kind=product&channel=us&slug=" + encodeURIComponent(firstProduct!.slug),
+      );
+      expect(selected.status(), await selected.text()).toBe(200);
+      const selectedBody = await selected.json() as {item:{slug:string;name:string;image:string|null}|null};
+      expect(selectedBody.item?.slug).toBe(firstProduct!.slug);
+      const search = await authorized.get(
+        "/ops/themes/catalog?kind=products&channel=us&q=" + encodeURIComponent(selectedBody.item!.name),
+      );
+      expect(search.status(), await search.text()).toBe(200);
+      const searchBody = await search.json() as {items:{slug:string}[]};
+      expect(searchBody.items.some(item=>item.slug===firstProduct!.slug)).toBe(true);
+
 
       const draft = structuredClone(FASHION_TEMPLATE);
       draft.content[0].props.heading = "THE CI FASHION STORY";
