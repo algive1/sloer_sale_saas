@@ -15,10 +15,11 @@ independent merchant tenant isolation, Saleor Dashboard RBAC, SSO, or audit trai
 - `platform_admin`: all merchant-owned `/ops` pages/actions; it can operate
   all brands. This does not grant user privileges in an external Saleor
   Dashboard or Chatwoot installation.
-- `brand_analyst`: **GET/HEAD only** for the exact authorized
-  `/ops/sites/<siteId>`, `/ops/sites/<siteId>/insights` and
-  `/ops/sites/<siteId>/readiness` routes. It cannot read global analytics,
-  list all sites, access plugin/theme/translation/support consoles or call any
+- `brand_analyst`: **GET/HEAD only** for their filtered `/ops/sites` landing,
+  exact authorized `/ops/sites/<siteId>`, `/ops/sites/<siteId>/insights` and
+  `/ops/sites/<siteId>/readiness` routes. The landing renders only permitted
+  brand names and links and never shows a theme publishing shortcut. It cannot
+  read global analytics, access plugin/theme/translation/support consoles or call any
   `/ops` API, even if a brand ID is included in query/body/headers.
   It cannot change products, publish, email customers or initiate payments.
 
@@ -37,10 +38,11 @@ committed examples, frontend `NEXT_PUBLIC_*` values, or GitHub issues.
 
 The `fashion` ID above must exist in trusted `STOREFRONT_SITES_JSON`.
 Unknown, empty, repeated IDs, duplicate usernames, invalid roles or weak
-passwords invalidate the entire operators configuration. An analyst's entry
-point is `https://ops.example.com/ops/sites/fashion` (the operator must
-use an HTTPS host routed to this storefront service). Navigation links to
-global pages intentionally return 403 for readers in this first phase.
+passwords invalidate the entire operators configuration. An analyst's entry point is `https://ops.example.com/ops/sites` (the
+operator must use an HTTPS host routed to this storefront service). The
+site listing is dynamically generated from authenticated server-side credentials
+and excludes unauthorized brands, not merely CSS-hidden. Navigation links to
+global pages intentionally return 403 for readers.
 
 Root Docker Compose passes `OPS_OPERATORS_JSON` to the storefront container;
 configure it on the server and recreate that container. Retain
@@ -63,7 +65,7 @@ ranges or use access-policy gateways where feasible.
 - This phase does not track operator identity on each mutation. Before adding
   brand-specific write roles: implement durable operator sessions, server-side
   action permissions, body-level brand checks, reviewer/audit logs and
-  role-aware navigation with independent security E2E.
+  expanded role-aware navigation with independent security E2E.
 - The separate Saleor Dashboard and Chatwoot staff consoles require their
   own credentials, permissions and account/brand isolation.
 - Disable and rotate compromised operators by updating the server-side JSON,
@@ -75,9 +77,9 @@ ranges or use access-policy gateways where feasible.
 
 - Old single-brand Basic account still authenticates when no JSON configured.
 - Operator mode refuses the legacy shared credentials and rejects malformed JSON.
-- Brand analyst can load only assigned brand pages, not a sibling brand,
-  global analytics or `/ops` APIs; POST remains forbidden even on an allowed
-  brand URL.
+- Brand analyst can load a filtered `/ops/sites` page showing only their
+  assigned brands, not a sibling brand, global analytics or `/ops` APIs; POST
+  remains forbidden even on an allowed brand URL.
 - Platform admin can still view and perform the existing operations actions.
 - Any `/ops` path containing a dot still crosses middleware and authentication.
 - CI runs `src/lib/ops/authorization.test.ts` plus build, security and
