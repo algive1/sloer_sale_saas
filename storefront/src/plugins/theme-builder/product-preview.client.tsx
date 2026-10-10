@@ -6,7 +6,7 @@ export function ProductCanvasPreview({channel,slug,heading}:{channel:string;slug
   const [item,setItem]=useState<Item|null>(null);
   const [loading,setLoading]=useState(false);
   useEffect(()=>{
-    if(!slug||!channel){setItem(null);return;}
+    if(!slug||!channel)return;
     const controller=new AbortController();
     setLoading(true);
     fetch("/ops/themes/catalog?"+new URLSearchParams({kind:"product",channel,slug}),{
@@ -17,15 +17,15 @@ export function ProductCanvasPreview({channel,slug,heading}:{channel:string;slug
       .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return()=>controller.abort();
   },[channel,slug]);
-  const price=item?.price;
+  const selected=item?.slug===slug?item:null;\n  const price=selected?.price;
   const formatted=price?new Intl.NumberFormat("en",{style:"currency",currency:price.currency}).format(price.amount):"";
   return <section className="mx-auto max-w-5xl px-6 py-16">
     <h2 className="mb-8 text-3xl text-stone-900">{heading}</h2>
     <div className="grid gap-8 md:grid-cols-2">
       <div className="aspect-[4/5] bg-stone-100 bg-cover bg-center"
-        style={item?.image?{backgroundImage:"url("+JSON.stringify(item.image)+")"}:undefined}/>
+        style={selected?.image?{backgroundImage:"url("+JSON.stringify(selected.image)+")"}:undefined}/>
       <div className="flex flex-col justify-center gap-4">
-        <p className="text-2xl font-medium">{item?.name??(loading?"正在读取商品…":"从右侧选择真实商品")}</p>
+        <p className="text-2xl font-medium">{selected?.name??(slug?"正在读取商品…":"从右侧选择真实商品")}</p>
         <p className="text-xl">{formatted}</p>
         <span className="w-fit bg-stone-900 px-8 py-3 text-sm text-white">查看商品详情</span>
       </div>
