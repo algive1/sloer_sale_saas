@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { invariant } from "ts-invariant";
 
 import { readAuthCookieValue } from "./read-auth-cookie";
+import { sharedCustomerAccountsEnabled } from "@/lib/brand/customer-account-policy";
 
 function getAuthStorageKeys(saleorApiUrl: string) {
 	return {
@@ -14,6 +15,9 @@ function getAuthStorageKeys(saleorApiUrl: string) {
 
 /** Same cookie resolution as `getServerAuthClient().fetchWithAuth`. */
 export async function getAuthTokenPresence(): Promise<{ hasAccess: boolean; hasRefresh: boolean }> {
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) {
+		return { hasAccess: false, hasRefresh: false };
+	}
 	try {
 		const saleorApiUrl = process.env.NEXT_PUBLIC_SALEOR_API_URL;
 		invariant(saleorApiUrl, "Missing NEXT_PUBLIC_SALEOR_API_URL env variable");
