@@ -1,6 +1,7 @@
 from typing import Any
 
 import graphene
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from .....account.error_codes import AccountErrorCode
@@ -84,6 +85,14 @@ class CreateToken(BaseMutation):
                         code=AccountErrorCode.INACTIVE.value,
                     )
                 }
+            )
+        # Dashboard staff login remains possible; shared customer JWTs do not.
+        if settings.SHARED_CORE_GUEST_ONLY and not user.is_staff:
+            raise ValidationError(
+                {"email": ValidationError(
+                    "Please, enter valid credentials",
+                    code=AccountErrorCode.INVALID_CREDENTIALS.value,
+                )}
             )
         return user
 

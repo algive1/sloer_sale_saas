@@ -16,6 +16,18 @@ if [ ! -f backend/manage.py ] || [ ! -f dashboard/package.json ]; then
   exit 1
 fi
 
+# Shared Saleor Core has global customer identities. Refuse a multi-brand
+# production deployment unless the Saleor GraphQL guest-only guard is on.
+if grep -Eq '^STOREFRONT_SITES_JSON=.+$' .env; then
+  if [ "${SALEOR_SHARED_CORE_GUEST_ONLY:-}" != "true" ] &&
+     [ "${SALEOR_SHARED_CORE_GUEST_ONLY:-}" != "1" ] &&
+     ! grep -Eiq '^SALEOR_SHARED_CORE_GUEST_ONLY=(true|1)$' .env; then
+    echo "Multi-brand requires SALEOR_SHARED_CORE_GUEST_ONLY=true in .env." >&2
+    echo "Checkout ID bearer access remains a separate unresolved risk." >&2
+    exit 1
+  fi
+fi
+
 if grep -Eq '^SALEOR_EMAIL_URL=smtp://mailpit([:/]|$)' .env; then
   echo "Production deployment cannot use Mailpit. Set SALEOR_EMAIL_URL to your real SMTP provider." >&2
   exit 1

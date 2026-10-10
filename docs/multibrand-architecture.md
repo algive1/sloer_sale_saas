@@ -1,3 +1,36 @@
+## Shared Saleor customer GraphQL containment (PR #44)
+
+A multi-brand deployment using one Saleor Core **must** set
+`SALEOR_SHARED_CORE_GUEST_ONLY=true` in the production `.env` and restart the
+Saleor API. `scripts/deploy.sh` rejects a non-empty
+`STOREFRONT_SITES_JSON` without this switch. Its `docker-compose.prod.yml`
+passes the setting into Saleor (the Next.js storefront flag alone is not
+sufficient). A single-brand deployment leaves the switch off.
+
+With the switch enabled, Saleor itself rejects all requests carrying a
+**customer** JWT before GraphQL field resolution; old customer access JWTs
+are no longer useful even against the public `/graphql/` URL. Direct
+anonymous account mutations (registration, password reset, address update,
+external auth and account changes) are denied by **actual schema field name**
+at GraphQL resolver time, so aliases and fragments are not a bypass.
+`tokenCreate` and `tokenRefresh` still work for **staff accounts only**;
+they refuse customer credentials or refresh tokens. Saleor's original app and
+staff authorizations remain in place. Public anonymous catalog queries and
+guest checkout mutations are not blocked. Single-brand behavior is unchanged.
+
+The backend regression suite exercises customer/staff/app policy; the real
+Saleor integration CI starts as a normal single-brand checkout, then switches
+the live API to guest-only and verifies direct GraphQL attacks, old JWTs,
+customer refresh denial and staff login before running two-brand browser E2E.
+
+**Not a tenant boundary:** this is only customer-account containment.
+Checkout IDs remain bearer credentials on Saleor's public GraphQL API;
+anonymous checkout mutations, payment data, staff operations, app credentials,
+webhooks, order lookup and backend/channel ownership all still need proper
+server-enforced tenant authorization. A caller may still use a known checkout
+ID directly at the API without passing through a brand Host. Do not enable
+production mixed-merchant isolation or restore customer logins on this basis.
+
 ## Public Saleor GraphQL boundary: still not a tenant gateway
 
 The self-hosted deployment currently publishes the Saleor GraphQL endpoint

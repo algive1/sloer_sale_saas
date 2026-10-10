@@ -1,4 +1,5 @@
 import graphene
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from .....account.error_codes import AccountErrorCode
@@ -139,6 +140,13 @@ class RefreshToken(BaseMutation):
         if audience := payload.get("aud"):
             additional_payload["aud"] = audience
         user = get_user(payload)
+        if settings.SHARED_CORE_GUEST_ONLY and (not user or not user.is_staff):
+            raise ValidationError(
+                {"refresh_token": ValidationError(
+                    "Invalid refresh token",
+                    code=AccountErrorCode.JWT_INVALID_TOKEN.value,
+                )}
+            )
         token = create_access_token(user, additional_payload=additional_payload)
         if user and not user.is_anonymous:
             update_user_last_login_if_required(user)
