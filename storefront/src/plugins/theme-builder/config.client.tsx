@@ -167,9 +167,9 @@ export const fashionEditorConfig: Config = {
 };
 
 /** The editor fields bind to the selected Saleor Channel; public rendering stays server-only. */
-export function createScopedFashionEditorConfig(channel:string):Config {
+export function createScopedFashionEditorConfig(channel:string,pageType:"home"|"product"="home"):Config {
   const blocks=fashionEditorConfig.components;
-  return {
+  const scoped: Config = {
     ...fashionEditorConfig,
     components: {
       ...blocks,
@@ -189,5 +189,18 @@ export function createScopedFashionEditorConfig(channel:string):Config {
         render:({heading,productSlug})=><ProductCanvasPreview channel={channel}
           heading={String(heading??"")} slug={String(productSlug??"")}/>},
     },
+  };
+  if(pageType==="home")return scoped;
+  // Product commerce zone is always owned by the Paper PDP, not editable content.
+  // Reuse the same content blocks below it; hero H1 is not available inside PDP.
+  const {Hero: _hero, ...contentBlocks}=scoped.components;
+  void _hero;
+  return {
+    ...scoped,
+    categories: {
+      merchandise:{title:"详情页商品推荐",components:["Collection","Product"]},
+      editorial:{title:"详情页图文内容",components:["Editorial","Story"]},
+    },
+    components:contentBlocks,
   };
 }

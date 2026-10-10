@@ -5,8 +5,10 @@ import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
 import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
 import { BLANK_TEMPLATE, freshTemplate, type ThemeData } from "@/plugins/theme-builder/template";
+import { PRODUCT_DETAIL_TEMPLATE } from "@/plugins/theme-builder/page-document";
 
 type EditorProps = {
+	initialPageType?: "home" | "product";
 	channels: readonly string[];
 	locales: readonly string[];
 	siteId: string;
@@ -47,13 +49,14 @@ const EDITOR_DICTIONARY = {
   "drawer-category-other":"其他模块",
 } as const;
 
-const api = "/ops/themes/api";
+const homepageApi = "/ops/themes/api";
 
 export function ThemeEditor({
 	channels,
 	locales,
 	siteId,
 	storageReady,
+	initialPageType = "home",
 	siteByChannel = {},
 	initialChannel,
 	initialLocale,
@@ -61,7 +64,9 @@ export function ThemeEditor({
 }: EditorProps) {
 	const [channel, setChannel] = useState(initialChannel || channels[0] || "");
 	const [locale, setLocale] = useState(initialLocale || locales[0] || "en");
-	const editorConfig = useMemo(() => createScopedFashionEditorConfig(channel), [channel]);
+	const [pageType, setPageType] = useState<"home"|"product">(initialPageType);
+	const editorConfig = useMemo(() => createScopedFashionEditorConfig(channel,pageType), [channel,pageType]);
+	const api = pageType==="home"?homepageApi:"/ops/themes/pages/api";
 	const [document, setDocument] = useState<ThemeData | null>(null);
 	const documentRef = useRef<Data>(BLANK_TEMPLATE);
 	const savedRef = useRef<Data>(BLANK_TEMPLATE);
@@ -84,7 +89,9 @@ export function ThemeEditor({
 	const sitePreview = selectedSite
 		? `https://${selectedSite.domain}/${locale}/${channel}`
 		: `/${locale}/${channel}`;
-	const scope = "?channel=" + encodeURIComponent(channel) + "&locale=" + encodeURIComponent(locale);
+	const scope = "?channel=" + encodeURIComponent(channel) + "&locale=" + encodeURIComponent(locale) +
+		(pageType==="product"?"&pageType=product&template=default":"");
+	const pageTitle = pageType==="home"?"首页":"商品详情页";
 
 	const [loadedScope, setLoadedScope] = useState(scope);
 	if (loadedScope !== scope) {
@@ -106,7 +113,8 @@ export function ThemeEditor({
 			})
 			.then((result) => {
 				if (controller.signal.aborted) return;
-				const loaded = result.draft || result.published || freshTemplate(brands.length ? "blank" : "fashion");
+				const loaded = result.draft || result.published || (pageType==="product" ? structuredClone(PRODUCT_DETAIL_TEMPLATE)
+					: freshTemplate(brands.length ? "blank" : "fashion"));
 				documentRef.current = loaded;
 				savedRef.current = loaded;
 				setDocument(loaded);
@@ -118,7 +126,8 @@ export function ThemeEditor({
 				if (controller.signal.aborted) return;
 				setStatus(error instanceof Error ? error.message : "Unable to load draft");
 				if (!storageReady) {
-					const initial = freshTemplate(brands.length ? "blank" : "fashion");
+					const initial = pageType==="product" ? structuredClone(PRODUCT_DETAIL_TEMPLATE)
+						: freshTemplate(brands.length ? "blank" : "fashion");
 					documentRef.current = initial;
 					savedRef.current = initial;
 					setDocument(initial);
@@ -133,7 +142,7 @@ export function ThemeEditor({
 				if (!controller.signal.aborted) setLoading(false);
 			});
 		return () => controller.abort();
-	}, [channel, locale, scope, storageReady, brands.length]);
+	}, [channel, locale, scope, storageReady, brands.length, api, pageType]);
 
 	useEffect(() => {
 		if (!dirty) return;
@@ -156,7 +165,8 @@ export function ThemeEditor({
 					method: "PUT",
 					credentials: "same-origin",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ channel, locale, action, data, expectedRevision: revisionRef.current }),
+					body: JSON.stringify({ channel, locale, action, data, expectedRevision: revisionRef.current,
+						...(pageType==="product"?{pageType:"product",template:"default"}:{}) }),
 				});
 				const body = (await response.json()) as APIResponse;
 				if (!response.ok) throw new Error(body.error || "Save failed");
@@ -164,7 +174,7 @@ export function ThemeEditor({
 				savedRef.current = data;
 				setDirty(JSON.stringify(documentRef.current) !== JSON.stringify(data));
 				setStatus(
-					action === "publish" ? "发布成功，可打开当前品牌网站查看页面。" : "草稿已保存，线上页面未改变。",
+					action === "publish" ? `${pageTitle}发布成功，线上对应页面将显示新版本。` : "草稿已保存，线上页面未改变。",
 				);
 				setRevision((prev) => ({
 					draft: revisionRef.current,
@@ -179,29 +189,33 @@ export function ThemeEditor({
 				setSaving(false);
 			}
 		},
-		[channel, locale, storageReady],
+		[channel, locale, storageReady, api, pageType, pageTitle],
 	);
 
 	function confirmPublish(): boolean {
 		return window.confirm(
-			`确定发布「${selectedSite?.name ?? "当前店铺"} / ${channel} / ${locale}」的首页吗？发布后会覆盖这个市场和语言的线上首页。`,
+			`确定发布「${selectedSite?.name ?? "当前店铺"} / ${channel} / ${locale}」的${pageTitle}吗？发布后会覆盖这个市场和语言的对应线上模板。`,
 		);
 	}
 	function confirmNavigation(): boolean {
 		return !dirty || window.confirm("Unsaved edits will be discarded. Continue?");
 	}
-	function setTemplate(name: "fashion" | "blank") {
+	function setTemplate(name: "fashion" | "blank" | "product") {
 		if (saving || !confirmNavigation()) return;
-		const next = freshTemplate(name);
+		const next = name==="product" ? structuredClone(PRODUCT_DETAIL_TEMPLATE) : freshTemplate(name);
 		documentRef.current = next;
 		setDocument(next);
 		setGeneration((current) => current + 1);
 		setDirty(true);
 		setStatus(
-			name === "fashion"
-				? "Fashion template applied to draft. Publish to go live."
-				: "Blank draft created. Live site unchanged.",
+			name === "fashion" ? "服饰首页模板已应用到草稿，发布前不会影响线上页面。"
+				: name==="product" ? "商品详情页模板已应用到草稿，购买区保持原样。"
+				: "已创建空白草稿，线上页面不受影响。",
 		);
+	}
+	function changePageType(value:"home"|"product") {
+		if(saving||value===pageType||!confirmNavigation())return;
+		setPageType(value);
 	}
 	function changeScope(kind: "channel" | "locale", value: string) {
 		if (saving || (kind === "channel" ? value === channel : value === locale) || !confirmNavigation()) return;
@@ -255,6 +269,16 @@ export function ThemeEditor({
 					</label>
 				)}
 				<label className="block text-xs font-medium text-stone-600">
+					装修页面
+					<select aria-label="选择装修页面"
+						className="mt-1 block min-w-36 rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm"
+						value={pageType} disabled={saving}
+						onChange={event=>changePageType(event.target.value as "home"|"product")}>
+						<option value="home">网站首页</option>
+						<option value="product">商品详情页（默认模板）</option>
+					</select>
+				</label>
+				<label className="block text-xs font-medium text-stone-600">
 					市场 / 销售渠道
 					<select
 						aria-label="选择市场"
@@ -288,10 +312,10 @@ export function ThemeEditor({
 				<div className="ml-auto flex flex-wrap items-center gap-2">
 					<button
 						disabled={saving || !channel}
-						onClick={() => setTemplate("fashion")}
+						onClick={() => setTemplate(pageType==="product"?"product":"fashion")}
 						className="rounded-lg border border-stone-200 px-3 py-2 text-sm hover:bg-stone-100"
 					>
-						套用服饰模板
+						{pageType==="product"?"套用详情页模板":"套用服饰模板"}
 					</button>
 					<button
 						disabled={saving || !channel}
@@ -333,7 +357,7 @@ export function ThemeEditor({
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 px-5 py-2 text-xs text-stone-600 md:px-8">
 				<span>
 					{storageReady
-						? "左侧拖入模块，右侧选择商品与图片，中间实时预览，确认后发布。"
+						? (pageType==="product" ? "编辑购买区下方的图文与推荐模块；价格、SKU、库存及加购功能仍由 Saleor 管理。" : "左侧拖入模块，右侧选择商品与图片，中间实时预览，确认后发布。")
 						: "Preview only: theme storage is not configured."}
 				</span>
 				<span>
@@ -363,12 +387,12 @@ export function ThemeEditor({
 				</div>
 			) : (
 				<Puck
-					key={channel + ":" + locale + ":" + generation}
+					key={pageType + ":" + channel + ":" + locale + ":" + generation}
 					config={editorConfig}
 					dictionary={EDITOR_DICTIONARY}
 					data={document}
-					headerTitle={(selectedSite?.name ?? "店铺") + " · 首页"}
-					headerPath={"/" + locale + "/" + channel}
+					headerTitle={(selectedSite?.name ?? "店铺") + " · " + pageTitle}
+					headerPath={pageType==="home"?"/" + locale + "/" + channel:"/" + locale + "/" + channel + "/products"}
 					height="calc(100vh - 215px)"
 					viewports={[
 						{ width: 1440, height: "auto", label: "桌面" },

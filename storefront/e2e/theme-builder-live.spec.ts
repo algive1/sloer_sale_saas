@@ -1,5 +1,6 @@
 import { expect, test, request as playwrightRequest } from "@playwright/test";
 import { FASHION_TEMPLATE, type ThemeData } from "../src/plugins/theme-builder/template";
+import { PRODUCT_DETAIL_TEMPLATE } from "../src/plugins/theme-builder/page-document";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 const password = process.env.PLAYWRIGHT_THEME_EDITOR_SECRET;
@@ -75,7 +76,7 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       expect(original.draftRevision).toBe(0);
 
       await page.goto("/ops/themes");
-      await expect(page.getByRole("heading", { name: "品牌网站首页装修" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "品牌网站装修" })).toBeVisible();
       // The Puck editor must hydrate; the Publish control is outside its canvas iframe.
       await requirePuckPublishButton();
       // Confirm the actual Puck block sidebar mounted, not just our server shell.
@@ -204,4 +205,94 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
       await authorized.dispose();
     }
   });
+
+  test("default PDP template keeps core buy box locked and only publishes marketing sections",async({browser})=>{
+    test.skip(!password||!process.env.PLAYWRIGHT_THEME_DB_RESET_TOKEN,
+      "Requires isolated Saleor + theme libSQL integration setup");
+    const authorized=await playwrightRequest.newContext({
+      baseURL,httpCredentials:{username:"analytics",password:password!},
+    });
+    const context=await browser.newContext({
+      httpCredentials:{username:"analytics",password:password!},
+      viewport:{width:390,height:844},
+    });
+    const page=await context.newPage();
+    const endpoint="/ops/themes/pages/api";
+    const scope=endpoint+"?channel=us&locale=en&pageType=product&template=default";
+    try{
+      const initial=await authorized.get(scope);
+      expect(initial.status(),await initial.text()).toBe(200);
+      const state=await initial.json() as {published:ThemeData|null;draftRevision:number};
+      expect(state.published).toBeNull();
+      expect(state.draftRevision).toBe(0);
+      const content=structuredClone(PRODUCT_DETAIL_TEMPLATE);
+      content.content[0]!.props.heading="CI PDP MATERIALS AND STORY";
+
+      const invalid=await authorized.put(endpoint,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"product",template:"default",
+          action:"draft",expectedRevision:0,data:FASHION_TEMPLATE},
+      });
+      expect(invalid.status()).toBe(400);
+      const wrong=await authorized.put(endpoint,{
+        headers:{Origin:baseURL},
+        data:{channel:"unknown",locale:"en",pageType:"product",template:"default",
+          action:"draft",expectedRevision:0,data:content},
+      });
+      expect(wrong.status()).toBe(400);
+
+      const catalog=await authorized.get("/ops/themes/catalog?kind=collection-products&channel=us&slug=featured-products");
+      const itemData=await catalog.json() as {collection?:{products?:{slug:string}[]}};
+      const slug=itemData.collection?.products?.[0]?.slug;
+      expect(slug).toBeTruthy();
+      const productPath="/en/us/products/"+slug;
+      await page.goto(productPath);
+      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"})).toHaveCount(0);
+
+      const saved=await authorized.put(endpoint,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"product",template:"default",
+          action:"draft",expectedRevision:0,data:content},
+      });
+      expect(saved.status(),await saved.text()).toBe(200);
+      await page.reload();
+      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"})).toHaveCount(0);
+
+      const stale=await authorized.put(endpoint,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"product",template:"default",
+          action:"publish",expectedRevision:0,data:content},
+      });
+      expect(stale.status()).toBe(409);
+
+      const published=await authorized.put(endpoint,{
+        headers:{Origin:baseURL},
+        data:{channel:"us",locale:"en",pageType:"product",template:"default",
+          action:"publish",expectedRevision:1,data:content},
+      });
+      expect(published.status(),await published.text()).toBe(200);
+      await page.goto(productPath,{waitUntil:"domcontentloaded"});
+      await expect(page.getByRole("heading",{name:"CI PDP MATERIALS AND STORY"}))
+        .toBeVisible({timeout:30_000});
+      // Purchase area and main product heading must not disappear after publishing.
+      await expect(page.getByRole("heading",{level:1})).toBeVisible();
+
+      await page.goto("/ops/themes?pageType=product");
+      await expect(page.getByRole("heading",{name:"品牌网站装修"})).toBeVisible();
+      await expect(page.getByLabel("选择装修页面")).toHaveValue("product");
+      await expect(page.getByRole("button",{name:"发布上线",exact:true}).first()).toBeVisible({timeout:30_000});
+
+      const foreignOrigin=await authorized.put(endpoint,{
+        headers:{Origin:"https://outside.example"},
+        data:{channel:"us",locale:"en",pageType:"product",template:"default",
+          action:"draft",expectedRevision:2,data:content},
+      });
+      expect(foreignOrigin.status()).toBe(403);
+    }finally{
+      await page.close();
+      await context.close();
+      await authorized.dispose();
+    }
+  });
+
 });

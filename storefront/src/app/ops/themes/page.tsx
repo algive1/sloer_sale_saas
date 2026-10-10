@@ -10,12 +10,12 @@ import { ThemeEditor } from "./theme-editor";
 import { getBrandSites } from "@/config/brand-sites";
 
 export const metadata: Metadata = {
-  title: "品牌首页装修 | Commerce Ops",
+  title: "品牌网站装修 | Commerce Ops",
   robots: { index: false, follow: false },
 };
 
 type PageProps = {
-  searchParams: Promise<{ channel?: string; locale?: string }>;
+  searchParams: Promise<{ channel?: string; locale?: string; pageType?: string }>;
 };
 
 export default function ThemeEditorPage({ searchParams }: PageProps) {
@@ -59,6 +59,8 @@ async function ThemeEditorContent({ searchParams }: PageProps) {
   const initialLocale = query.locale ?? (selectedSite?.defaultLocale && allowedLocales.includes(selectedSite.defaultLocale)
     ? selectedSite.defaultLocale : allowedLocales[0] ?? locales[0] ?? "en");
 
+  if(query.pageType && query.pageType!=="home" && query.pageType!=="product")notFound();
+
   // Invalid/deep-linked channel+locale pairs must never edit an unrelated
   // brand or create an unreachable market-language homepage.
   if ((query.channel && !channels.includes(query.channel)) ||
@@ -68,9 +70,9 @@ async function ThemeEditorContent({ searchParams }: PageProps) {
     <main className="min-h-screen bg-[#f6f7f9] text-[#171717]">
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-200 bg-white px-5 py-4 md:px-8">
         <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-stone-500">STORE DESIGN / HOMEPAGE</p>
-          <h1 className="mt-1 text-xl font-semibold">品牌网站首页装修</h1>
-          <p className="mt-1 text-xs text-stone-500">先选择品牌，再选择市场和语言；每个组合有独立草稿与发布版本。</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-stone-500">STORE DESIGN / PAGE TEMPLATES</p>
+          <h1 className="mt-1 text-xl font-semibold">品牌网站装修</h1>
+          <p className="mt-1 text-xs text-stone-500">选择品牌、装修页面、市场和语言；首页和详情页有独立草稿和发布版本。</p>
         </div>
         <Link href="/ops/sites" className="rounded-lg border border-stone-200 px-4 py-2 text-sm hover:bg-stone-50">
           返回品牌站点
@@ -80,6 +82,7 @@ async function ThemeEditorContent({ searchParams }: PageProps) {
         channels={channels}
         locales={locales}
         siteId={initialChannel ? activeThemeSiteId(initialChannel) : "unconfigured"}
+        initialPageType={query.pageType === "product" ? "product" : "home"}
         initialChannel={initialChannel}
         initialLocale={initialLocale}
         localesByChannel={localesByChannel}
