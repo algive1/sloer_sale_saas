@@ -28,6 +28,13 @@ describe("theme builder document validation", () => {
     template.content[1].props.limit = 9999;
     expect(() => validateThemeData(template)).toThrow();
   });
+  it("validates a selected product module without changing old templates", () => {
+    const template=structuredClone(FASHION_TEMPLATE);
+    template.content.push({type:"Product",props:{id:"single",heading:"Favourite",productSlug:"gold-necklace"}});
+    expect(parseTheme(serializeTheme(template))).toEqual(template);
+    template.content[4].props.productSlug="../other-brand";
+    expect(()=>validateThemeData(template)).toThrow();
+  });
   it("preserves the original theme on invalid JSON", () => {
     expect(parseTheme("{bad json")).toBeNull();
     expect(validateThemeData(FASHION_TEMPLATE).content).toHaveLength(4);
