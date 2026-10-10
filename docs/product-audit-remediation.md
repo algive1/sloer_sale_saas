@@ -48,6 +48,26 @@ remain for auth-sdk/Next and lucide-react/React; these were not upgraded here.
 References: [TypedDocumentNode](https://the-guild.dev/graphql/codegen/plugins/typescript/typed-document-node)
 and [Husky subdirectory setup](https://typicode.github.io/husky/how-to.html#project-not-in-git-root-directory).
 
+## Batch 4: A01/A02/A15 — shared customer identity containment (PR #40)
+
+In a multi-brand deployment, Saleor Core `User` identities and address books
+are global even if storefront order queries filter by Channel. A brand picker or
+per-Channel query cannot authorize viewing/changing another brand's customer
+profile, default address or password.
+
+This batch blocks global profile/account/login/register/reset operations at
+request and server-action boundaries whenever `STOREFRONT_SITES_JSON` is
+present. Checkout renders guest-only controls, does not hydrate `me.addresses`
+or autoattach a customer and forces `saveAddress=false` for guest checkout.
+Server-side checkout ID and order Host validation continue unchanged. For
+single-brand deployments, original signed-in behavior remains available.
+
+**This is risk containment, not completion of A01/A02 or SaaS isolation.**
+Long-term per-brand member accounts, customer address ownership, Saleor Core
+GraphQL permissions, plugin credentials and third-party data boundaries are
+still required before commercial multi-tenant use. Guest checkout requires
+live full-flow CI. Production payment credentials were not tested here.
+
 ## Next batches
 
 1. Complete live backend build and browser acceptance for the first batch.
