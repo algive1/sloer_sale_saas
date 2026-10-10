@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
+import { notFound } from "next/navigation";
+import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
 import { brandConfig } from "@/config/brand";
 import { getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
@@ -16,18 +19,28 @@ export const metadata: Metadata = {
  * No fake "online" state: DNS, TLS and checkout readiness are not verified.
  */
 export default function BrandSitesPage() {
+  return <Suspense fallback={<main className="mx-auto max-w-6xl px-5 py-8 text-sm text-stone-500">正在加载授权品牌…</main>}>
+    <BrandSitesContent />
+  </Suspense>;
+}
+
+async function BrandSitesContent() {
+  // Forced request-time identity before any brand metadata is rendered.
+  const viewer = await currentOpsViewer();
+  if (!viewer) notFound();
+  const isAnalyst = viewer.role === "brand_analyst";
   const configured = getBrandSites();
   const channels = getStaticStorefrontChannelSlugs();
   const locales = getStorefrontLocaleSlugs();
   const localePairs = getConfiguredLocaleChannelPairs();
-  const sites = configured ?? [{
+  const sites = (configured ?? [{
     id: siteIdForChannel(channels[0] ?? ""),
     name: brandConfig.siteName,
     domains: [] as string[],
     channels,
     defaultChannel: channels[0] ?? "",
     description: brandConfig.description,
-  }];
+  }]).filter((site) => !isAnalyst || viewer.siteIds.includes(site.id));
 
   const allowedLocalesFor = (site: (typeof sites)[number]) => localePairs
     ? locales.filter((locale) => localePairs.some((pair) =>
@@ -44,26 +57,31 @@ export default function BrandSitesPage() {
   return (
     <main className="min-h-screen bg-[#f6f7f9] px-5 py-8 text-[#171717] md:px-10">
       <div className="mx-auto max-w-6xl">
-        <Link href="/ops/analytics" className="text-sm text-stone-500 hover:text-stone-950">
+        {!isAnalyst && <Link href="/ops/analytics" className="text-sm text-stone-500 hover:text-stone-950">
           ← 返回经营后台
-        </Link>
+        </Link>}
         <header className="mb-7 mt-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">Brand sites</p>
           <h1 className="mt-2 text-2xl font-semibold">品牌站点</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-            一个后台管理多个品牌。每个品牌拥有自己的域名、市场和首页装修；系统插件统一部署。
+            {isAnalyst
+              ? "仅显示当前账号有权查看的品牌。可查看经营报表和上线检查，无法修改站点、商品或营销设置。"
+              : "一个后台管理多个品牌。每个品牌拥有自己的域名、市场和首页装修；系统插件统一部署。"}
           </p>
         </header>
         <section className="mb-6 rounded-xl border border-stone-200 bg-white p-5 text-sm leading-6">
           <h2 className="font-semibold">品牌上线前需要完成什么？</h2>
           <p className="mt-2 text-stone-600">
-            先在 Saleor 创建并启用销售 Channel，再绑定域名与品牌，装修并发布首页，最后测试商品、
-            支付、订单和邮件。目前品牌信息由部署配置维护，此页面为只读概览，暂不提供新增或编辑。
+            {isAnalyst
+              ? "当前账号拥有品牌只读权限。品牌配置与发布由平台管理员完成；站点显示的上线检查结果不代表已正式上线。"
+              : "先在 Saleor 创建并启用销售 Channel，再绑定域名与品牌，装修并发布首页，最后测试商品、支付、订单和邮件。目前品牌信息由部署配置维护，此页面为只读概览，暂不提供新增或编辑。"}
           </p>
           <p className="mt-2 text-stone-500">
-            {configured
-              ? "已加载多品牌映射。域名是否解析成功、HTTPS 是否生效、支付是否可用，仍需分别验证；这里不代表网站已上线。"
-              : "当前为单品牌模式。现有网站不受影响，多品牌发布前仍需完成安全和数据隔离验收。"}
+            {isAnalyst
+              ? `已授权访问 ${sites.length} 个品牌；其他品牌数据不会展示。`
+              : configured
+                ? "已加载多品牌映射。域名是否解析成功、HTTPS 是否生效、支付是否可用，仍需分别验证；这里不代表网站已上线。"
+                : "当前为单品牌模式。现有网站不受影响，多品牌发布前仍需完成安全和数据隔离验收。"}
           </p>
         </section>
         <section className="grid gap-4 md:grid-cols-2" aria-label="品牌站点列表">
@@ -115,13 +133,13 @@ export default function BrandSitesPage() {
                       </Link>
                     </>
                   )}
-                  {canEditHomepage ? (
+                  {!isAnalyst && (canEditHomepage ? (
                     <Link href={editUrl} className="font-semibold underline underline-offset-4">
                       装修此品牌首页 →
                     </Link>
                   ) : (
                     <span className="text-stone-500">请先为默认市场配置可用语言，再装修首页</span>
-                  )}
+                  ))}
                   {homeUrl && (
                     <a href={homeUrl} target="_blank" rel="noopener noreferrer"
                       title="需要域名与 HTTPS 已生效；该链接不代表站点已上线"
