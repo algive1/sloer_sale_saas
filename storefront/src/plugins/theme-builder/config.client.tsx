@@ -43,15 +43,15 @@ export const fashionEditorConfig: Config = {
   },
   components: {
     Hero: {
-      label: "Editorial hero",
+      label: "首页大横幅",
       fields: {
-        eyebrow: { type: "text", label: "Eyebrow" },
-        heading: { type: "text", label: "Headline" },
-        subheading: { type: "textarea", label: "Supporting copy" },
-        imageUrl: { type: "text", label: "Background image (HTTPS)" },
-        collectionSlug: { type: "text", label: "Image fallback collection slug" },
-        ctaLabel: { type: "text", label: "Button label" },
-        ctaHref: { type: "text", label: "Button link (/products)" },
+        eyebrow: { type: "text", label: "上方小标题" },
+        heading: { type: "text", label: "主标题" },
+        subheading: { type: "textarea", label: "副标题说明" },
+        imageUrl: { type: "text", label: "横幅背景图片" },
+        collectionSlug: { type: "text", label: "默认图片所属商品集合" },
+        ctaLabel: { type: "text", label: "按钮文字" },
+        ctaHref: { type: "text", label: "按钮跳转页面" },
       },
       defaultProps: {
         eyebrow: "THE NEW EDIT",
@@ -73,13 +73,13 @@ export const fashionEditorConfig: Config = {
         </>),
     },
     Collection: {
-      label: "Saleor product collection",
+      label: "商品集合",
       fields: {
-        eyebrow: { type: "text", label: "Eyebrow" },
-        heading: { type: "text", label: "Heading" },
-        intro: { type: "textarea", label: "Introduction" },
-        collectionSlug: { type: "text", label: "Saleor collection slug" },
-        limit: { type: "number", label: "Number of products", min: 1, max: 24 },
+        eyebrow: { type: "text", label: "上方小标题" },
+        heading: { type: "text", label: "标题" },
+        intro: { type: "textarea", label: "介绍文案" },
+        collectionSlug: { type: "text", label: "商品集合" },
+        limit: { type: "number", label: "商品数量", min: 1, max: 24 },
       },
       defaultProps: {
         eyebrow: "SHOP THE EDIT",
@@ -107,15 +107,15 @@ export const fashionEditorConfig: Config = {
       ),
     },
     Editorial: {
-      label: "Image + text",
+      label: "图文组合",
       fields: {
-        eyebrow: { type: "text", label: "Eyebrow" },
-        heading: { type: "text", label: "Heading" },
-        body: { type: "textarea", label: "Paragraphs" },
-        imageUrl: { type: "text", label: "Photo URL (HTTPS)" },
-        imagePosition: { type: "radio", label: "Photo side", options: [{label:"Left",value:"left"},{label:"Right",value:"right"}] },
-        ctaLabel: { type: "text", label: "Link text" },
-        ctaHref: { type: "text", label: "Link path" },
+        eyebrow: { type: "text", label: "上方小标题" },
+        heading: { type: "text", label: "标题" },
+        body: { type: "textarea", label: "正文" },
+        imageUrl: { type: "text", label: "图片" },
+        imagePosition: { type: "radio", label: "图片位置", options: [{label:"Left",value:"left"},{label:"Right",value:"right"}] },
+        ctaLabel: { type: "text", label: "链接文字" },
+        ctaHref: { type: "text", label: "链接页面" },
       },
       defaultProps: {
         eyebrow: "OUR APPROACH",
@@ -149,11 +149,11 @@ export const fashionEditorConfig: Config = {
       render: ({heading,productSlug})=><ProductCanvasPreview channel="" heading={String(heading??"")} slug={String(productSlug??"")}/>,
     },
     Story: {
-      label: "Brand statement",
+      label: "品牌宣言",
       fields: {
-        eyebrow: { type: "text", label: "Eyebrow" },
-        heading: { type: "text", label: "Heading" },
-        body: { type: "textarea", label: "Body copy" },
+        eyebrow: { type: "text", label: "上方小标题" },
+        heading: { type: "text", label: "标题" },
+        body: { type: "textarea", label: "正文" },
         align: { type: "radio", options: [{label:"Left",value:"left"},{label:"Center",value:"center"}] },
         tone: { type: "select", options: [{label:"Light",value:"default"},{label:"Soft",value:"muted"},{label:"Dark",value:"inverse"}] },
       },
