@@ -174,7 +174,7 @@ export function ThemeEditor({
 				savedRef.current = data;
 				setDirty(JSON.stringify(documentRef.current) !== JSON.stringify(data));
 				setStatus(
-					action === "publish" ? `${pageTitle}已发布，线上对应页面将显示新版本。` : "草稿已保存，线上页面未改变。",
+					action === "publish" ? `${pageTitle}发布成功，线上对应页面将显示新版本。` : "草稿已保存，线上页面未改变。",
 				);
 				setRevision((prev) => ({
 					draft: revisionRef.current,
