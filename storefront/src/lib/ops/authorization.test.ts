@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorizeOpsRequest, parseOpsOperators } from "./authorization";
+import { authorizeOpsRequest, parseOpsOperators, resolveOpsViewer } from "./authorization";
 
 const shared = "L".repeat(40);
 const adminPassword = "A".repeat(40);
@@ -32,6 +32,8 @@ describe("operations operator accounts", () => {
   it("only allows a brand analyst to read exact routes of an assigned brand", () => {
     const auth = basic("fashion_staff",analystPassword);
     for (const path of [
+      "/ops/sites",
+      "/ops/sites/",
       "/ops/sites/fashion",
       "/ops/sites/fashion/",
       "/ops/sites/fashion?days=7".split("?")[0]!,
@@ -41,16 +43,32 @@ describe("operations operator accounts", () => {
     expect(check(auth,"/ops/sites/fashion/insights","HEAD")).toBe("allowed");
 
     for (const path of [
-      "/ops", "/ops/sites", "/ops/sites/jewelry",
+      "/ops", "/ops/sites/jewelry",
       "/ops/sites/jewelry/insights", "/ops/analytics",
       "/ops/analytics/products", "/ops/plugins", "/ops/themes",
       "/ops/themes/api", "/ops/translations", "/ops/translations/api",
       "/ops/support", "/ops/sites/fashion/insights/export",
       "/ops/sites/fashion%2F..%2Fjewelry", "/ops/sites/fashion.json",
     ]) expect(check(auth,path)).toBe("forbidden");
+    expect(check(auth,"/ops/sites","POST")).toBe("forbidden");
     expect(check(auth,"/ops/sites/fashion","POST")).toBe("forbidden");
     expect(check(auth,"/ops/sites/fashion/insights","DELETE")).toBe("forbidden");
     expect(check(auth,"/ops/api/analytics/reminders/run","POST")).toBe("forbidden");
+  });
+
+  it("resolves server-only viewer identity without trusting selected UI site", () => {
+    const args = {operatorsJson: accounts, legacySecret:shared, trustedSiteIds:sites};
+    expect(resolveOpsViewer({...args, authorization:basic("fashion_staff",analystPassword)})).toEqual({
+      role:"brand_analyst",siteIds:["fashion"],
+    });
+    expect(resolveOpsViewer({...args, authorization:basic("platform_owner",adminPassword)})).toEqual({
+      role:"platform_admin",siteIds:[],
+    });
+    expect(resolveOpsViewer({...args, authorization:basic("analytics",shared)})).toBeNull();
+    expect(resolveOpsViewer({...args, authorization:null})).toBeNull();
+    expect(resolveOpsViewer({...args, operatorsJson:"", authorization:basic("analytics",shared)})).toEqual({
+      role:"platform_admin",siteIds:[],
+    });
   });
 
   it("rejects partial, weak and duplicate operator configs without legacy fallback", () => {
