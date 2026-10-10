@@ -11,8 +11,7 @@ export function ProductCanvasPreview({channel,slug,heading}:{channel:string;slug
       signal:controller.signal,cache:"no-store",
     }).then(async r=>r.ok?await r.json() as {item:Item|null}:null)
       .then(data=>{if(!controller.signal.aborted)setItem(data?.item??null);})
-      .catch(()=>{if(!controller.signal.aborted)setItem(null);})
-.catch(()=>{});
+      .catch(()=>{if(!controller.signal.aborted)setItem(null);});
     return()=>controller.abort();
   },[channel,slug]);
   const selected=item?.slug===slug?item:null;
