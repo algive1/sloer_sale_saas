@@ -47,3 +47,5 @@
 - 2026-10-11：A19首批品牌发货队列与货代CSV导出完成，本地1076项单元测试/12项原生保护和2项浏览器API通过。新增 OPS_FULFILLMENT_SALEOR_TOKEN，请保留共享部署配置。PR #51已有两处422错误处理在本地TypeScript5.3下被缩窄为never，做了仅提前读取message的等价类型兼容修复；未修改AI模型、图片生成、素材或编辑器业务。单号导入、退货和通知重试仍待后续。
 
 - 2026-10-11：PR #56的6项CI全部通过，已合并52aaf78。发现原负责人另有草稿PR #57统一Ops外壳，仍保持其layout/navigation范围。请导航任务保留 `/ops/sites/{siteId}/catalog`、`realtime`、`readiness`、新增`fulfillment`及各API的品牌只读授权；为发货/商品检查增加合适入口，本任务仅改品牌概况中的链接。完整A01–A25状态与具体缺口见product-audit-status.md，仍不能标记全部完成。
+
+- 2026-10-11：PR #58原生409已定位为export_sku_incomplete：原生populatedb的81个规格有14个无SKU，Transactions smoke原先只按ID选中首个缺SKU规格。改为选择有库存、SKU完整的实物测试规格；不篡改原生缺资料fixture，不放宽导出校验。列表将“可原生发货”与“可CSV导出”分开，缺SKU禁选导出但保留原生处理入口；增加负例。

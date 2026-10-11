@@ -81,3 +81,10 @@ it("rejects duplicate upstream IDs, incomplete addresses and overlarge batches w
   const huge = order(); huge.lines = Array.from({ length: 501 }, (_, i) => ({ ...huge.lines[0], id: String(i) })); source([huge]); await expect(exportShippingCsv("fashion", admin, "us", [huge.id])).rejects.toThrow("too_many_lines");
   expect(await shippingExportHistory("fashion", admin)).toEqual([]);
 });
+
+it("marks physical missing-SKU orders as not exportable while preserving native fulfillment access", () => {
+  const incomplete = order(); incomplete.lines[0].productSku = null;
+  expect(publicFulfillmentOrder(incomplete, "us")).toMatchObject({ shippingReady: true, exportable: false });
+  incomplete.lines[0].productSku = "   "; expect(publicFulfillmentOrder(incomplete, "us").exportable).toBe(false);
+  incomplete.lines[0].productSku = "HAT"; expect(publicFulfillmentOrder(incomplete, "us").exportable).toBe(true);
+});

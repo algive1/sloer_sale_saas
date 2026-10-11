@@ -10,6 +10,9 @@ test("native fulfillment queue enforces brand scope and exports fresh paid physi
   expect(JSON.stringify(snapshot)).not.toMatch(/shippingAddress|firstName|streetAddress|phone|jewelry-us/);
   expect((await request.get(base + "/ops/sites/jewelry-ci/fulfillment/api", { headers: { authorization: reader, "x-ops-role": "platform_admin" } })).status()).toBe(403);
   expect((await request.get(base + path + "?channel=jewelry-us", { headers: { authorization: reader } })).status()).toBe(400);
+  for (const order of snapshot.orders) {
+    if (order.shippingReady && order.lines.some((line: { isShippingRequired: boolean; quantityToFulfill: number; productSku?: string | null }) => line.isShippingRequired && line.quantityToFulfill > 0 && !line.productSku?.trim())) expect(order.exportable).toBe(false);
+  }
   const paid = snapshot.orders.find((order: { exportable: boolean }) => order.exportable); expect(paid, "Native Transactions paid order must be exportable").toBeTruthy();
   const data = { channel: "us", orderIds: [paid.id], confirm: true };
   const headers = { authorization: owner, origin: base!, "x-requested-with": "shipping-export" };
