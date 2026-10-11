@@ -57,3 +57,5 @@
 - 2026-10-11：PR #58 六项CI全部通过（含真实Saleor发货CSV/审计/UI），已合并49dbea3。PR #59 c714542的六项CI也全部通过（含同生产构建运行时暂停/原生商品），解决与#58 squash合并产生的配置和记录冲突，保留双方完整字段，再检查合并提交。继续A21原生ProductGroup及真实规格深链接，不改PR #53/#57的导航、Ops外壳或AI图片业务。
 
 - 2026-10-11：A21原生ProductGroup本地verify通过（180文件/1095单元及12原生保护）；只修改PDP结构化数据槽位，复用原生有界规格缓存和已有variant预选路由，不改装修布局、导航或AI图片。CI将比对初始HTML与真实原生SKU/价格并打开首尾规格链接；实际Merchant与政策事实仍须正式验收。
+
+- 2026-10-11：PR #60首轮原生E2E查询400，定位测试误把selectionAttributes别名当原生字段；改为原生attributes(variantSelection:VARIANT_SELECTION)，本地用固定原生schema的parse/validate确认查询有效，保留初始HTML及真实规格预选断言后重跑CI。商品业务查询未改。

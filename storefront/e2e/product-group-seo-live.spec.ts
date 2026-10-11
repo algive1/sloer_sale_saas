@@ -7,9 +7,9 @@ type Group = { "@type": string; url: string; productGroupID: string; hasVariant:
 
 test("initial HTTP HTML contains complete native ProductGroup facts and real variant preselection URLs", async ({ request, page: browser }) => {
   const slug = "cubes-fountain-tee";
-  const source = await request.post(api!, { data: { query: `query SeoNativeVariants($slug:String!){product(slug:$slug,channel:"us"){id productVariants(first:100){totalCount edges{node{id sku pricing{price{gross{amount currency}}} selectionAttributes{attribute{slug} values{name}}}}}}}`, variables: { slug } } });
-  expect(source.status()).toBe(200);
-  const payload = await source.json(); expect(payload.errors).toBeUndefined(); const native = payload.data.product;
+  const source = await request.post(api!, { data: { query: `query SeoNativeVariants($slug:String!){product(slug:$slug,channel:"us"){id productVariants(first:100){totalCount edges{node{id sku pricing{price{gross{amount currency}}} selectionAttributes:attributes(variantSelection:VARIANT_SELECTION){attribute{slug} values{name}}}}}}}`, variables: { slug } } });
+  expect(source.status(), await source.text()).toBe(200);
+  const payload = await source.json(); expect(payload.errors).toBeUndefined(); const native = payload.data.product; expect(native).toBeTruthy();
   expect(native.productVariants.totalCount).toBeGreaterThan(1); expect(native.productVariants.totalCount).toBeLessThanOrEqual(100);
   const page = await request.get(base + "/en/us/products/" + slug); expect(page.status()).toBe(200);
   const html = await page.text();
