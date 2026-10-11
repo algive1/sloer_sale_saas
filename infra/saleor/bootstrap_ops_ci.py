@@ -1,6 +1,6 @@
-"""CI-only app credential for native catalog inspection; never use in production."""
+"""CI-only native catalog/order credential; never use in production."""
 from saleor.app.models import App, AppToken
-from saleor.permission.enums import ProductPermissions
+from saleor.permission.enums import OrderPermissions, ProductPermissions
 from saleor.permission.models import Permission
 
 app, _ = App.objects.get_or_create(
@@ -9,10 +9,13 @@ app, _ = App.objects.get_or_create(
 )
 app.is_active = True
 app.save(update_fields=["is_active"])
-label, codename = ProductPermissions.MANAGE_PRODUCTS.value.split(".")
-app.permissions.set(Permission.objects.filter(content_type__app_label=label, codename=codename))
-if app.permissions.count() != 1:
-    raise RuntimeError("Catalog CI app permission missing")
+permissions = []
+for value in [ProductPermissions.MANAGE_PRODUCTS.value, OrderPermissions.MANAGE_ORDERS.value]:
+    label, codename = value.split(".")
+    permissions.append(Permission.objects.get(content_type__app_label=label, codename=codename))
+app.permissions.set(permissions)
+if app.permissions.count() != 2:
+    raise RuntimeError("Operations CI app permission missing")
 app.tokens.all().delete()
 _, raw_token = AppToken.objects.create(app=app, name="isolated-ci")
 if len(raw_token) != 30:

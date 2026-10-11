@@ -28,7 +28,7 @@ export function manualReadinessChecks(site: BrandSite): ReadinessCheck[] {
     add(`shipping:${channel}`, `${channel} · 目标国家配送`, "记录目标国家/邮编、配送方式、费用与预计时效；同时验证不可配送地址的错误提示。");
     add(`payment:${channel}`, `${channel} · 支付与恢复`, "注明网关及沙盒/正式环境；验证成功、失败、3DS、关闭页面恢复和重复回调。上线前必须验证正式结算资格。");
     add(`refund:${channel}`, `${channel} · 退款与对账`, "验证退款、部分退款、重复请求、失败后核对，并记录供应商交易/验收记录的脱敏编号。");
-    add(`fulfillment:${channel}`, `${channel} · 发货与查单`, "验证部分发货、物流单号、状态通知，以及顾客验证身份后的本品牌查单。");
+    add(`fulfillment:${channel}`, `${channel} · 发货与查单`, "验证部分发货、物流单号、状态通知，以及顾客验证身份后的本品牌查单。", `/ops/sites/${encodeURIComponent(site.id)}/fulfillment?channel=${encodeURIComponent(channel)}`);
   }
   add("policies", "政策与联系方式", "所有已开放语言的隐私、条款、配送、退货和联系页面均可访问且与实际业务一致；记录页面路径和抽检语言。");
   add("email", "品牌邮件身份与投递", "实测订单/发货/退款与启用的催付邮件，核对发件身份、语言和链接；记录脱敏验收编号。", "/ops/analytics/reminders");

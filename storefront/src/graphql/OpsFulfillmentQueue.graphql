@@ -1,0 +1,21 @@
+fragment OpsFulfillmentOrder on Order {
+  id number created status isPaid isShippingRequired
+  channel { slug }
+  weight { value unit }
+  shippingAddress { country { code } }
+  lines { id productName productSku quantity quantityFulfilled quantityToFulfill isShippingRequired }
+  fulfillments { id status trackingNumber created }
+}
+query OpsFulfillmentQueue($channel: String!, $after: String) {
+  orders(first: 25, after: $after, channel: $channel, where: { status: { oneOf: [UNFULFILLED, PARTIALLY_FULFILLED] } }, sortBy: { field: CREATED_AT, direction: DESC }) {
+    pageInfo { hasNextPage endCursor }
+    edges { node { ...OpsFulfillmentOrder } }
+  }
+}
+query OpsShippingExportOrders($channel: String!, $ids: [ID!]) {
+  orders(first: 25, channel: $channel, where: { ids: $ids, status: { oneOf: [UNFULFILLED, PARTIALLY_FULFILLED] } }, sortBy: { field: CREATED_AT, direction: DESC }) {
+    edges { node { ...OpsFulfillmentOrder
+      shippingAddress { firstName lastName companyName streetAddress1 streetAddress2 city cityArea countryArea postalCode phone }
+    } }
+  }
+}
