@@ -14,11 +14,11 @@ ROOT = CONTRACT_PATH.parents[3]
 
 def source_tables(contract):
     definitions = {}
-    for module in contract["modules"].values():
+    for module in [*contract["modules"].values(), *contract.get("core", {}).values()]:
         for expected in module["tables"].values():
-            path = ROOT / "src/plugins" / expected["source"]
+            path = ROOT / "src" / expected["source"]
             text = path.read_text()
-            for match in re.finditer(r'sql:\s*(`[^`]*`|"(?:[^"\\]|\\.)*"(?:\s*\+\s*"(?:[^"\\]|\\.)*")*)', text):
+            for match in re.finditer(r'(?:sql:\s*|=\s*)(`\s*CREATE TABLE[^`]*`|"CREATE TABLE(?:[^"\\]|\\.)*"(?:\s*\+\s*"(?:[^"\\]|\\.)*")*)', text):
                 literal = match[1]
                 sql = literal[1:-1] if literal.startswith("`") else "".join(json.loads(x[0]) for x in re.finditer(r'("(?:[^"\\]|\\.)*")', literal))
                 name = re.match(r"CREATE TABLE IF NOT EXISTS (\w+)", sql)
@@ -43,9 +43,9 @@ class PluginContractTests(unittest.TestCase):
 
     def test_declarations_match_real_module_sql_and_cover_seven_modules(self):
         self.assertEqual(len(self.contract["modules"]), 7)
-        self.assertEqual(len(self.ddl), 17)
+        self.assertEqual(len(self.ddl), 20)
         with sqlite3.connect(self.db) as db:
-            for module in self.contract["modules"].values():
+            for module in [*self.contract["modules"].values(), *self.contract["core"].values()]:
                 for table, expected in module["tables"].items():
                     rows = db.execute('PRAGMA table_info("' + table + '")').fetchall()
                     self.assertEqual({r[1]: r[2] for r in rows}, expected["columns"])
@@ -113,6 +113,35 @@ class PluginContractTests(unittest.TestCase):
         for plugins in (None, ["unknown"], ["analytics", "analytics"]):
             with self.assertRaises(ValueError):
                 check_snapshot(blank, plugins)
+
+    def test_tracking_claim_state_duplicates_and_wrong_index_fail_closed(self):
+        def insert(db, id, state):
+            db.execute("INSERT INTO ops_tracking_attempts VALUES (?,'site','us','actor','order','fulfillment','digest',?,'reason','date',NULL)", (id, state))
+        with sqlite3.connect(self.db) as db:
+            insert(db, 'one', 'future')
+        with self.assertRaisesRegex(ValueError, 'unsupported tracking state'):
+            check_snapshot(self.db, [])
+        with sqlite3.connect(self.db) as db:
+            db.execute("DELETE FROM ops_tracking_attempts")
+            insert(db, 'one', 'sending'); insert(db, 'two', 'uncertain')
+        with self.assertRaisesRegex(ValueError, 'duplicate active tracking claims'):
+            check_snapshot(self.db, [])
+        with sqlite3.connect(self.db) as db:
+            db.execute("DELETE FROM ops_tracking_attempts")
+            insert(db, 'one', 'sending'); insert(db, 'two', 'rejected')
+        before = self.fingerprint()
+        report = check_snapshot(self.db, [])
+        self.assertIn('ops_tracking_active_claim', report['core']['operations']['runtimeAdditions'])
+        self.assertEqual(before, self.fingerprint())
+        with sqlite3.connect(self.db) as db:
+            db.execute("CREATE INDEX ops_tracking_active_claim ON ops_tracking_attempts(id)")
+        with self.assertRaisesRegex(ValueError, 'incompatible tracking claim index'):
+            check_snapshot(self.db, [])
+        with sqlite3.connect(self.db) as db:
+            db.execute("DROP INDEX ops_tracking_active_claim")
+            db.execute("CREATE UNIQUE INDEX IF NOT EXISTS ops_tracking_active_claim ON ops_tracking_attempts(site_id,fulfillment_id) WHERE state IN ('sending','applied','uncertain')")
+        report = check_snapshot(self.db, [])
+        self.assertEqual(len(report['core']['operations']['checkedTables']), 3)
 
 
 if __name__ == "__main__":

@@ -121,3 +121,5 @@ require an explicit reviewed migration and shadow recovery; do not force the gat
 restore over live orders or automatically replay uncertain external calls. Full
 production libSQL/key/provider recovery and destructive schema downgrade remain
 separate acceptance items.
+
+Core operations separately declares three audit tables in `core.operations`: freight exports, tracking previews and tracking attempts. They are not analytics plugin data and remain required for operations when collection is paused. Snapshot preflight also rejects future tracking states, duplicate active claims and incompatible claim indexes; missing safe indexes are reported for runtime creation without modifying the source snapshot. See [tracking writeback](tracking-writeback.md). Source paths in this contract are relative to `storefront/src`.

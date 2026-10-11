@@ -1,6 +1,6 @@
 # 开发协作记录
 
-更新时间：2026-10-11（北京时间）
+更新时间：2026-10-12（北京时间）
 
 本文件用于正在同一仓库工作的开发助手记录任务、边界、提交和验收结果。
 开始修改前核对最新 main 与开放 PR；保留其他任务尚未提交的工作。
@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A19 品牌发货与货代交接 | ops/sites/fulfillment、lib/ops/fulfillment、原生订单读取 GraphQL、CSV导出审计及集成测试 | 分支 feat/brand-fulfillment-operations；PR #54/#55/#56已合并；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
+| Codex：产品审核整改 | A19 单号回填、A23运营审计恢复契约 | ops/sites/tracking、lib/ops/tracking、原生履约回填GraphQL及测试；3表核心运营恢复检查 | 分支 feat/fulfillment-tracking；PR #61 六项CI通过并合并5ebd29b；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -69,3 +69,7 @@
 - 2026-10-11：PR #60五项适用CI全部通过并合并68e4ecb，真实ProductGroup初始HTML/价格/SKU/预选及七模块暂停保留SEO均已验证。继续A23存储契约发布检查，只读检查现有17表与装修文档版本，AI模型加密列作为不透明数据保留；不改AI生成/导航/统一Ops外壳。SQLite恢复回执新增明确plugins预期，发布前/最终副本均检查SHA及schema；不自动迁移或回滚provider数据。
 
 - 2026-10-11：本批185文件/1107单元及12原生保护verify通过；7项真实SQLite契约负例、8项本地发布测试通过，2项Docker/PostgreSQL恢复测试由CI执行。所有结构检查只读，源snapshot字节与不透明加密凭据保持不变；发布前失败不会构建/停写/生产迁移。
+
+- 2026-10-12：PR #61六项CI全部通过（含真实Saleor联调和Docker/PostgreSQL恢复），已合并5ebd29b。继续A19单号回填：复用原生已付款/实物履约、专用MANAGE_ORDERS凭证、个人管理员及品牌/channel边界；预检5分钟，原子防重，超时/丢回执不自动重发，顾客邮件notifyCustomer=false。原生API无CAS，保留并发人工核对限制，不修改Core。新增 `/ops/sites/{siteId}/tracking`，请导航/Ops外壳任务保留个人管理员入口。3个运营审计表纳入core.operations契约，17个插件表归属未变；不改AI图片或其他任务布局。
+
+- 2026-10-12：PR #62首次五项CI通过，原生联调在测试准备阶段因Node fetch.status被误写为方法失败，尚未合并。修正属性读取，增加两份运营E2E的独立TypeScript闸门并纳入verify，保留原生库存/履约创建/单号回填断言后重跑。本地七个可选模块全部暂停时，回填与核心审计3项HTTP/浏览器流程仍通过。

@@ -20,6 +20,7 @@ async function FulfillmentContent({ params, searchParams }: Props) {
     <Link href={`/ops/sites/${encodeURIComponent(siteId)}`} className="text-sm underline">← 品牌经营概况</Link>
     <header><h1 className="text-2xl font-semibold">{site.name} · 发货与货代交接</h1><p className="mt-2 text-sm text-muted-foreground">原生 Saleor 是付款、库存与发货事实来源。此页按品牌市场处理队列，发货、退款和物流通知继续使用原生后台。</p></header>
     <form method="get" className="flex flex-wrap items-center gap-3"><label className="text-sm">发货市场 <select aria-label="发货市场" name="channel" defaultValue={channel} className="ml-2 rounded-lg border border-border bg-background p-2">{site.channels.map(item => <option key={item}>{item}</option>)}</select></label><button className="rounded-lg border border-border px-3 py-2 text-sm">重新读取</button></form>
+    {individualAdmin && <Link href={`/ops/sites/${encodeURIComponent(siteId)}/tracking?channel=${encodeURIComponent(channel)}`} className="inline-block rounded-lg border border-border px-4 py-2 text-sm">回填货代物流单号 →</Link>}
     {!snapshot ? <p role="alert" className="rounded-xl border border-border p-5">无法读取当前市场发货队列。请检查市场与具备 MANAGE_ORDERS 的服务器凭证，不会回退全品牌订单。</p> : <>
       <p className="text-xs text-muted-foreground">读取时间：{snapshot.checkedAt}。每页25笔，包含尚未付清订单；当前页数量不代表全部积压订单。列表不展示收件资料。</p>
       {individualAdmin && !dashboard && <p className="text-sm" role="alert">请配置原生后台地址 SALEOR_DASHBOARD_URL，以启用发货入口与货代交接操作。</p>}
