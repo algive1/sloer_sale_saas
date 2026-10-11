@@ -374,27 +374,35 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
   });
 
 
-  test("AI design drawer exposes model switching without publishing or revealing API keys",async({browser})=>{
+  test("AI image drawer exposes image tools and retains future text APIs disabled",async({browser})=>{
     test.skip(!password,"Requires authenticated operations browser");
     const context=await browser.newContext({
       httpCredentials:{username:"analytics",password:password!},viewport:{width:1440,height:900},
     });
     const page=await context.newPage();
-    try{
+    try {
       await page.goto("/ops/themes");
       await expect(page.getByRole("heading",{name:"品牌网站装修"})).toBeVisible();
-      await page.getByRole("button",{name:"打开 AI 装修助手"}).click();
-      const drawer=page.getByRole("complementary",{name:"AI 装修助手"});
+      await page.getByRole("button",{name:"打开 AI 图片生成"}).click();
+      const drawer=page.getByRole("complementary",{name:"AI 图片生成"});
       await expect(drawer).toBeVisible();
+      await expect(drawer.getByLabel("选择图片模块")).toBeVisible();
+      await expect(drawer.getByLabel("图片生成描述")).toBeVisible();
+      await expect(drawer.getByLabel("图片风格")).toBeVisible();
+      await expect(drawer.getByLabel("图片比例")).toBeVisible();
+      await expect(drawer.getByRole("button",{name:"生成 1 张图片"})).toBeDisabled();
       await drawer.getByRole("button",{name:"模型设置"}).click();
-      await expect(drawer.getByLabel("AI 接口地址")).toBeVisible();
-      await expect(drawer.getByLabel("模型名称")).toBeVisible();
+      await expect(drawer.getByLabel("图片接口地址")).toBeVisible();
+      await expect(drawer.getByLabel("图片模型 ID")).toBeVisible();
       await expect(drawer.getByLabel("API Key")).toHaveAttribute("type","password");
-      await expect(drawer.getByLabel("AI 修改范围")).toBeVisible();
-      await drawer.getByLabel("AI 修改范围").selectOption("block");
-      await expect(drawer.getByLabel("AI 目标模块")).toBeVisible();
-      await expect(drawer.getByRole("button",{name:"生成并更新中间预览"})).toBeDisabled();
-      await drawer.getByRole("button",{name:"关闭 AI 面板"}).click();
+      await expect(drawer.getByText("生成 / 优化整个页面")).toHaveCount(0);
+      await expect(drawer.getByText("AI 修改范围")).toHaveCount(0);
+      const inactiveText=await context.request.post("/ops/themes/ai/generate",{
+        headers:{Origin:baseURL,"Content-Type":"application/json"},
+        data:{channel:"us",locale:"en",pageType:"home",prompt:"Make a new homepage"},
+      });
+      expect(inactiveText.status()).toBe(404);
+      await drawer.getByRole("button",{name:"关闭 AI 图片面板"}).click();
       await expect(drawer).toHaveCount(0);
     }finally{
       await context.close();
