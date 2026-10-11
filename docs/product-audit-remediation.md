@@ -154,3 +154,10 @@ exists. Each follow-up should record its actual verification and remaining limit
 A23 local validation: `verify` passed (178 files / 1087 unit tests + 12 native brand guard tests; ESLint 0 errors / 27 existing warnings). Three local HTTP/browser E2E tests passed; the actual Saleor catalog check is deliberately skipped in the fixture environment and must pass in native CI with the same production build.
 
 Final A19 acceptance: PR #58 cbdbed17 passed all six CI workflows, including real Saleor 3.23.40 fulfillment CSV/audit/UI checks, and was merged to main 49dbea3. PR #59 c714542 also passed all six workflows including same-production-build pause/native catalog checks; its merge reconciliation is revalidated before merging. No external provider acceptance is implied.
+
+## A21：原生商品规格 ProductGroup
+
+- 初始服务器 HTML 输出完整原生规格矩阵、SKU、每规格价格/库存与真实预选链接；父商品 canonical 不随规格改变。
+- 明确配置选择属性 slug，不推断缺失品牌、评价或配送退货承诺；缺资料、未知变化维度、超上限或源查询失败回退已有 Product/AggregateOffer。
+- 保留静态 PDP shell，只在服务器 Suspense 槽位复用原生选择器的有界缓存查询，最多200规格，不新增 GraphQL 全量火流。
+- 本地 verify 通过（180文件/1095单元测试及12原生品牌保护）；真实原生生产构建、初始HTML和浏览器首尾规格预选待本批CI。后台资料继续使用原生编辑器与品牌商品检查入口。A21政策事实、死链/重定向及真实Merchant验收仍未完成。说明：product-group-seo.md。

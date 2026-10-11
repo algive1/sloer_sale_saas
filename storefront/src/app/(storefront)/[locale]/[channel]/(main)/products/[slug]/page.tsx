@@ -1,3 +1,4 @@
+import { ProductStructuredData } from "@/lib/seo/product-structured-data.server";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { type Metadata } from "next";
@@ -20,7 +21,6 @@ import { getStorefrontContent } from "@/lib/content/server";
 import {
 	buildBrowsePageMetadata,
 	buildProductJsonLd,
-	jsonLdScriptProps,
 	resolveSeoDescription,
 } from "@/lib/seo";
 import { buildStorefrontPath } from "@/lib/storefront-path";
@@ -175,7 +175,7 @@ async function ProductShell({
 		{ label: product.name },
 	];
 
-	const productJsonLd = buildProductJsonLd({
+	const productJsonLdOptions: Parameters<typeof buildProductJsonLd>[0] = {
 		channel: params.channel,
 		name: product.name,
 		description: resolveSeoDescription({
@@ -196,7 +196,7 @@ async function ProductShell({
 			: null,
 		inStock: product.isAvailable ?? false,
 		variantCount: product.productVariants?.totalCount ?? 0,
-	});
+	};
 
 	const variantSectionFallback = (
 		<VariantSectionFallback
@@ -245,7 +245,7 @@ async function ProductShell({
 				primarySlug={product.slug}
 				localeSlugs={buildLocaleSlugMap(product)}
 			/>
-			{productJsonLd && <script {...jsonLdScriptProps(productJsonLd)} />}
+			<Suspense fallback={null}><ProductStructuredData productId={product.id} slug={product.slug} locale={params.locale} options={productJsonLdOptions} /></Suspense>
 			<ProductCommerceEvent
 				channel={params.channel}
 				productId={product.id}
