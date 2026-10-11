@@ -47,4 +47,4 @@ jobs:
       - name: Check Dashboard types
         run: pnpm --dir dashboard exec tsc --noEmit
       - name: Validate navigation origins
-        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts --runInBand
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts --runInBand
