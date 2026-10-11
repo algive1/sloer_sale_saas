@@ -23,7 +23,17 @@ if grep -Eq '^STOREFRONT_SITES_JSON=.+$' .env; then
      [ "${SALEOR_SHARED_CORE_GUEST_ONLY:-}" != "1" ] &&
      ! grep -Eiq '^SALEOR_SHARED_CORE_GUEST_ONLY=(true|1)$' .env; then
     echo "Multi-brand requires SALEOR_SHARED_CORE_GUEST_ONLY=true in .env." >&2
-    echo "Checkout ID bearer access remains a separate unresolved risk." >&2
+    echo "Saleor direct GraphQL customer JWT protection must be enabled." >&2
+    exit 1
+  fi
+  # This private key must be present in both the Paper and Saleor containers.
+  checkout_gateway_secret="${SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET:-}"
+  if [ -z "$checkout_gateway_secret" ]; then
+    checkout_gateway_secret="$(sed -n 's/^SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET=//p' .env | tail -n 1)"
+  fi
+  if [ "${#checkout_gateway_secret}" -lt 32 ]; then
+    echo "Multi-brand requires SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET with 32+ characters." >&2
+    echo "Generate a random key: openssl rand -hex 32" >&2
     exit 1
   fi
 fi
