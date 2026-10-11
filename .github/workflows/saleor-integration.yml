@@ -343,7 +343,10 @@ jobs:
           done
 
           curl -fsS http://localhost:3100/sitemap.xml | tee /tmp/sitemap.xml
-          grep -q 'http://localhost:3100/en/us/products/' /tmp/sitemap.xml
+          grep -q '<sitemapindex ' /tmp/sitemap.xml
+          grep -q '/sitemaps/WyJlbiIsInVzIl0-products-0.xml' /tmp/sitemap.xml
+          curl -fsS http://localhost:3100/sitemaps/WyJlbiIsInVzIl0-products-0.xml > /tmp/sitemap-products.xml
+          grep -q 'http://localhost:3100/en/us/products/' /tmp/sitemap-products.xml
           grep -q 'http://localhost:3100/sitemap.xml' /tmp/robots.txt
 
           curl -fsS 'http://localhost:3100/merchant/google.xml?channel=us&locale=en'             | tee /tmp/google-merchant.xml

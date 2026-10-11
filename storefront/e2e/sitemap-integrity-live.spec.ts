@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { publicSitemapLocations } from "./helpers/sitemap";
 
 const origin = process.env.PLAYWRIGHT_MULTIBRAND_BASE_URL ?? "http://127.0.0.1:3101";
 const saleor = process.env.SALEOR_API_URL ?? "http://127.0.0.1:8000/graphql/";
@@ -25,13 +26,10 @@ test("public sitemaps cover the complete native product count for each brand's l
 		expect(body.errors ?? []).toEqual([]);
 		const count = body.data?.products?.totalCount;
 		expect(count).toBeGreaterThan(0);
-		const sitemap = await request.get(origin + "/sitemap.xml", { headers: { Host: brand.host } });
-		expect(sitemap.status()).toBe(200);
-		expect(sitemap.headers()["content-type"]).toContain("xml");
-		const xml = await sitemap.text();
-		const locations = Array.from(xml.matchAll(/<loc>([^<]*)<\/loc>/g), (match) => match[1]);
-		expect(new Set(locations).size).toBe(locations.length);
+		const { locations, links } = await publicSitemapLocations(request, origin, brand.host);
 		expect(locations.every((url) => url.startsWith(`https://${brand.host}/`))).toBe(true);
+		const otherHost = brand.channel === "us" ? "jewelry.example.test" : "fashion.example.test";
+		expect((await request.get(origin + new URL(links[0]).pathname, { headers: { Host: otherHost } })).status()).toBe(404);
 		for (const locale of brand.locales) {
 			const prefix = `https://${brand.host}/${locale}/${brand.channel}/products/`;
 			expect(
@@ -45,4 +43,5 @@ test("public sitemaps cover the complete native product count for each brand's l
 	});
 	expect(unknown.status()).toBe(404);
 	expect(await unknown.text()).not.toContain("https://fashion.example.test/");
+	expect((await request.get(origin + "/sitemaps/invalid.xml", { headers: { Host: "fashion.example.test" } })).status()).toBe(404);
 });
