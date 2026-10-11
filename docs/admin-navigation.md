@@ -57,11 +57,12 @@ embeds the public (non-secret) origin in its JS bundle.
 ## Visual themes and storefront isolation
 
 - Saleor already supports light/dark switching in the account menu.
+- Desktop navigation expands to 280px or collapses to a 72px icon rail. The collapse choice is stored only in this browser; mobile and tablet continue to use Saleor's full navigation drawer.
+- Clicking a group icon while collapsed reopens the sidebar and expands that group. The global search still targets Saleor `/search` and retains its native `/` shortcut.
 - Navigation emphasis is scoped to
   `dashboard/src/components/Sidebar/menu/CommerceSidebar.module.css`.
-- Override `--commerce-admin-nav-accent` (currently `#2563eb`) to adjust
-  the admin sidebar accent. Neutral backgrounds are generated from the current
-  theme text color so they remain suitable for light and dark UI.
+- An accessible color selector in the existing user menu allows Blue (`#2563eb`), Slate (`#475569`) or Teal (`#0f766e`). The browser-local choice overrides `--commerce-admin-preference-accent`; neutral colors continue to follow Macaw light/dark mode.
+- Change the fallback `--commerce-admin-nav-accent` to adjust the default color in source. The setting is deliberately **not** a global merchant preference and is not stored in Saleor, so multiple operators may prefer different accents.
 - Do **not** import Dashboard CSS or admin tokens into `storefront/`. Paper
   and Puck-generated brand pages have their own appearance and published data.
   Changing admin sidebar colors does not publish or alter any brand theme.
@@ -74,8 +75,8 @@ appropriate Saleor navigation permission. Custom Saleor Apps should continue
 to use upstream extension mount points instead of direct core changes.
 
 Future work, not included here: a single-session, same-shell Commerce Ops
-integration; fine-grained data scopes for analytics per brand; runtime admin
-accent preset switcher; full browser E2E coverage with both services running.
+integration; fine-grained data scopes for analytics per brand; full browser E2E
+coverage with both services running.
 
 ## Review checklist
 
@@ -88,3 +89,11 @@ accent preset switcher; full browser E2E coverage with both services running.
 - Test secure HTTPS deployment and local http://localhost setup separately.
 - Run `pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts --runInBand`
   and `pnpm --dir dashboard exec tsc --noEmit` on a checkout with dependencies.
+
+## Navigation regression notes
+
+- Native order/product/customer lists and search remain reachable.
+- Settings is an accordion with links to real native Saleor configuration pages.
+- Orders, Analytics, and Online store start expanded, but operators can close them.
+- Search appears as a clickable field only when the account has native Search permission.
+- Only two UI preferences use browser localStorage: `commerce-admin-sidebar-collapsed` and `commerce-admin-navigation-accent`. No merchant data or storefront colors are stored.
