@@ -6,13 +6,13 @@ import {analyticsDatabaseConfigured,hranaRowsToObjects,libsqlPipeline} from "@/l
  * Analytics checkout_completed events are not proof that an order is paid.
  */
 export type OpsOrder = {
-  id:string; number:string; createdAt:string; paidAt:string|null;
+  id:string; channel?:string; number:string; createdAt:string; paidAt:string|null;
   country:string; source:string; status:string; paymentStatus:string; authorizeStatus:string;
   isPaid:boolean; hasRefund:boolean; amount:number; currency:string; paymentMethod:string;
   thumbnailUrl:string; productName:string; email:string;
 };
 type GqlOrder = {
- id:string; number:string; created:string; status:string; paymentStatus?:string|null;
+ id:string; channel?:{slug:string}|null; number:string; created:string; status:string; paymentStatus?:string|null;
  isPaid:boolean; userEmail?:string|null; authorizeStatus?:string|null;
  shippingAddress?:{country?:{code?:string|null}|null}|null;
  billingAddress?:{country?:{code?:string|null}|null}|null;
@@ -22,11 +22,11 @@ type GqlOrder = {
  payments?:Array<{gateway?:string|null;created?:string|null}>|null;
  transactions?:Array<{name:string;events:Array<{createdAt:string;type:string|null}>}>|null;
 };
-const query=`query OpsRecentOrders($first:Int!,$after:String){
- orders(first:$first,after:$after,sortBy:{field:CREATED_AT,direction:DESC}) {
+const query=`query OpsRecentOrders($first:Int!,$after:String,$channel:String){
+ orders(first:$first,after:$after,channel:$channel,sortBy:{field:CREATED_AT,direction:DESC}) {
   pageInfo { hasNextPage endCursor }
   edges { node {
-   id number created status paymentStatus authorizeStatus isPaid userEmail
+   id number created status paymentStatus authorizeStatus isPaid userEmail channel {slug}
    shippingAddress {country {code}}
    billingAddress {country {code}}
    total {gross {amount currency}}
@@ -40,7 +40,7 @@ const query=`query OpsRecentOrders($first:Int!,$after:String){
 
 function mapOrders(nodes:GqlOrder[]):OpsOrder[]{
  return nodes.map(o=>({
-  id:o.id,number:o.number,createdAt:o.created,
+  id:o.id,channel:o.channel?.slug,number:o.number,createdAt:o.created,
   paidAt:o.isPaid?(o.transactions??[]).flatMap(t=>t.events??[]).filter(e=>e.type==="CHARGE_SUCCESS").map(e=>e.createdAt).sort()[0]??null:null,
   country:o.shippingAddress?.country?.code??o.billingAddress?.country?.code??"UNKNOWN",
   source:"—",status:o.status,paymentStatus:o.paymentStatus??"UNKNOWN",authorizeStatus:o.authorizeStatus??"UNKNOWN",
@@ -53,14 +53,14 @@ function mapOrders(nodes:GqlOrder[]):OpsOrder[]{
 }
 
 export type OpsOrdersPage={orders:OpsOrder[];hasNextPage:boolean;endCursor:string|null};
-export async function fetchSaleorOrdersPage(first=24,after?:string):Promise<OpsOrdersPage|null>{
+export async function fetchSaleorOrdersPage(first=24,after?:string,channel?:string):Promise<OpsOrdersPage|null>{
  const endpoint=process.env.SALEOR_INTERNAL_API_URL?.trim()||process.env.NEXT_PUBLIC_SALEOR_API_URL?.trim();
  const token=process.env.SALEOR_APP_TOKEN?.trim();
  if(!endpoint||!token)return null;
  const response=await fetch(endpoint,{
    method:"POST",cache:"no-store",signal:AbortSignal.timeout(8000),
    headers:{"content-type":"application/json",authorization:"Bearer "+token},
-   body:JSON.stringify({query,variables:{first:Math.max(1,Math.min(100,first)),after:after||null}}),
+   body:JSON.stringify({query,variables:{first:Math.max(1,Math.min(100,first)),after:after||null,channel:channel||null}}),
  });
  if(!response.ok)throw new Error("Saleor order API HTTP "+response.status);
  const body=await response.json() as {data?:{orders?:{edges:Array<{node:GqlOrder}>;pageInfo?:{hasNextPage:boolean;endCursor:string|null}}|null};errors?:Array<{message:string}>};
@@ -99,7 +99,7 @@ export async function fetchSaleorOrder(id:string):Promise<OpsOrder|null>{
  const response=await fetch(endpoint,{
   method:"POST",cache:"no-store",signal:AbortSignal.timeout(8000),
   headers:{"content-type":"application/json",authorization:"Bearer "+token},
-  body:JSON.stringify({query:`query OpsOrderById($id:ID!){order(id:$id){id number created status paymentStatus authorizeStatus isPaid userEmail
+  body:JSON.stringify({query:`query OpsOrderById($id:ID!){order(id:$id){id number created status paymentStatus authorizeStatus isPaid userEmail channel {slug}
    shippingAddress {country {code}}
    billingAddress {country {code}}
    total {gross {amount currency}}

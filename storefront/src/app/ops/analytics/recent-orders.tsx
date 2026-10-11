@@ -2,10 +2,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { SaleorImage } from "@/ui/atoms/saleor-image";
+import type { ReminderSite } from "@/plugins/payment-reminders/config";
 import type { OpsOrder } from "@/lib/analytics/saleor-ops-orders";
 import { reminderSkipReason } from "@/lib/analytics/reminder-policy";
 
-type Props={orders:OpsOrder[]|null;dashboardBase:string;emailReady:boolean};
+type Props={orders:OpsOrder[]|null;dashboardBase:string;emailReady:boolean;reminderSites:ReminderSite[]};
 function amount(value:number,currency:string){
  try{return new Intl.NumberFormat("en",{style:"currency",currency}).format(value);}
  catch{return value.toFixed(2)+" "+currency;}
@@ -16,15 +17,16 @@ function state(o:OpsOrder){
  if(o.isPaid)return ["已支付待发货","good"];
  return ["待支付","warn"];
 }
-export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
+export function RecentOrdersTable({orders,dashboardBase,emailReady,reminderSites}:Props){
  const [busy,setBusy]=useState("");
  const [dialog,setDialog]=useState<OpsOrder|null>(null);
  const [message,setMessage]=useState<string|null>(null);
+ const siteFor=(order:OpsOrder)=>reminderSites.find(s=>s.channels.includes(order.channel??""))??reminderSites.find(s=>s.id==="legacy:single");
  async function remind(order:OpsOrder){
   setBusy(order.id);setMessage(null);
   try{
    const r=await fetch("/ops/api/analytics/reminders/manual",{method:"POST",credentials:"same-origin",
-    headers:{"content-type":"application/json","x-requested-with":"analytics"},body:JSON.stringify({orderId:order.id})});
+    headers:{"content-type":"application/json","x-requested-with":"analytics"},body:JSON.stringify({orderId:order.id,siteId:siteFor(order)?.id})});
    const data=await r.json() as {status?:string;reason?:string;error?:string};
    if(r.ok&&data.status==="sent")setMessage("付款提醒已提交邮件服务。");
    else setMessage("未发送："+(data.reason??data.error??"服务暂不可用"));
@@ -44,6 +46,8 @@ export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
     const [label,kind]=state(o);
     const href=dashboardBase?dashboardBase+"/orders/"+encodeURIComponent(o.id):"";
     const canRemind=reminderSkipReason(o)===null;
+    const site=siteFor(o);
+    const ready=emailReady&&Boolean(site?.emailReady);
     return <tr key={o.id} className="border-b border-border/50 last:border-0">
       <td className="py-2 pr-2"><div className="flex min-w-[174px] items-center gap-2">
        {o.thumbnailUrl?<span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded border border-border"><SaleorImage src={o.thumbnailUrl} srcSet={o.thumbnailUrl+" 64w"} sizes="40px" alt={o.productName}/></span>:<span className="flex h-10 w-10 shrink-0 items-center justify-center rounded border border-border bg-secondary text-[10px]">无图</span>}
@@ -55,13 +59,13 @@ export function RecentOrdersTable({orders,dashboardBase,emailReady}:Props){
       <td className="px-2">{o.paymentMethod}</td>
       <td className="whitespace-nowrap px-2"><div className="flex gap-1">
        {href&&<a href={href} target="_blank" rel="noopener noreferrer" className="rounded border border-border px-2 py-1 hover:bg-secondary">{o.isPaid&&o.status!=="FULFILLED"?"去发货":"查看"}</a>}
-       {canRemind&&<button type="button" disabled={!emailReady||busy===o.id} title={!emailReady?"请先配置邮件服务":undefined} className="rounded border border-border px-2 py-1 disabled:opacity-40" onClick={()=>setDialog(o)}>催付</button>}
+       {canRemind&&<button type="button" disabled={!ready||Boolean(busy)} title={!ready?"请先配置邮件服务":undefined} className="rounded border border-border px-2 py-1 disabled:opacity-40" onClick={()=>setDialog(o)}>催付</button>}
       </div></td>
     </tr>;
    })}</tbody>
   </table>{!orders.length&&<p className="p-8 text-center text-sm text-muted-foreground">暂无可展示订单</p>}</div>}
   {dialog&&<div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onMouseDown={()=>setDialog(null)}><section role="dialog" aria-modal="true" aria-label="确认催付" onMouseDown={e=>e.stopPropagation()} className="w-full max-w-md rounded-xl bg-card p-5 shadow-xl">
-   <h3 className="font-semibold">向客户发送付款提醒？</h3><p className="mt-2 text-sm text-muted-foreground">订单 #{dialog.number}，当前未付款。发送前会再次向 Saleor 检查支付状态；同一订单人工提醒仅允许一次，避免重复打扰。</p>
+   <h3 className="font-semibold">向客户发送付款提醒？</h3><p className="mt-2 text-sm text-muted-foreground">{siteFor(dialog)?.name} · 订单 #{dialog.number}，当前未付款。发送前会再次向 Saleor 检查支付状态；同一订单人工提醒仅允许一次，避免重复打扰。发件人：{siteFor(dialog)?.from}。</p>
    <div className="mt-5 flex justify-end gap-2"><button className="rounded-lg border border-border px-3 py-2 text-sm" onClick={()=>setDialog(null)}>取消</button><button disabled={Boolean(busy)} className="rounded-lg bg-foreground px-3 py-2 text-sm text-background disabled:opacity-50" onClick={()=>void remind(dialog)}>{busy?"发送中":"确认发送"}</button></div>
   </section></div>}
  </section>;

@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A04 多品牌催付规则、发送身份、订单隔离及运营界面 | payment-reminders、ops/analytics/reminders、订单读取的 channel 字段、对应测试 | 分支 fix/brand-scoped-reminders 开发中 |
+| Codex：产品审核整改 | A04 多品牌催付规则、发送身份、订单隔离及运营界面 | payment-reminders、ops/analytics/reminders、订单读取的 channel 字段、对应测试 | 分支 fix/brand-scoped-reminders：源码与回归已完成，提交审核中 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -31,3 +31,5 @@
 ## 进度记录
 
 - 2026-10-11：核对 main d223640（PR #50）；建立本文件。AI 图片任务保留给原负责人。开始多品牌催付整改。
+
+- 2026-10-11：完成 A04 品牌规则、发送身份/语言/链接、channel 重读核对、原子额度及防重复、后台品牌切换和40条发送记录。全量 verify 通过（999项单元测试及12项原生品牌保护测试）；本地 HTTP/SQLite API 验证通过，浏览器/生产构建继续验收。新增 PAYMENT_REMINDER_SITES_JSON 到 compose 和两份 env 模板，请 AI 图片任务保留该项。邮件 provider 为模拟响应，未执行真实发送。

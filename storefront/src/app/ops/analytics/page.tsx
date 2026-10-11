@@ -4,7 +4,7 @@ import { io } from "next/cache";
 import { readProductReport } from "@/plugins/analytics/product-report";
 import { readTrafficReport } from "@/plugins/analytics/traffic-report";
 import { fetchSaleorOrders } from "@/lib/analytics/saleor-ops-orders";
-import { reminderEmailConfigured } from "@/lib/analytics/payment-reminders";
+import { reminderEmailConfigured,getReminderSites } from "@/plugins/payment-reminders/service";
 import { RecentOrdersTable } from "./recent-orders";
 import { readOverviewDetails, readOverviewFinances } from "@/plugins/analytics/overview-details";
 import { readAnalyticsSummary } from "@/plugins/analytics/first-party-store";
@@ -144,7 +144,7 @@ async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {
         dashboardBase={dashboardBase}
         funnel={funnelCard}
         health={healthCard}
-        recentOrders={<RecentOrdersTable orders={orders} dashboardBase={dashboardBase} emailReady={reminderEmailConfigured()}/>}
+        recentOrders={<RecentOrdersTable orders={orders} dashboardBase={dashboardBase} emailReady={reminderEmailConfigured()} reminderSites={getReminderSites()}/>}
         regionRange={query.region??"7d"}
         regionFrom={query.regionFrom}
         regionTo={query.regionTo}
