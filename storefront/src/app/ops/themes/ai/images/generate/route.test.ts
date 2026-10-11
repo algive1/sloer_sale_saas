@@ -42,7 +42,7 @@ describe("image-only API",()=>{
     }),{status:200,headers:{"Content-Type":"application/json"}}));
     vi.stubGlobal("fetch",fetchSpy);
     const response=await POST(request());
-    expect(response.status,await response.text()).toBe(200);
+    expect(response.status).toBe(200);
     const payload=await response.clone().json() as {image:{base64:string;mime:string;provider:string}};
     expect(payload.image.mime).toBe("image/webp");
     expect(payload.image.provider).toBe("Image AI");
