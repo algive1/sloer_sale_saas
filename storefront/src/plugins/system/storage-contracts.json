@@ -1,0 +1,498 @@
+{
+  "contractVersion": 1,
+  "modules": {
+    "theme-builder": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "storefront_theme_homepages": {
+          "columns": {
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "locale": "TEXT",
+            "draft_json": "TEXT",
+            "published_json": "TEXT",
+            "draft_revision": "INTEGER",
+            "published_revision": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "channel",
+            "locale"
+          ],
+          "source": "theme-builder/store.ts",
+          "notNull": [
+            "site_id",
+            "channel",
+            "locale",
+            "draft_revision",
+            "published_revision",
+            "updated_at"
+          ]
+        },
+        "storefront_theme_pages": {
+          "columns": {
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "locale": "TEXT",
+            "page_type": "TEXT",
+            "template_key": "TEXT",
+            "draft_json": "TEXT",
+            "published_json": "TEXT",
+            "draft_revision": "INTEGER",
+            "published_revision": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "channel",
+            "locale",
+            "page_type",
+            "template_key"
+          ],
+          "source": "theme-builder/pages-store.ts",
+          "notNull": [
+            "site_id",
+            "channel",
+            "locale",
+            "page_type",
+            "template_key",
+            "draft_revision",
+            "published_revision",
+            "updated_at"
+          ]
+        },
+        "storefront_theme_saved_templates": {
+          "columns": {
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "locale": "TEXT",
+            "page_type": "TEXT",
+            "template_id": "TEXT",
+            "title": "TEXT",
+            "data_json": "TEXT",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "channel",
+            "locale",
+            "page_type",
+            "template_id"
+          ],
+          "source": "theme-builder/saved-templates.ts",
+          "notNull": [
+            "site_id",
+            "channel",
+            "locale",
+            "page_type",
+            "template_id",
+            "title",
+            "data_json",
+            "updated_at"
+          ]
+        },
+        "storefront_theme_ai_profiles": {
+          "columns": {
+            "site_id": "TEXT",
+            "profile_id": "TEXT",
+            "title": "TEXT",
+            "base_url": "TEXT",
+            "model": "TEXT",
+            "api_key_encrypted": "TEXT",
+            "is_active": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "profile_id"
+          ],
+          "source": "theme-builder/ai-providers.server.ts",
+          "notNull": [
+            "site_id",
+            "profile_id",
+            "title",
+            "base_url",
+            "model",
+            "api_key_encrypted",
+            "is_active",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    "analytics": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "analytics_events": {
+          "columns": {
+            "id": "TEXT",
+            "occurred_at": "TEXT",
+            "event_name": "TEXT",
+            "channel": "TEXT",
+            "session_id": "TEXT",
+            "event_id": "TEXT",
+            "transaction_id": "TEXT",
+            "value": "REAL",
+            "currency": "TEXT",
+            "source": "TEXT",
+            "medium": "TEXT",
+            "campaign": "TEXT",
+            "landing_path": "TEXT",
+            "traffic_type": "TEXT",
+            "source_group": "TEXT",
+            "referrer_host": "TEXT",
+            "country_code": "TEXT",
+            "region_code": "TEXT",
+            "device_type": "TEXT",
+            "checkout_stage": "TEXT",
+            "method": "TEXT",
+            "provider": "TEXT",
+            "error_code": "TEXT",
+            "failure_reason": "TEXT",
+            "click_ids_json": "TEXT",
+            "item_ids_json": "TEXT",
+            "payload_json": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "source": "analytics/first-party-store.ts",
+          "notNull": [
+            "occurred_at",
+            "event_name",
+            "click_ids_json",
+            "item_ids_json",
+            "payload_json"
+          ]
+        },
+        "analytics_refund_totals": {
+          "columns": {
+            "order_id": "TEXT",
+            "total_refunded": "REAL",
+            "currency": "TEXT",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "order_id"
+          ],
+          "source": "analytics/first-party-store.ts",
+          "notNull": [
+            "total_refunded",
+            "currency",
+            "updated_at"
+          ]
+        },
+        "analytics_event_items": {
+          "columns": {
+            "event_name": "TEXT",
+            "event_id": "TEXT",
+            "item_index": "INTEGER",
+            "item_id": "TEXT",
+            "product_id": "TEXT",
+            "variant_id": "TEXT",
+            "sku": "TEXT",
+            "item_name": "TEXT",
+            "category_id": "TEXT",
+            "category_name": "TEXT",
+            "image_url": "TEXT",
+            "price": "REAL",
+            "quantity": "INTEGER"
+          },
+          "primaryKey": [
+            "event_name",
+            "event_id",
+            "item_index"
+          ],
+          "source": "analytics/first-party-store.ts",
+          "notNull": [
+            "event_name",
+            "event_id",
+            "item_index",
+            "item_id",
+            "quantity"
+          ]
+        },
+        "analytics_schema_meta": {
+          "columns": {
+            "key": "TEXT",
+            "applied_at": "TEXT"
+          },
+          "primaryKey": [
+            "key"
+          ],
+          "source": "analytics/first-party-store.ts",
+          "notNull": [
+            "applied_at"
+          ]
+        }
+      }
+    },
+    "ads-tracking": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "analytics_ad_deliveries": {
+          "columns": {
+            "site_id": "TEXT",
+            "destination": "TEXT",
+            "event_key": "TEXT",
+            "destination_id": "TEXT",
+            "event_name": "TEXT",
+            "channel": "TEXT",
+            "status": "TEXT",
+            "code": "TEXT",
+            "claimed_at": "TEXT",
+            "finished_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "destination",
+            "event_key"
+          ],
+          "source": "ads-tracking/delivery-store.ts",
+          "notNull": [
+            "site_id",
+            "destination",
+            "event_key",
+            "destination_id",
+            "event_name",
+            "channel",
+            "status",
+            "code",
+            "claimed_at"
+          ]
+        }
+      }
+    },
+    "payment-reminders": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "ops_reminder_rule": {
+          "columns": {
+            "id": "INTEGER",
+            "enabled": "INTEGER",
+            "first_after_hours": "INTEGER",
+            "second_after_hours": "INTEGER",
+            "daily_limit": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "source": "payment-reminders/service.ts",
+          "notNull": [
+            "enabled",
+            "first_after_hours",
+            "second_after_hours",
+            "daily_limit",
+            "updated_at"
+          ]
+        },
+        "ops_reminder_delivery": {
+          "columns": {
+            "order_id": "TEXT",
+            "stage": "TEXT",
+            "status": "TEXT",
+            "claimed_at": "TEXT",
+            "sent_at": "TEXT",
+            "provider_id": "TEXT",
+            "error": "TEXT"
+          },
+          "primaryKey": [
+            "order_id",
+            "stage"
+          ],
+          "source": "payment-reminders/service.ts",
+          "notNull": [
+            "order_id",
+            "stage",
+            "status",
+            "claimed_at"
+          ]
+        },
+        "ops_reminder_site_rule": {
+          "columns": {
+            "site_id": "TEXT",
+            "enabled": "INTEGER",
+            "first_after_hours": "INTEGER",
+            "second_after_hours": "INTEGER",
+            "daily_limit": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id"
+          ],
+          "source": "payment-reminders/service.ts",
+          "notNull": [
+            "enabled",
+            "first_after_hours",
+            "second_after_hours",
+            "daily_limit",
+            "updated_at"
+          ]
+        },
+        "ops_reminder_site_delivery": {
+          "columns": {
+            "site_id": "TEXT",
+            "order_id": "TEXT",
+            "order_number": "TEXT",
+            "channel": "TEXT",
+            "stage": "TEXT",
+            "status": "TEXT",
+            "claimed_at": "TEXT",
+            "sent_at": "TEXT",
+            "provider_id": "TEXT",
+            "error": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "order_id",
+            "stage"
+          ],
+          "source": "payment-reminders/service.ts",
+          "notNull": [
+            "site_id",
+            "order_id",
+            "order_number",
+            "channel",
+            "stage",
+            "status",
+            "claimed_at"
+          ]
+        }
+      }
+    },
+    "customer-support": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "support_ai_delivery": {
+          "columns": {
+            "site_id": "TEXT",
+            "message_id": "TEXT",
+            "conversation_id": "INTEGER",
+            "status": "TEXT",
+            "kind": "TEXT",
+            "claimed_at": "TEXT",
+            "started_at": "TEXT",
+            "finished_at": "TEXT"
+          },
+          "primaryKey": [
+            "site_id",
+            "message_id"
+          ],
+          "source": "customer-support/ai/bot-runtime.ts",
+          "notNull": [
+            "site_id",
+            "message_id",
+            "conversation_id",
+            "status",
+            "kind",
+            "claimed_at"
+          ]
+        },
+        "support_ai_worker_heartbeat": {
+          "columns": {
+            "id": "INTEGER",
+            "seen_at": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "source": "customer-support/ai/bot-runtime.ts",
+          "notNull": [
+            "seen_at"
+          ]
+        }
+      }
+    },
+    "ai-translations": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "ops_translation_jobs": {
+          "columns": {
+            "id": "TEXT",
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "locale": "TEXT",
+            "next_cursor": "TEXT",
+            "created_at": "TEXT",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "source": "ai-translations/store.ts",
+          "notNull": [
+            "site_id",
+            "channel",
+            "locale",
+            "created_at",
+            "updated_at"
+          ]
+        },
+        "ops_translation_items": {
+          "columns": {
+            "job_id": "TEXT",
+            "item_id": "TEXT",
+            "product_id": "TEXT",
+            "slug": "TEXT",
+            "source_hash": "TEXT",
+            "source_json": "TEXT",
+            "translation_json": "TEXT",
+            "status": "TEXT",
+            "revision": "INTEGER",
+            "updated_at": "TEXT"
+          },
+          "primaryKey": [
+            "job_id",
+            "item_id"
+          ],
+          "source": "ai-translations/store.ts",
+          "notNull": [
+            "job_id",
+            "item_id",
+            "product_id",
+            "slug",
+            "source_hash",
+            "source_json",
+            "status",
+            "revision",
+            "updated_at"
+          ]
+        }
+      }
+    },
+    "seo-merchant": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {}
+    }
+  },
+  "legacyAdditions": {
+    "analytics_events": {
+      "traffic_type": "TEXT",
+      "source_group": "TEXT",
+      "referrer_host": "TEXT",
+      "country_code": "TEXT",
+      "region_code": "TEXT",
+      "device_type": "TEXT",
+      "checkout_stage": "TEXT",
+      "method": "TEXT",
+      "provider": "TEXT",
+      "error_code": "TEXT",
+      "failure_reason": "TEXT"
+    },
+    "analytics_event_items": {
+      "product_id": "TEXT",
+      "category_id": "TEXT",
+      "category_name": "TEXT",
+      "image_url": "TEXT"
+    }
+  }
+}

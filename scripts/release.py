@@ -21,6 +21,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from plugin_contracts import CONTRACT_PATH, check_snapshot
 
 ROOT = Path(__file__).resolve().parent.parent
 APPLICATIONS = ("api", "worker", "migrate", "dashboard", "storefront")
@@ -98,15 +99,22 @@ def verify_external_receipts(receipt_path, required, destination):
             raise ValueError("External backup requires restore evidence: " + service)
         if not source.is_file() or source.stat().st_size == 0 or digest(source) != row.get("sha256"):
             raise ValueError("External backup missing or checksum mismatch: " + service)
-        # A receipt cannot turn a text placeholder into a verified SQLite backup.
-        if service in {"analytics", "theme", "translations"}:
-            with sqlite3.connect(source.as_uri() + "?mode=ro", uri=True) as db:
-                if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
-                    raise ValueError("External SQLite integrity check failed: " + service)
         target = destination / (service + ".backup")
         shutil.copyfile(source, target)
         target.chmod(0o600)
-        accepted.append({**row, "path": target.name})
+        # Validate the exact private bytes retained for recovery, not a source
+        # which could change between checksum, SQLite reads and copying.
+        if digest(target) != row.get("sha256"):
+            raise ValueError("External snapshot changed while being copied: " + service)
+        # A receipt cannot turn a text placeholder into a verified SQLite backup.
+        if service in {"analytics", "theme", "translations"}:
+            with sqlite3.connect(target.as_uri() + "?mode=ro", uri=True) as db:
+                if db.execute("PRAGMA integrity_check").fetchone() != ("ok",):
+                    raise ValueError("External SQLite integrity check failed: " + service)
+            compatibility = check_snapshot(target, row.get("plugins"))
+        else:
+            compatibility = None
+        accepted.append({**row, "path": target.name, "pluginCompatibility": compatibility})
     return accepted
 
 
@@ -133,6 +141,17 @@ class Release:
     def save(self, status):
         self.manifest.update(status=status, updatedAt=utc())
         write_json(self.directory / "manifest.json", self.manifest)
+
+    def external_preflight(self):
+        destination = self.directory / "external-preflight"
+        destination.mkdir(mode=0o700)
+        environment = {**self.config["services"].get("api", {}).get("environment", {}),
+                       **self.config["services"]["storefront"]["environment"]}
+        receipts = verify_external_receipts(os.environ.get("RELEASE_EXTERNAL_BACKUP_RECEIPT"), external_services(environment), destination)
+        shutil.copyfile(CONTRACT_PATH, destination / "storage-contracts.json")
+        (destination / "storage-contracts.json").chmod(0o600)
+        self.manifest["pluginStoragePreflight"] = receipts
+        self.manifest["pluginStorageContractSha256"] = digest(CONTRACT_PATH)
 
     def build(self, services, environment=None):
         # Match the repository's explicit BuildKit network.host entitlement.
@@ -223,6 +242,8 @@ class Release:
         write_json(backup / "resolved-compose.json", self.config)
         external = verify_external_receipts(os.environ.get("RELEASE_EXTERNAL_BACKUP_RECEIPT"),
                                            external_services({**self.config["services"]["api"]["environment"], **self.config["services"]["storefront"]["environment"]}), backup)
+        shutil.copyfile(CONTRACT_PATH, backup / "storage-contracts.json")
+        (backup / "storage-contracts.json").chmod(0o600)
         table_count = self.restore_stage(backup / "saleor.dump")
         checksums = {path.name: digest(path) for path in backup.iterdir() if path.is_file()}
         self.manifest["backup"] = {"verifiedAt": utc(), "publicTableCount": table_count, "sha256": checksums, "external": external}
@@ -230,6 +251,7 @@ class Release:
 
     def execute(self):
         self.capture_previous_images()
+        self.external_preflight()
         self.save("building")
         print("Building backend; production application writers remain running.", flush=True)
         self.build(["api", "worker", "migrate"])

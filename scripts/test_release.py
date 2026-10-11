@@ -27,7 +27,7 @@ class ReceiptTests(unittest.TestCase):
             db.execute("CREATE TABLE reminder (site TEXT, payload BLOB)")
             db.execute("INSERT INTO reminder VALUES (?, ?)", ("fashion", bytes([0, 255, 127])))
         now = dt.datetime.now(dt.timezone.utc)
-        self.row = {"service": "analytics", "path": self.db.name, "sha256": release.digest(self.db),
+        self.row = {"service": "analytics", "path": self.db.name, "sha256": release.digest(self.db), "plugins": [],
                     "capturedAt": (now - dt.timedelta(minutes=2)).isoformat(),
                     "restoreVerifiedAt": (now - dt.timedelta(minutes=1)).isoformat(),
                     "restoreEvidence": "Isolated provider restore DRILL-001"}
@@ -64,6 +64,18 @@ class ReceiptTests(unittest.TestCase):
                          {"analytics", "theme", "chatwoot", "object-storage"})
         self.assertEqual(release.external_services({}), set())
 
+    def test_mutated_copy_and_missing_plugin_expectations_cannot_be_accepted(self):
+        original = release.shutil.copyfile
+        def tampered(source, destination):
+            original(source, destination)
+            Path(destination).write_bytes(b"changed during copying")
+        with patch.object(release.shutil, "copyfile", tampered):
+            with self.assertRaisesRegex(ValueError, "changed while being copied"):
+                self.verify([self.row])
+        row = {key: value for key, value in self.row.items() if key != "plugins"}
+        with self.assertRaisesRegex(ValueError, "plugin IDs"):
+            self.verify([row])
+
 
 class FailureBoundaryTests(unittest.TestCase):
     def simulate(self, fail_phase):
@@ -89,6 +101,7 @@ class FailureBoundaryTests(unittest.TestCase):
                 raise RuntimeError("simulated failure")
 
         runner.capture_previous_images = lambda: phase("previous-images")
+        runner.external_preflight = lambda: phase("plugin-preflight")
         runner.save = lambda status: events.append(status)
         runner.dump = lambda path: phase("dump")
         runner.prepare_stage = lambda: phase("prepare-stage")
@@ -120,6 +133,13 @@ class FailureBoundaryTests(unittest.TestCase):
     def test_frontend_build_failure_cannot_stop_writers_or_migrate_production(self):
         runner, events, _ = self.simulate("frontend-build")
         self.assertIn("isolated-migrate", events)
+        self.assertNotIn("writers-stop", events)
+        self.assertNotIn("production-migrate", events)
+        self.assertFalse(runner.migration_started)
+
+    def test_plugin_preflight_failure_cannot_build_stop_writers_or_migrate(self):
+        runner, events, _ = self.simulate("plugin-preflight")
+        self.assertNotIn("backend-build", events)
         self.assertNotIn("writers-stop", events)
         self.assertNotIn("production-migrate", events)
         self.assertFalse(runner.migration_started)
