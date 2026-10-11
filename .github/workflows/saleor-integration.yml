@@ -603,9 +603,11 @@ jobs:
 
       - name: Runtime plugin pause, worker and authorization E2E
         env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3102
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3102
           PLAYWRIGHT_PLUGIN_PAUSE_BASE_URL: http://127.0.0.1:3102
           OPS_PLUGIN_REAL_BACKEND: "true"
-        run: pnpm --dir storefront exec playwright test e2e/plugin-pause-live.spec.ts --workers=1
+        run: pnpm --dir storefront exec playwright test e2e/plugin-pause-live.spec.ts e2e/sitemap-integrity-live.spec.ts --workers=1
 
       - name: Integration logs on failure
         if: failure()
