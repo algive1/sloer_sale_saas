@@ -1,5 +1,7 @@
 import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import { io } from "next/cache";
 import Link from "next/link";
 import { getBrandSites } from "@/config/brand-sites";
 import { parseChatwootSupportConfig } from "@/plugins/customer-support/config";
@@ -17,7 +19,8 @@ export const metadata: Metadata = {
 };
 
 /** Read-only configuration visibility, not a fake provisioning/settings form. */
-export default function SupportPage() {
+async function SupportConfiguration() {
+	await io();
 	const brands = getBrandSites();
 	const expectedIds = brands?.map((site) => site.id) ?? [process.env.STOREFRONT_SITE_ID?.trim() || "primary"];
 	let ready = false;
@@ -143,5 +146,13 @@ export default function SupportPage() {
 				配置与验收参见 docs/customer-support.md 和 docs/customer-support-ai.md。
 			</p>
 		</main>
+	);
+}
+
+export default function SupportPage() {
+	return (
+		<Suspense fallback={<main className="mx-auto max-w-5xl px-5 py-8">正在读取客服配置…</main>}>
+			<SupportConfiguration />
+		</Suspense>
 	);
 }

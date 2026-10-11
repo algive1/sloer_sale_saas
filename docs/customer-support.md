@@ -62,7 +62,7 @@ Set `SUPPORT_WHATSAPP_SITES_JSON` at runtime with selected configured brands and
 SUPPORT_WHATSAPP_SITES_JSON=[{"siteId":"fashion","phone":"12025550101"},{"siteId":"jewelry","phone":"12025550102"}]
 ```
 
-The numbers above are illustrative fixtures, not real support accounts. Omitted brands have no link; foreign brands, duplicate numbers, invalid formatting and extra fields (including provider tokens) reject the configuration. The optional WhatsApp entry is independent of Chatwoot configuration; `/ops/support` shows each brand's number or missing/invalid configuration. Both entries obey the customer-support runtime pause.
+The numbers above are illustrative fixtures, not real support accounts. Omitted brands have no link; foreign brands, duplicate numbers, invalid formatting and extra fields (including provider tokens) reject the configuration. The optional WhatsApp entry is independent of Chatwoot configuration; `/ops/support` reads configuration at request time under a server Suspense boundary and shows each brand's number or missing/invalid configuration; build-time values are not used as the status shell. Both entries obey the customer-support runtime pause.
 
 Only a fixed greeting is prefilled (en/de/fr/es/ja/ko, English fallback). The link carries no automatic email, address, order ID/token, cart, page URL or authenticated identity. It uses `noopener noreferrer` and a no-referrer policy; the storefront makes no WhatsApp request before a visitor follows the link. Sending a message and receiving replies remain the visitor's and brand operator's actions. This is a public entry, not a WhatsApp Business API integration or synchronized inbox.
 

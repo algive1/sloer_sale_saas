@@ -42,8 +42,9 @@ test("public support links and operations diagnostics remain assigned to the tru
 	expect(ops.status()).toBe(200);
 	const html = await ops.text();
 	expect(html).toContain("WhatsApp 品牌入口");
-	expect(html).toContain("+12025550101");
-	expect(html).toContain("+12025550102");
+	expect(html).toContain("https://wa.me/12025550101");
+	expect(html).toContain("https://wa.me/12025550102");
+	expect(html).not.toContain("未配置；前台不显示 WhatsApp 入口。");
 	expect((await request.get(base + "/ops/support", { headers: { Authorization: reader } })).status()).toBe(
 		403,
 	);
