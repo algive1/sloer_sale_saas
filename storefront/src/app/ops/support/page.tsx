@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getBrandSites } from "@/config/brand-sites";
@@ -44,6 +45,7 @@ export default function SupportPage() {
     <main className="mx-auto max-w-5xl px-5 py-8">
       <Link href="/ops/plugins" className="text-sm text-muted-foreground hover:underline">← 系统插件</Link>
       <h1 className="my-5 text-2xl font-semibold">在线客服 · Chatwoot</h1>
+      <PluginPauseNotice plugin="customer-support" />
       <section className="rounded-xl border bg-card p-5">
         <h2 className="font-semibold">接入状态：{ready ? "已配置" : "未就绪"}</h2>
         <p className="mt-2 text-sm text-muted-foreground">

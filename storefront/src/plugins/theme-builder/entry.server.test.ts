@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isValidElement } from "react";
 
 const mocks = vi.hoisted(() => ({
@@ -16,6 +16,8 @@ vi.mock("./render.server", () => ({ PublishedThemeHomepage: () => null }));
 
 import { renderPublishedThemeHomepage } from "./entry.server";
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe("system-wide theme extension hot path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -24,9 +26,10 @@ describe("system-wide theme extension hot path", () => {
     mocks.readTheme.mockResolvedValue({ published: null });
   });
 
-  it("has no storage I/O or Next dynamic boundary without configuration", async () => {
+
+  it("checks runtime deployment policy without storage I/O when unconfigured", async () => {
     expect(await renderPublishedThemeHomepage("us", "en")).toBeNull();
-    expect(mocks.io).not.toHaveBeenCalled();
+    expect(mocks.io).toHaveBeenCalledTimes(1);
     expect(mocks.readTheme).not.toHaveBeenCalled();
   });
 
@@ -55,4 +58,9 @@ describe("system-wide theme extension hot path", () => {
       error.mockRestore();
     }
   });
+});
+
+it("paused published extensions fall back before storage or renderer loading", async () => {
+  vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["theme-builder"]'); mocks.configured.mockReturnValue(true); mocks.readTheme.mockClear();
+  expect(await renderPublishedThemeHomepage("us", "en")).toBeNull(); expect(mocks.readTheme).not.toHaveBeenCalled();
 });

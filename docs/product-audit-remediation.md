@@ -142,3 +142,13 @@ exists. Each follow-up should record its actual verification and remaining limit
 - 个人管理员明确用途确认后导出货代CSV；实时重读每笔付款、品牌、地址和余量，整批拒绝异常/变化的订单。仅剩余实物行，25订单/500行上限，单元格防公式执行。
 - 成功写入不含地址/电话的个人导出记录后才返回文件；按品牌/市场显示最近准备记录。导出不创建发货、不扣库存、不发送客户通知。
 - 边界：单号CSV回填、异常物流、退货申请审批、通知失败重试与真实部分发货退款/顾客查单仍待补齐。源码全量检查1076项单元测试、12项原生保护通过；本地2项浏览器/API测试使用模拟Saleor源、实际SQLite，CI原生验收结果在PR记录。说明：[发货与交接](brand-fulfillment-operations.md)。
+
+## A23 — optional module pause, first lifecycle batch
+
+- Added a strict server deployment policy and an authenticated Ops mutation gate, plus direct module checks for theme writes/deletes, reminders, support bot queue/worker and translation queue/review/publish. No registry database lookup on shopper requests.
+- Request-time theme/support slots fall back/omit optional extensions; admin plugin page separates integration/extraction/runtime state and explicitly labels analytics/ads/SEO as not covered by this first batch.
+- Invalid policy fails closed for the four supported modules. Historical records remain readable. Readiness config digest includes policy changes. Stored data is retained; pause does not cancel already in-flight provider calls or uninstall third-party services.
+- Negative tests verify no SQL/network while paused, retained worker authentication, direct write rejection and theme fallback. Native CI additionally runs the same production build with runtime pause enabled, without rebuilding. Actual check results are recorded after completion; no external provider calls are made.
+- A23 remains partial until analytics/ads/merchant-feed pause and migration/version/rollback acceptance are implemented. See system-plugins.md for deployment and recovery semantics.
+
+A23 local validation: `verify` passed (178 files / 1086 unit tests + 12 native brand guard tests; ESLint 0 errors / 27 existing warnings). Three local HTTP/browser E2E tests passed; the actual Saleor catalog check is deliberately skipped in the fixture environment and must pass in native CI with the same production build.

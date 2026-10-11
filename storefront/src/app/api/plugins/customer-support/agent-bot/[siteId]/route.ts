@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { NextResponse } from "next/server";
 import { loadAIConfig } from "@/plugins/customer-support/ai/bot-config";
 import { incomingBotMessage, verifyChatwootSignature } from "@/plugins/customer-support/ai/bot-policy";
@@ -55,6 +56,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ sit
     request.headers.get("x-chatwoot-timestamp"), bot.webhookSecret)) {
     return new NextResponse(null, { status: 401 });
   }
+  const paused = pluginPauseReason("customer-support");
+  if (paused) return NextResponse.json({ skipped: true, reason: paused }, { status: 503, headers: { "cache-control": "no-store" } });
   let data: unknown;
   try { data = JSON.parse(raw); }
   catch { return new NextResponse(null, { status: 400 }); }

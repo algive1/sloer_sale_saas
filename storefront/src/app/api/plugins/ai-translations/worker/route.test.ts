@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("server-only", () => ({}));
 const runner=vi.hoisted(()=>vi.fn(async()=>({processed:1,failed:0})));
 vi.mock("@/plugins/ai-translations/worker",()=>({runTranslationWorker:runner}));
 vi.mock("@/plugins/ai-translations/store",()=>({translationDatabaseConfigured:()=>true}));
@@ -27,4 +28,12 @@ describe("translation worker authentication",()=>{
     expect(await res.json()).toEqual({processed:1,failed:0});
     expect(runner).toHaveBeenCalledOnce();
   });
+});
+
+it("authenticates before returning a pause and never calls the job runner", async () => {
+  vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["ai-translations"]');
+  expect((await POST(request("incorrect"))).status).toBe(401);
+  const response = await POST(request(key)); expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ skipped: true, reason: "plugin_paused" });
+  expect(runner).not.toHaveBeenCalled();
 });

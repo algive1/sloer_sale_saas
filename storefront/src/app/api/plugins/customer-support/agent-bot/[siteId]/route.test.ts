@@ -1,6 +1,7 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
 const processMessage = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => "answered"));
 vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => true,
@@ -82,4 +83,12 @@ describe("signed Chatwoot Agent Bot ingress", () => {
     expect(result.status).toBe(404);
     expect(processMessage).not.toHaveBeenCalled();
   });
+});
+
+it("retains signature verification while paused and rejects before queue insertion", async () => {
+  vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["customer-support"]');
+  expect((await signedRequest(baseEvent,"fashion","incorrect-secret")).status).toBe(401);
+  const result = await signedRequest(baseEvent,"fashion","signing-secret"); expect(result.status).toBe(503);
+  expect(await result.json()).toEqual({ skipped: true, reason: "plugin_paused" });
+  expect(processMessage).not.toHaveBeenCalled();
 });

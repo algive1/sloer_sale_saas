@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
 const worker = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => ({ processed:1,remaining:0 })));
 vi.mock("@/lib/storage/libsql-http", () => ({
   analyticsDatabaseConfigured: () => true,
@@ -43,4 +44,12 @@ describe("dedicated AI worker authentication", () => {
     expect(worker).toHaveBeenCalledOnce();
     expect(worker.mock.calls[0]?.[1]).toBe(1);
   });
+});
+
+it("keeps worker auth in place while paused and does not claim messages", async () => {
+  vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["customer-support"]');
+  expect((await POST(req("incorrect"))).status).toBe(401);
+  const response = await POST(req("a-secret-for-a-private-worker-123456")); expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({ skipped: true, reason: "plugin_paused" });
+  expect(worker).not.toHaveBeenCalled();
 });

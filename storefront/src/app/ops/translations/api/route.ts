@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { NextRequest } from "next/server";
 import { getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
@@ -32,6 +33,8 @@ export async function GET(request:NextRequest) {
 }
 export async function POST(request:NextRequest) {
   if(!mutationAllowed(request))return respond({error:"跨站修改被拒绝"},403);
+  const paused = pluginPauseReason("ai-translations");
+  if (paused) return respond({ error: paused }, 503);
   if(!translationDatabaseConfigured())return respond({error:"翻译数据库未配置"},503);
   try {
     const text=await request.text();

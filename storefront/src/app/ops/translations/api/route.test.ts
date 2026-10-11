@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
+vi.mock("server-only", () => ({}));
 const create=vi.hoisted(()=>vi.fn(async()=>({id:"created"})));
 vi.mock("@/plugins/ai-translations/store",()=>({
   translationDatabaseConfigured:()=>true,

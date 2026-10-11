@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import "server-only";
 import { io } from "next/cache";
 import type { ReactElement } from "react";
@@ -9,10 +10,9 @@ import { readPageTheme } from "./pages-store";
  * Never query registry tables or call every plugin on purchase requests.
  */
 export async function renderPublishedThemeHomepage(channel: string, locale: string): Promise<ReactElement | null> {
-  if (!themeDatabaseConfigured()) return null;
-
-  // Preserve the Next.js 16 Cache Components dynamic I/O boundary.
+  // Evaluate deployment pause at request time, outside the PPR static shell.
   await io();
+  if (pluginPauseReason("theme-builder") || !themeDatabaseConfigured()) return null;
 
   try {
     const { published } = await readTheme(channel, locale);
@@ -32,8 +32,8 @@ export async function renderPublishedThemeHomepage(channel: string, locale: stri
  * derived from the Puck document.
  */
 export async function renderPublishedProductTheme(channel:string,locale:string):Promise<ReactElement|null> {
-  if(!themeDatabaseConfigured())return null;
   await io();
+  if (pluginPauseReason("theme-builder") || !themeDatabaseConfigured()) return null;
   try {
     const {published}=await readPageTheme(channel,locale,"product");
     if(!published || published.content.length===0)return null;

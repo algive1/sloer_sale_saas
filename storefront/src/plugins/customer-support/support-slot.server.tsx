@@ -1,4 +1,6 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import "server-only";
+import { io } from "next/cache";
 import { headers } from "next/headers";
 import { brandSiteForHost, getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getChatwootBinding, parseChatwootSupportConfig } from "./config";
@@ -14,6 +16,8 @@ export async function CustomerSupportSlot({
 }: {
 	params: Promise<{ locale: string; channel: string }>;
 }) {
+	await io();
+	if (pluginPauseReason("customer-support")) return null;
 	const baseUrl = process.env.SUPPORT_CHATWOOT_BASE_URL;
 	const rawSites = process.env.SUPPORT_CHATWOOT_SITES_JSON;
 	if (!baseUrl && !rawSites) return null;
