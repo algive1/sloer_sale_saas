@@ -1,5 +1,5 @@
 import { Box, List } from "@saleor/macaw-ui-next";
-import { Search } from "lucide-react";
+import { CircleDot, Search } from "lucide-react";
 import { useLocation } from "react-router";
 import { Link } from "react-router-dom";
 import { useIntl } from "react-intl";
@@ -24,7 +24,8 @@ const MenuRailItem = ({
   const active = isMenuActive(activeLocation, item) ||
     Boolean(item.children?.some(child => isMenuActive(activeLocation, child)));
   const className = `${styles.railItem} ${active ? styles.selected : ""}`;
-  const content = <span className={styles.railIcon} aria-hidden="true">{item.icon}</span>;
+  // Some registered extensions do not have an icon. Never show a blank hit target.
+  const content = <span className={styles.railIcon} aria-hidden="true">{item.icon ?? <CircleDot size={17} />}</span>;
 
   if (item.type === "itemGroup") {
     return (
