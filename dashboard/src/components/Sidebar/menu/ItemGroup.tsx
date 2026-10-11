@@ -1,9 +1,9 @@
 // @ts-strict-ignore
-import { Box, List, sprinkles, Text } from "@saleor/macaw-ui-next";
+import { Box, List, Text } from "@saleor/macaw-ui-next";
 import { Fragment } from "react";
 import { useLocation } from "react-router";
-import { Link } from "react-router-dom";
 
+import styles from "./CommerceSidebar.module.css";
 import { MenuItem } from "./Item";
 import { showSubmenuSeparator } from "./settingsSubmenuItem";
 import { SubmenuSeparator } from "./SubmenuSeparator";
@@ -41,24 +41,15 @@ export const ItemGroup = ({ menuItem }: Props) => {
         data-test-id={`menu-item-label-${menuItem.id}`}
         position="relative"
         onClick={handleMenuGroupClick}
-        className="sidebar-item-group-trigger"
+        className={`sidebar-item-group-trigger ${styles.groupTrigger}`}
       >
-        <Link
-          replace={isActive}
-          to={menuItem?.url ?? ""}
-          className={sprinkles({
-            width: "100%",
-            display: "block",
-          })}
-        >
-          <Box display="flex" alignItems="center" gap={3} paddingY={1.5} borderRadius={3}>
-            {menuItem.icon}
-            <Text size={3} fontWeight="medium">
-              {menuItem.label}
-            </Text>
-            {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
-          </Box>
-        </Link>
+        <Box display="flex" alignItems="center" gap={3} paddingY={2} borderRadius={3}>
+          {menuItem.icon}
+          <Text size={3} fontWeight="medium">
+            {menuItem.label}
+          </Text>
+          {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
+        </Box>
       </List.ItemGroup.Trigger>
       <List.ItemGroup.Content>
         <Box
@@ -66,7 +57,8 @@ export const ItemGroup = ({ menuItem }: Props) => {
           borderLeftStyle="solid"
           borderColor="default1"
           paddingLeft={4}
-          marginLeft={4}
+          marginLeft={3}
+          className={styles.subMenu}
           display="flex"
           flexDirection="column"
           marginBottom={2}
