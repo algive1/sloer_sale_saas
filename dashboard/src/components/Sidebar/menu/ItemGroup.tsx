@@ -3,6 +3,7 @@ import { Box, List, Text } from "@saleor/macaw-ui-next";
 import { Fragment } from "react";
 import { useLocation } from "react-router";
 
+import { useSidebarBreakpointContext } from "../SidebarContext";
 import styles from "./CommerceSidebar.module.css";
 import { MenuItem } from "./Item";
 import { showSubmenuSeparator } from "./settingsSubmenuItem";
@@ -16,12 +17,13 @@ interface Props {
 
 export const ItemGroup = ({ menuItem }: Props) => {
   const location = useLocation();
+  const { expandedGroup } = useSidebarBreakpointContext();
 
   // Navigation pins are distinguished by query string, so the search has to travel along.
   const activeLocation = location.pathname + location.search;
-  const hasSubmenuActive = menuItem?.children.some(item => isMenuActive(activeLocation, item));
+  const hasSubmenuActive = menuItem.children?.some(item => isMenuActive(activeLocation, item)) ?? false;
   const isActive = isMenuActive(activeLocation, menuItem) && !hasSubmenuActive;
-  const isExpanded = isActive || hasSubmenuActive || Boolean(menuItem.defaultExpanded);
+  const isExpanded = isActive || hasSubmenuActive || expandedGroup === menuItem.id || Boolean(menuItem.defaultExpanded);
 
   const handleMenuGroupClick = () => {
     if (menuItem.onClick) {
@@ -41,7 +43,7 @@ export const ItemGroup = ({ menuItem }: Props) => {
         data-test-id={`menu-item-label-${menuItem.id}`}
         position="relative"
         onClick={handleMenuGroupClick}
-        className={`sidebar-item-group-trigger ${styles.groupTrigger}`}
+        className={`sidebar-item-group-trigger ${styles.groupTrigger} ${hasSubmenuActive || isActive ? styles.groupActive : ""}`}
       >
         <Box display="flex" alignItems="center" gap={3} paddingY={2} borderRadius={3}>
           {menuItem.icon}
