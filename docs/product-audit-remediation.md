@@ -170,3 +170,12 @@ Final A19 acceptance: PR #58 cbdbed17 passed all six CI workflows, including rea
 - 本批合并verify通过184文件/1106单元及12原生保护（0 lint错误/27既有警告）；同生产构建的原生商品/SEO和浏览器暂停验证待本批CI。A23独立版本/迁移兼容与回滚验收仍待补齐，暂停不等于安装/卸载。
 
 PR #59 final acceptance: all six checks passed at 2ea3629 and merged to main 3753ed4.
+
+## A23：版本化插件存储契约和发布前校验
+
+- 声明七个模块API/存储契约v1和17个现有表。源码DDL漂移、错误字段类型/品牌主键、未知必填字段/触发器、未来装修文档版本、重复事件及未知翻译状态会阻止发布。
+- 外部恢复回执明确plugins预期；空数组只声明未预期插件数据，不算已恢复活跃模块。读取副本实际字节并复核SHA，再校验SQLite/契约；预检查在构建/停写之前，最终备份再次检查，私有manifest保留版本/hash和未初始化表。
+- 只读检查保留真实数据及加密模型凭据；不调用AI、不读取密钥、不迁移生产libSQL。已知旧分析列只报告运行时补列，不能冒充迁移演练通过。
+- 本地7项真实SQLite契约负例和10项发布测试（2项Docker验收留CI）；CI恢复闸门扩展覆盖plugins源码。独立破坏性迁移和目标旧版本应用验收、真实provider/密钥恢复仍待完成。
+
+PR #60 final acceptance: 26539e1 passed all five applicable CI workflows, including native initial ProductGroup HTML, variant prices/SKUs/deep links and all seven pause/core SEO tests; merged to main68e4ecb. Release recovery workflow was path-filtered for that batch and is extended by this storage-contract batch.

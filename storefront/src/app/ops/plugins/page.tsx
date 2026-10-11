@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { io } from "next/cache";
 import { PAUSABLE_SYSTEM_PLUGINS, parseSystemPluginPolicy, systemPluginPauseReason, type PausableSystemPluginId } from "@/plugins/system/policy";
 import { listSystemPlugins, type SystemPluginId } from "@/plugins/system/registry";
+import storageContracts from "@/plugins/system/storage-contracts.json";
 
 export const metadata: Metadata = {
   title: "系统插件 | Commerce Ops",
@@ -50,6 +51,7 @@ async function PluginStatus() {
           <h2 className="font-semibold">系统级暂停</h2>
           <p className="text-muted-foreground">部署配置 SYSTEM_PLUGINS_DISABLED 使用插件 ID 的 JSON 数组，重启所有 Storefront 实例后生效。暂停阻止新增工作、后台修改及对应前台扩展；历史资料保留可读，基础商品、购物车和结账继续使用 Paper。没有按品牌安装或卸载开关。</p>
           <p className="break-all font-mono text-xs">例如：[&quot;payment-reminders&quot;,&quot;ai-translations&quot;]</p>
+          <p className="text-muted-foreground">发布前与最终备份会检查插件数据结构、品牌主键及文档版本。下方存储契约是源码声明；实际数据库检查结果保存在私有发布记录，不能据此判断生产已验收。</p>
           <p className="text-muted-foreground">7 个扩展均支持暂停。经营分析暂停新增采集，历史报告仍可读；广告追踪暂停浏览器及服务器接收端；seo-merchant 仅暂停 Merchant Feed，基础 metadata、canonical、sitemap 与商品结构化数据继续保留。</p>
           {!policy.valid && <p role="alert">暂停配置无效：7 个扩展已停止新增工作。请检查 ID、JSON 格式与重复项；不会回退为启用。</p>}
         </section>
@@ -77,6 +79,7 @@ async function PluginStatus() {
                 <p className="mt-4 text-xs text-muted-foreground">
                   源码已集成 · 系统级 · 全部店铺 · 扩展协议 v{plugin.apiVersion}
                 </p>
+                <p className="mt-2 text-xs text-muted-foreground">存储契约 v{storageContracts.modules[plugin.id as SystemPluginId].storageContractVersion} · {Object.keys(storageContracts.modules[plugin.id as SystemPluginId].tables).length ? `${Object.keys(storageContracts.modules[plugin.id as SystemPluginId].tables).length} 个声明的数据表` : "无插件专属数据表"}</p>
                 <p className="mt-3 text-sm font-semibold">{!pausable ? "统一暂停尚未接入" : pause === "plugin_configuration_invalid" ? "已暂停：部署配置无效" : pause ? "已暂停：部署控制" : "系统允许运行（仍需业务配置）"}</p>
                 {pause && <p className="mt-2 text-xs text-muted-foreground">{plugin.id === "analytics" ? "新增采集已停止，报告仅显示历史事件；原生订单仍可操作。" : plugin.id === "ads-tracking" ? "新的像素加载和服务器派发已停止，已有投递记录仍可查看。" : plugin.id === "seo-merchant" ? "Merchant Feed 已暂停；基础 SEO 和商品结构化数据继续保留。" : "已有记录可查看；新任务、发送、发布和保存暂不可用。恢复不会自动重试结果不明的发送。"}</p>}
                 <div className="mt-3 flex flex-wrap gap-2">

@@ -34,6 +34,7 @@ external receipt via environment variable `RELEASE_EXTERNAL_BACKUP_RECEIPT`:
 [
   {
     "service": "analytics",
+    "plugins": ["analytics", "ads-tracking", "payment-reminders", "customer-support"],
     "path": "analytics.sqlite",
     "sha256": "actual-file-sha256",
     "capturedAt": "2026-10-11T08:00:00+00:00",
@@ -45,7 +46,9 @@ external receipt via environment variable `RELEASE_EXTERNAL_BACKUP_RECEIPT`:
 
 Supply one entry for every configured `analytics`, `theme`, `translations`,
 `chatwoot` and `object-storage` service. Shared libSQL databases may reference the
-same snapshot under several service names. Paths are relative to the receipt;
+same snapshot under several service names. SQLite receipts must explicitly list
+expected plugin IDs in `plugins`; `[]` explicitly means no plugin data is expected,
+and is not evidence of restoration of an active plugin. Paths are relative to the receipt;
 files must exist, match SHA-256, and be at most 24 hours old. libSQL artifacts must
 be actual SQLite snapshots and pass `integrity_check`; use the provider's supported
 backup/export and restore method. Chatwoot/object-store restoration is attested by
@@ -85,3 +88,36 @@ Implementation references:
 [PostgreSQL pg_dump](https://www.postgresql.org/docs/15/app-pgdump.html),
 [PostgreSQL pg_restore](https://www.postgresql.org/docs/15/app-pgrestore.html),
 [Compose project isolation](https://docs.docker.com/compose/how-tos/project-name/).
+
+## Plugin storage compatibility (A23)
+
+Before application builds or stopping writers, the runner verifies external
+receipts and copies them into a private `external-preflight` directory. It checks
+**the copied bytes** against the receipt digest, then runs SQLite integrity and
+read-only plugin schema checks against those exact files. This prevents an active
+source snapshot changing between validation and copying. Final quiesced backups
+repeat the checks and retain the contract JSON alongside configuration/image IDs.
+`--preflight-only` includes this gate when external state is configured.
+
+The source contract v1 declares seven modules and17 owned SQLite tables. Existing
+tables must retain required column types and exact ordered brand/job primary keys;
+unknown mandatory insert columns and undeclared triggers block release. Theme
+wrappers must use supported version1, translation states must be understood, and
+analytics event identities cannot violate the runtime unique index. Opaque provider
+keys are copied, never decrypted or returned in the compatibility report.
+
+Known legacy analytics additions are recorded as `runtimeAdditions`; this gate
+does **not** execute ALTER/backfill or claim a live migration passed. Missing unused
+tables are labelled `uninitializedTables`. If an explicitly expected plugin has no
+owned data tables at all, validation fails. No automatic creation or deletion of
+provider state occurs. This checks schema/envelope compatibility, not every theme
+block, provider authentication, data completeness or database performance.
+
+The manifest retains contract SHA-256 and per-module API/storage contract versions.
+Before reverting application images, validate a copy of the current snapshot using
+the **target old checkout's** contract and run its application staging acceptance.
+Never infer downgrade safety from a source version label. Unknown/breaking schemas
+require an explicit reviewed migration and shadow recovery; do not force the gate,
+restore over live orders or automatically replay uncertain external calls. Full
+production libSQL/key/provider recovery and destructive schema downgrade remain
+separate acceptance items.

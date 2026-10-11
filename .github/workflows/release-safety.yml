@@ -4,6 +4,9 @@ on:
     paths:
       - "scripts/release.py"
       - "scripts/test_release.py"
+      - "scripts/plugin_contracts.py"
+      - "scripts/test_plugin_contracts.py"
+      - "storefront/src/plugins/**"
       - "scripts/deploy.sh"
       - "docker-compose*.yml"
       - ".github/workflows/release-safety.yml"
@@ -12,6 +15,9 @@ on:
     paths:
       - "scripts/release.py"
       - "scripts/test_release.py"
+      - "scripts/plugin_contracts.py"
+      - "scripts/test_plugin_contracts.py"
+      - "storefront/src/plugins/**"
       - "scripts/deploy.sh"
       - "docker-compose*.yml"
       - ".github/workflows/release-safety.yml"
@@ -30,5 +36,7 @@ jobs:
         env:
           RELEASE_TEST_DOCKER: "1"
         run: python3 -m unittest discover -s scripts -p test_release.py -v
+      - name: Restored plugin SQLite contracts and source schema drift
+        run: python3 -m unittest discover -s scripts -p test_plugin_contracts.py -v
       - name: Validate deploy entry point
         run: bash -n scripts/deploy.sh

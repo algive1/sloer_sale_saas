@@ -133,3 +133,18 @@ Still pending for A23: versioned module/database migration compatibility contrac
 and tested rollback acceptance. The existing release-recovery gate protects whole
 stack releases; it does not establish independent plugin schema downgrade safety.
 This static registry is not an official Saleor App installation manifest.
+
+
+## Versioned storage declaration and release gate
+
+`src/plugins/system/storage-contracts.json` declares API/storage contract v1 for
+all seven modules and17 owned SQLite tables. The Ops page shows this **source
+declaration**, not a live database acceptance result. `scripts/plugin_contracts.py`
+checks exact private snapshot bytes read-only, including brand/job keys, known
+column types, mandatory future fields, theme document envelopes, translation
+states, undeclared triggers and analytics uniqueness. Release manifests record
+the contract hash and initialized/uninitialized tables, and known legacy runtime
+additions; no provider database is migrated by this check. Source-schema drift is
+a CI gate. See release-recovery.md for explicit receipt `plugins`, preflight,
+final backup and target-version rollback validation. Real recovery/keys/provider
+acceptance and destructive downgrade plans remain necessary.
