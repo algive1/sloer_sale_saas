@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { buildSchema, parse, validate } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -7,11 +9,12 @@ vi.mock("@/lib/analytics/libsql-http", () => ({
   libsqlPipeline: vi.fn(),
 }));
 
-import { fetchSaleorOrder, fetchSaleorOrders } from "./saleor-ops-orders";
+import { fetchSaleorOrder, fetchSaleorOrders, fetchSaleorOrdersPage } from "./saleor-ops-orders";
 
 const order = {
   id: "T3JkZXI6MQ==",
   number: "512",
+  channel: { slug: "fashion-us" },
   created: "2026-10-08T00:00:00Z",
   status: "UNFULFILLED",
   isPaid: true,
@@ -43,6 +46,7 @@ describe("Saleor order operations", () => {
     vi.stubGlobal("fetch", mockedFetch);
     const result = await fetchSaleorOrder(order.id);
     expect(result?.number).toBe("512");
+    expect(result?.channel).toBe("fashion-us");
     expect(result?.paidAt).toBe("2026-10-08T00:02:00Z");
     expect(result?.country).toBe("DE");
     expect(result?.paymentMethod).toBe("Stripe");
@@ -51,6 +55,19 @@ describe("Saleor order operations", () => {
     const payload = JSON.parse(String(options.body)) as {variables:{id:string};query:string};
     expect(payload.variables.id).toBe(order.id);
     expect(payload.query).toContain("order(id:$id)");
+    const schema = buildSchema(readFileSync("../backend/saleor/graphql/schema.graphql", "utf8"));
+    expect(validate(schema, parse(payload.query))).toEqual([]);
+  });
+
+  it("filters scheduled queries by channel and maps its authoritative slug", async () => {
+    const mockedFetch = vi.fn(async () => Response.json({ data: { orders: { edges: [{ node: order }], pageInfo: { hasNextPage: true, endCursor: "next" } } } }));
+    vi.stubGlobal("fetch", mockedFetch);
+    const result = await fetchSaleorOrdersPage(100, "cursor", "fashion-us");
+    expect(result?.orders[0].channel).toBe("fashion-us");
+    const payload = JSON.parse(String((mockedFetch.mock.calls[0] as unknown as [string, RequestInit])[1].body)) as { query: string; variables: Record<string, unknown> };
+    expect(payload.variables).toEqual({ first: 100, after: "cursor", channel: "fashion-us" });
+    const schema = buildSchema(readFileSync("../backend/saleor/graphql/schema.graphql", "utf8"));
+    expect(validate(schema, parse(payload.query))).toEqual([]);
   });
 
   it("uses no guessed paidAt timestamp when Saleor has no charge event", async () => {

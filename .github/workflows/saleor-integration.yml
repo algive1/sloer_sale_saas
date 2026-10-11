@@ -450,6 +450,10 @@ jobs:
           GOOGLE_MERCHANT_FEED_ENABLED: "true"
           THEME_LIBSQL_URL: http://127.0.0.1:3789
           THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          ANALYTICS_LIBSQL_URL: http://127.0.0.1:3789
+          ANALYTICS_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          RESEND_API_KEY: ""
+          PAYMENT_REMINDER_SITES_JSON: ""
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
@@ -479,6 +483,11 @@ jobs:
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/ops-operator-live.spec.ts --workers=1
+
+      - name: Multi-brand reminder rule API and operator UI E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/payment-reminders-live.spec.ts --workers=1
 
       - name: Multi-brand localized browser, market and SEO E2E
         env:

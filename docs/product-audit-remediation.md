@@ -105,3 +105,11 @@ customer/shopper identities are still launch blockers.
 
 No audit item is considered production-verified merely because this file or a PR
 exists. Each follow-up should record its actual verification and remaining limits.
+
+## A04：按品牌恢复付款提醒（2026-10-11）
+
+- 新增显式品牌发件人/邮件语言配置，链接从可信品牌域名生成，不回退全局身份。
+- 独立规则、滚动24小时额度、最近发送记录与后台切换；仅平台管理员可操作。
+- Saleor 列表查询按 channel，单笔发送前核对实时 channel/支付/规则；并发 claim 约束额度及防重复。
+- 新品牌默认关闭；旧全局规则仅保留单品牌兼容范围，旧日志阻止同一订单重复发送。
+- 测试覆盖 SQLite、GraphQL schema 和运营 UI/API；邮件提供商为模拟响应，真实投递及 Cron 运维仍需部署验收。

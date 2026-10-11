@@ -43,6 +43,7 @@ const product = {
 
 beforeEach(() => {
 	process.env.STOREFRONT_SITES_JSON = sites;
+ delete process.env.PAYMENT_REMINDER_SITES_JSON;
 	process.env.NEXT_PUBLIC_STOREFRONT_URL = "https://wrong-global.example/";
 	process.env.RESEND_API_KEY = "test-key";
 	process.env.PAYMENT_REMINDER_FROM = "orders@wrong-global.example";
@@ -116,17 +117,17 @@ test("merchant-controlled brand text cannot break out of inline JSON-LD", () => 
 	assert.equal(JSON.parse(text).brand.name, "</script><script>alert(1)</script>");
 });
 
-test("all reminder send paths stop before order, database or email I/O for multiple brands", async () => {
+test("unconfigured brands stop all reminder send paths before order, database or email I/O", async () => {
 	const network = mock.method(globalThis, "fetch", () => { throw new Error("unexpected network"); });
 	assert.equal(reminders.reminderEmailConfigured(), false);
 	for (const stage of ["manual", "first", "second"]) {
 		assert.deepEqual(await reminders.sendReminder({ id: "order-1" }, stage), {
-			status: "skipped", reason: "multi_brand_not_supported",
+			status: "skipped", reason: "brand_sender_not_configured",
 		});
 	}
-	assert.equal((await reminders.sendManualReminder("order-1")).reason, "multi_brand_not_supported");
+	assert.equal((await reminders.sendManualReminder("order-1")).reason, "brand_sender_not_configured");
 	assert.deepEqual(await reminders.runAutomaticReminders(), {
-		sent: 0, skipped: 0, failed: 0, scanned: 0, truncated: false, reason: "multi_brand_not_supported",
+		sent: 0, skipped: 0, failed: 0, scanned: 0, truncated: false, reason: "brand_sender_not_configured",
 	});
 	assert.equal(network.mock.callCount(), 0);
 });
@@ -134,15 +135,15 @@ test("all reminder send paths stop before order, database or email I/O for multi
 test("malformed brand configuration cannot fall back to global reminder sending", async () => {
 	process.env.STOREFRONT_SITES_JSON = "malformed";
 	const network = mock.method(globalThis, "fetch", () => { throw new Error("unexpected network"); });
-	assert.equal((await reminders.sendManualReminder("order-1")).reason, "multi_brand_not_supported");
-	assert.equal((await reminders.runAutomaticReminders()).reason, "multi_brand_not_supported");
+	assert.equal((await reminders.sendManualReminder("order-1")).reason, "brand_configuration_invalid");
+	assert.equal((await reminders.runAutomaticReminders()).reason, "brand_configuration_invalid");
 	assert.equal(network.mock.callCount(), 0);
 });
 
 test("direct callers cannot enable a global rule in multi-brand mode", async () => {
 	const network = mock.method(globalThis, "fetch", () => { throw new Error("unexpected network"); });
 	await assert.rejects(reminders.setReminderRule({ enabled: true, firstAfterHours: 24,
-		secondAfterHours: 72, dailyLimit: 5 }), /multi_brand_not_supported/);
+		secondAfterHours: 72, dailyLimit: 5 }), /reminder_site_required/);
 	assert.equal(network.mock.callCount(), 0);
 });
 
