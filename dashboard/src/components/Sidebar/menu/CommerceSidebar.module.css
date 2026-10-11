@@ -193,6 +193,16 @@
   border-radius: 9px;
 }
 
+.clickArea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 8px;
+  min-height: 37px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
 .itemRow {
   min-height: 37px;
   transition: background-color 120ms ease;
