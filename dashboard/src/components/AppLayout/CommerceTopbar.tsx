@@ -1,5 +1,6 @@
 import { useUser } from "@dashboard/auth/useUser";
 import { UserAvatar } from "@dashboard/components/UserAvatar/UserAvatar";
+import { SearchShortcut } from "@dashboard/search/SearchShortcut";
 import { getUserInitials, getUserName } from "@dashboard/misc";
 import { staffMemberDetailsUrl } from "@dashboard/staff/urls";
 import { Search } from "lucide-react";
@@ -26,7 +27,7 @@ export const CommerceTopbar = () => {
       >
         <Search size={17} aria-hidden="true" />
         <span>{isZh ? "搜索订单、商品、客户等…" : "Search orders, products, customers…"}</span>
-        <kbd className={styles.shortcut}>/</kbd>
+        <SearchShortcut />
       </Link>
       <div className={styles.spacer} />
       {user && (
