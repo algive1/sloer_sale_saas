@@ -525,9 +525,10 @@ jobs:
 
       - name: Native Saleor catalog publishing checks and CSV operator flow E2E
         env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           OPS_CATALOG_REAL_BACKEND: "true"
-        run: pnpm --dir storefront exec playwright test e2e/catalog-ops-live.spec.ts --workers=1
+        run: pnpm --dir storefront exec playwright test e2e/catalog-ops-live.spec.ts e2e/catalog-preflight-live.spec.ts --workers=1
 
       - name: Native Saleor fulfillment queue and freight CSV E2E
         env:

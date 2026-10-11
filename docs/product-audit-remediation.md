@@ -204,3 +204,12 @@ PR #63 final acceptance: be6e9656 passed all four applicable workflows including
 - 可选运行时配置选择品牌与独立公开号码，未配置品牌无回退；拒绝跨品牌/共享号码/格式注入/额外凭证。前台固定问候、无来源转发，渲染不查询顾客/订单或连接WhatsApp；与Chatwoot独立诊断、共享customer-support暂停。
 - Chatwoot SDK/ready等待15秒，异常恢复按钮、重试复用已加载有效SDK；卸载清理计时器/监听，已有SDK语言同步。
 - Ops配置诊断真实区分号码校验与正式消息收发。8项新增单元、本地实际组件超时/重试与375px Next后台各1项通过，完整verify和原生生产CI以本批PR最终记录为准。经过认证的订单上下文、会话同步和真实服务/人工接管仍待完成；入口不等于WhatsApp Business API已集成。说明：[客服配置与边界](customer-support.md)。
+
+## A11：CSV 原生 SKU、市场与币种核对（2026-10-12）
+
+PR #64 final acceptance: 4a295c2 passed all six workflows including native production support HTML/brand/auth/mobile checks and recovery gates; merged510a94a. Real Chatwoot/WhatsApp service acceptance remains pending.
+
+- 在格式校验之外增加原生全局SKU精确查询，不再把任意不存在SKU或格式正确的错误币种当作原生资料通过。商品与规格必须同时分配该品牌市场，市场启用且币种一致；缺失/重复/其他品牌SKU统一提示，不返回其他品牌资料。
+- 去重后100 SKU/请求，整批20秒预算；分页未完整、GraphQL部分错误或异常身份拒绝整批。格式失败不读取原生；严格UTF-8/流式1MB上限独立于客户端Content-Length。
+- 管理员上传、两种状态和错误下载复用现有品牌商品页。全量verify及真实Saleor/生产构建以本批PR记录为准；本地Next/API和375px实际操作2项通过，原生响应使用本地fixture，仅CI承担真实后端验收。
+- 本批全部只读，没有创建/更新商品；价格精度/库存/重量/图片、提交时重读、实际bulk写入与恢复、大规格完整分页仍待完成。说明：[商品检查与导入前核对](catalog-publishing-checks.md)。
