@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/components/AppLayout/**"
       - "dashboard/vite.config.js"
       - "dashboard/Dockerfile"
       - "dashboard/package.json"
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/components/AppLayout/**"
       - "dashboard/vite.config.js"
       - "dashboard/Dockerfile"
       - "dashboard/package.json"
