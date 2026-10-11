@@ -46,6 +46,7 @@ async function ReminderContent({ searchParams }: { searchParams: Params }) {
 					品牌
 					<select
 						name="siteId"
+						aria-label="品牌"
 						defaultValue={site.id}
 						className="ml-3 rounded-lg border border-border bg-card px-3 py-2"
 					>

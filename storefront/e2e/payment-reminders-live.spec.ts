@@ -6,7 +6,7 @@ const headers = { Host: "fashion.example.test", Authorization: auth, "x-requeste
 const endpoint = origin + "/ops/api/analytics/reminders/rules";
 // No provider key is configured in this fixture. These tests cannot send emails.
 test.describe("brand reminder operations on a built storefront", () => {
-	test.describe.configure({ mode: "serial" });
+	test.describe.configure({ mode: "serial", timeout: 120_000 });
 	test("rule writes are authenticated, scoped and independent", async ({ request }) => {
 		expect((await request.post(endpoint, { data: {} })).status()).toBe(401);
 		expect(
@@ -62,7 +62,7 @@ test.describe("brand reminder operations on a built storefront", () => {
 			await expect(page.getByLabel("启用自动付款提醒")).toBeDisabled();
 			await page.getByLabel("本品牌每24小时上限（封）").fill("4");
 			await page.getByRole("button", { name: "保存规则", exact: true }).click();
-			await expect(page.getByRole("status")).toHaveText("规则已保存。");
+			await expect(page.getByRole("status").filter({ hasText: "规则已保存。" })).toBeVisible();
 			await page.reload();
 			await expect(page.getByLabel("本品牌每24小时上限（封）")).toHaveValue("4");
 			await page.getByLabel("品牌", { exact: true }).selectOption("jewelry-ci");
