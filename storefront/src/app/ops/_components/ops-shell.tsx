@@ -44,13 +44,19 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
   const [accent, setAccent] = useState<Accent>("blue");
 
   useEffect(() => {
-    try {
-      setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "true");
-      const value = window.localStorage.getItem(ACCENT_KEY);
-      if (value === "blue" || value === "slate" || value === "teal") setAccent(value);
-    } catch {
-      // Browser privacy mode must not prevent navigation.
-    }
+    // Browser-local preferences are outside React. Apply them after hydration
+    // without synchronously cascading a render in the mounting effect.
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "true");
+        const value = window.localStorage.getItem(ACCENT_KEY);
+        if (value === "blue" || value === "slate" || value === "teal") setAccent(value);
+      } catch {
+        // Browser privacy mode must not prevent navigation.
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
