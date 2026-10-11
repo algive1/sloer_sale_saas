@@ -8,7 +8,6 @@ import { activeAiProvider, aiConfigurationReady } from "@/plugins/theme-builder/
 import { imageGenerationPrompt,validateImageRequest } from "@/plugins/theme-builder/ai-image-core";
 import { ThemeValidationError } from "@/plugins/theme-builder/validate";
 
-export const runtime="nodejs";
 const headers={"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"};
 const reply=(data:object,status=200)=>Response.json(data,{status,headers});
 const cooldown=new Map<string,number>();
