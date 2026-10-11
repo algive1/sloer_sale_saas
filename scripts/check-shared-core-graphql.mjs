@@ -10,16 +10,19 @@ const endpoint = process.env.SALEOR_API_URL ?? "http://127.0.0.1:8000/graphql/";
 const customerEmail = "guest-policy-customer@example.test";
 const staffEmail = "guest-policy-staff@example.test";
 const password = "Guest-Policy-CI-Password-1234!";
+const checkoutGatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
+if (!checkoutGatewaySecret || checkoutGatewaySecret.length < 32) throw new Error("Checkout gateway CI secret missing");
 const legacyToken = process.env.CI_SHARED_CUSTOMER_TOKEN;
 const legacyRefresh = process.env.CI_SHARED_CUSTOMER_REFRESH;
 if (!legacyToken || !legacyRefresh) throw new Error("CI customer tokens were not seeded");
 
-async function graphql(query, variables, token) {
+async function graphql(query, variables, token, gatewayKey) {
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(gatewayKey ? { "x-paper-checkout-gateway-secret": gatewayKey } : {}),
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -36,6 +39,43 @@ function forbidden(result, label) {
 const catalog = await graphql('{ products(first: 1, channel: "us") { totalCount } }');
 assert.equal(catalog.errors, undefined, JSON.stringify(catalog));
 assert.ok(catalog.data?.products?.totalCount > 0, JSON.stringify(catalog));
+
+// The checkout ID by itself is no longer sufficient on the public API.
+const checkoutMutation = `mutation($variantId: ID!) {
+  checkoutCreate(input: { channel: "us", email: "shared-checkout-test@example.test",
+    lines: [{ variantId: $variantId, quantity: 1 }] }) {
+    checkout { id channel { slug } } errors { code message }
+  }
+}`;
+const productVariant = await graphql(`query {
+  products(first: 1, channel: "us") { edges { node { variants { id } } } }
+}`);
+const variantId = productVariant.data?.products?.edges?.[0]?.node?.variants?.[0]?.id;
+assert.ok(variantId, JSON.stringify(productVariant));
+function forbiddenCheckout(result, label) {
+  assert.ok(result.errors?.some((e) => e.extensions?.code ===
+    "SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED"), `${label}: ${JSON.stringify(result)}`);
+}
+forbiddenCheckout(await graphql(checkoutMutation, { variantId }), "direct public checkout creation");
+forbiddenCheckout(await graphql(checkoutMutation, { variantId }, undefined, "wrong-gateway-key"), "wrong gateway key");
+const trustedCheckout = await graphql(checkoutMutation, { variantId }, undefined, checkoutGatewaySecret);
+const checkoutId = trustedCheckout.data?.checkoutCreate?.checkout?.id;
+assert.ok(checkoutId, JSON.stringify(trustedCheckout));
+assert.equal(trustedCheckout.data.checkoutCreate.checkout.channel.slug, "us");
+const checkoutRead = `query($id: ID!) { checkout(id: $id) { id channel { slug } email } }`;
+forbiddenCheckout(await graphql(checkoutRead, { id: checkoutId }), "direct checkout read by bearer ID");
+const trustedRead = await graphql(checkoutRead, { id: checkoutId }, undefined, checkoutGatewaySecret);
+assert.equal(trustedRead.data?.checkout?.id, checkoutId, JSON.stringify(trustedRead));
+const checkoutUpdate = `mutation($id: ID!) {
+  checkoutEmailUpdate(id: $id, email: "changed@example.test") {
+    checkout { id email } errors { code message }
+  }
+}`;
+forbiddenCheckout(await graphql(checkoutUpdate, { id: checkoutId }), "direct checkout email update");
+const aliasedCheckout = `query($id: ID!) {
+  hidden: node(id: $id) { ... on Checkout { email } }
+}`;
+forbiddenCheckout(await graphql(aliasedCheckout, { id: checkoutId }), "node fragment checkout email bypass");
 
 const registered = await graphql(`
   mutation {
@@ -123,4 +163,4 @@ assert.deepEqual(verifiedStaff.data?.tokenVerify?.errors, []);
 const staffMe = await graphql("{ me { email } }", undefined, staffLogin.data.tokenCreate.token);
 assert.equal(staffMe.data?.me?.email, staffEmail, JSON.stringify(staffMe));
 
-console.log("Shared Saleor Core guest-only GraphQL: guest catalog, direct-account denials, old JWT, customer token verification, refresh, staff login/verification all passed.");
+console.log("Shared Saleor Core GraphQL: direct anonymous checkout read/write denied, trusted BFF checkout allowed, customer JWT/account denials and staff login/verification passed.");
