@@ -1,0 +1,10 @@
+query OpsCatalogPreflight($skus: [String!]!) {
+  productVariants(first: 100, where: {sku: {oneOf: $skus}}) {
+    pageInfo { hasNextPage }
+    edges { node {
+      sku
+      channelListings { channel { slug currencyCode isActive } }
+      product { channelListings { channel { slug currencyCode isActive } } }
+    } }
+  }
+}
