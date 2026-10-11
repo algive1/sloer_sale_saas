@@ -137,6 +137,16 @@ jobs:
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_multibrand_ci.py
 
+      - name: Seed isolated catalog inspection credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          ops_catalog_token=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
+            python3 manage.py shell < infra/saleor/bootstrap_ops_ci.py | tail -n 1)
+          [[ "$ops_catalog_token" =~ ^[A-Za-z0-9_-]{40,64}$ ]] || exit 1
+          echo "::add-mask::$ops_catalog_token"
+          echo "OPS_CATALOG_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
+
       - name: Start vendored Saleor API and worker
         shell: bash
         run: |
@@ -444,6 +454,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000/dashboard
           OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
           STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
           STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
@@ -500,6 +511,12 @@ jobs:
           OPS_E2E_HRANA_URL: http://127.0.0.1:3789
           OPS_E2E_HRANA_TOKEN: ci-theme-secret-only-for-testing
         run: pnpm --dir storefront exec playwright test e2e/brand-growth-live.spec.ts --workers=1
+
+      - name: Native Saleor catalog publishing checks and CSV operator flow E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_CATALOG_REAL_BACKEND: "true"
+        run: pnpm --dir storefront exec playwright test e2e/catalog-ops-live.spec.ts --workers=1
 
       - name: Multi-brand localized browser, market and SEO E2E
         env:

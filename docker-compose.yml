@@ -144,6 +144,7 @@ services:
       ENABLE_STRIPE_PAYMENTS: ${ENABLE_STRIPE_PAYMENTS:-false}
       # Server-only settings must be explicitly mapped into the running container.
       SALEOR_APP_TOKEN: ${SALEOR_APP_TOKEN:-}
+      OPS_CATALOG_SALEOR_TOKEN: ${OPS_CATALOG_SALEOR_TOKEN:-}
       # Only server-side Paper GraphQL calls may access guest Checkout data.
       SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ${SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET:-}
       SALEOR_DASHBOARD_URL: ${SALEOR_DASHBOARD_URL:-http://localhost:9000/}
