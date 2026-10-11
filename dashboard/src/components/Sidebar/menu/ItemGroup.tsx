@@ -32,7 +32,13 @@ export const ItemGroup = ({ menuItem }: Props) => {
   };
 
   return (
-    <List.ItemGroup defaultExpanded={isExpanded} data-test-id={`menu-list-item`}>
+    // Native Macaw accordion is initially uncontrolled. When an internal route
+    // first becomes active, remount so the matching group is visibly expanded.
+    <List.ItemGroup
+      key={`${menuItem.id}-${isActive || hasSubmenuActive ? "current" : "other"}`}
+      defaultExpanded={isExpanded}
+      data-test-id={`menu-list-item`}
+    >
       <List.ItemGroup.Trigger
         paddingX={2}
         paddingRight={1}
