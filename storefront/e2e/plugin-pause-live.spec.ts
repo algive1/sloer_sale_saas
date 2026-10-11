@@ -29,7 +29,7 @@ test("paused worker endpoints retain bearer authentication and return an explici
 test("the shared production build still serves native catalog with optional modules paused", async ({ request }) => {
   test.skip(process.env.OPS_PLUGIN_REAL_BACKEND !== "true", "Native catalog acceptance runs against actual Saleor in CI");
   const response = await request.get(base + "/en/us", { headers: { host: "fashion.example.test" } });
-  expect(response.status()).toBe(200); expect(await response.text()).not.toContain("support.chatwoot.com");
+  expect(response.status()).toBe(200); const html=await response.text(); expect(html).not.toContain("support.chatwoot.com"); expect(html).not.toContain("https://wa.me/"); expect(html).not.toContain("https://support.example.test");
 });
 
 test("plugin status clearly separates all seven paused modules and core SEO on mobile", async ({ browser }) => {
