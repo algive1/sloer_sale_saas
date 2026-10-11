@@ -3,6 +3,7 @@ import { UserAvatar } from "@dashboard/components/UserAvatar/UserAvatar";
 import { SearchShortcut } from "@dashboard/search/SearchShortcut";
 import { getUserInitials, getUserName } from "@dashboard/misc";
 import { staffMemberDetailsUrl } from "@dashboard/staff/urls";
+import { canUseDashboardSearch } from "@dashboard/components/Sidebar/menu/navigationAccess";
 import { Search } from "lucide-react";
 import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
@@ -18,10 +19,11 @@ export const CommerceTopbar = () => {
   const { user } = useUser();
   const intl = useIntl();
   const isZh = intl.locale.toLowerCase().startsWith("zh");
+  const canSearch = canUseDashboardSearch(user?.userPermissions?.map(permission => permission.code));
 
   return (
     <Box as="header" backgroundColor="default1" className={styles.topbar} data-test-id="commerce-admin-topbar">
-      <Link
+      {canSearch && <Link
         to="/search"
         className={styles.globalSearch}
         aria-label={isZh ? "搜索订单、商品和客户" : "Search orders, products and customers"}
@@ -29,7 +31,7 @@ export const CommerceTopbar = () => {
         <Search size={17} aria-hidden="true" />
         <span>{isZh ? "搜索订单、商品、客户等…" : "Search orders, products, customers…"}</span>
         <SearchShortcut />
-      </Link>
+      </Link>}
       <div className={styles.spacer} />
       {user && (
         <Link
