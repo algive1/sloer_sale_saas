@@ -7,7 +7,7 @@ import { SidebarDrawerTrigger } from "./SidebarDrawerTrigger";
 
 export const Sidebar = () => {
   const { breakpoint, collapsed } = useSidebarBreakpointContext();
-  const desktopWidth = collapsed ? "72px" : "280px";
+  const desktopWidth = collapsed ? "72px" : "296px";
   const drawer = (
     <Drawer>
       <Drawer.Trigger>
@@ -17,7 +17,7 @@ export const Sidebar = () => {
         backgroundColor="default2"
         data-test-id="sidebar-drawer-content"
         paddingTop={0}
-        __width="280px"
+        __width="296px"
       >
         {/* Compact navigation is desktop-only. Mobile keeps the full drawer. */}
         <SidebarContent />
