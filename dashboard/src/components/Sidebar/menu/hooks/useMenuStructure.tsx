@@ -61,6 +61,7 @@ import { useIntl } from "react-intl";
 import { SidebarIconSlot } from "../../SidebarIconSlot";
 import { createOpsHref } from "../commerceOpsLinks";
 import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
+import { filterSidebarMenu } from "../filterSidebarMenu";
 import { DASHBOARD_SEARCH_PERMISSIONS } from "../navigationAccess";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
 import { type SidebarMenuItem } from "../types";
@@ -536,19 +537,7 @@ export function useMenuStructure() {
 
     return menuItem.permissions.some(permission => userPermissions.includes(permission));
   };
-  const getFilteredMenuItems = (menuItems: SidebarMenuItem[]) =>
-    menuItems.filter(isMenuItemPermitted);
-
-  return menuItemsWithPins.reduce((resultItems: SidebarMenuItem[], menuItem: SidebarMenuItem) => {
-    if (!isMenuItemPermitted(menuItem)) {
-      return resultItems;
-    }
-
-    const { children } = menuItem;
-    const filteredChildren = children ? getFilteredMenuItems(children) : undefined;
-
-    return [...resultItems, { ...menuItem, children: filteredChildren }];
-  }, []);
+  return filterSidebarMenu(menuItemsWithPins, isMenuItemPermitted);
 }
 
 function renderIcon(icon: React.ReactNode) {
