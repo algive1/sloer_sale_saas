@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
 	await storeFirstPartyCommerceEvent(event, request.headers);
 	if (analyticsEligible(order.metadata)) {
-		await deliverGa4ServerEvent(event, request.headers);
+		await deliverGa4ServerEvent(event, request.headers, order.channel?.slug ?? "");
 	}
 	return NextResponse.json({ success: true, orderId: order.id, refundDelta: delta, currency });
 }

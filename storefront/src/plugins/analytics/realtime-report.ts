@@ -1,4 +1,5 @@
 import "server-only";
+import { withAnalyticsChannelScope } from "./scoped-statements";
 
 import { ensureAnalyticsSchema } from "@/plugins/analytics/first-party-store";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
@@ -59,14 +60,14 @@ export type RealtimeAnalytics = {
 	}>;
 };
 
-export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeAnalytics> {
+export async function readRealtimeAnalytics(now = new Date(), channels: readonly string[] | null = null): Promise<RealtimeAnalytics> {
 	await ensureAnalyticsSchema();
 
 	const windowMinutes = 5;
 	const windowFrom = new Date(now.getTime() - windowMinutes * 60_000).toISOString();
 	const trendFromDate = floorUtcMinute(new Date(now.getTime() - 29 * 60_000));
 	const trendFrom = trendFromDate.toISOString();
-	const to = now.toISOString();
+	const to = new Date(now.getTime() + 1).toISOString();
 	const sessionExpr = "COALESCE(session_id, event_id)";
 	const sourceExpr = "COALESCE(NULLIF(source_group, ''), NULLIF(source, ''), 'direct')";
 	const sourceAeExpr = "COALESCE(NULLIF(ae.source_group, ''), NULLIF(ae.source, ''), 'direct')";
@@ -82,7 +83,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 		ordersResult,
 		eventsResult,
 		trendResult,
-	] = await libsqlPipeline([
+	] = await libsqlPipeline(withAnalyticsChannelScope([
 		{
 			sql: `SELECT
 				COUNT(DISTINCT ${sessionExpr}) AS active_sessions,
@@ -95,7 +96,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				SUM(CASE WHEN event_name = 'checkout_completed' THEN 1 ELSE 0 END) AS orders,
 				SUM(CASE WHEN event_name = 'payment_failed' THEN 1 ELSE 0 END) AS payment_failures
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'`,
 			args: [windowFrom, to],
 			wantRows: true,
@@ -105,7 +106,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				COALESCE(NULLIF(currency, ''), 'UNKNOWN') AS currency,
 				COALESCE(SUM(value), 0) AS value
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'
 				AND event_name = 'checkout_completed'
 			GROUP BY COALESCE(NULLIF(currency, ''), 'UNKNOWN')
@@ -119,7 +120,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				${trafficExpr} AS traffic_type,
 				COUNT(DISTINCT ${sessionExpr}) AS sessions
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'
 			GROUP BY ${sourceExpr}, ${trafficExpr}
 			ORDER BY sessions DESC
@@ -132,7 +133,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				COALESCE(NULLIF(country_code, ''), 'UNKNOWN') AS country_code,
 				COUNT(DISTINCT ${sessionExpr}) AS sessions
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'
 			GROUP BY COALESCE(NULLIF(country_code, ''), 'UNKNOWN')
 			ORDER BY sessions DESC
@@ -153,7 +154,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 			FROM analytics_event_items ai
 			JOIN analytics_events ae
 				ON ae.event_name = ai.event_name AND ae.event_id = ai.event_id
-			WHERE ae.occurred_at >= ? AND ae.occurred_at <= ?
+			WHERE ae.occurred_at >= ? AND ae.occurred_at < ?
 				AND COALESCE(ae.device_type, '') != 'bot'
 			GROUP BY COALESCE(NULLIF(ai.product_id, ''),NULLIF(ai.item_id, ''),NULLIF(ai.variant_id, ''))
 			ORDER BY view_sessions DESC, add_to_cart_sessions DESC, purchase_sessions DESC
@@ -176,7 +177,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
                   WHERE ai.event_name=analytics_events.event_name AND ai.event_id=analytics_events.event_id
                   ORDER BY ai.item_index LIMIT 1),'') AS image_url
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'
 				AND event_name = 'checkout_completed'
 			ORDER BY occurred_at DESC
@@ -205,7 +206,7 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 					LIMIT 1
 				), '') AS item_name
 			FROM analytics_events ae
-			WHERE ae.occurred_at >= ? AND ae.occurred_at <= ?
+			WHERE ae.occurred_at >= ? AND ae.occurred_at < ?
 				AND COALESCE(ae.device_type, '') != 'bot'
 			ORDER BY ae.occurred_at DESC
 			LIMIT 50`,
@@ -219,14 +220,14 @@ export async function readRealtimeAnalytics(now = new Date()): Promise<RealtimeA
 				COUNT(*) AS events,
 				COUNT(DISTINCT CASE WHEN event_name = 'checkout_completed' THEN ${sessionExpr} END) AS purchases
 			FROM analytics_events
-			WHERE occurred_at >= ? AND occurred_at <= ?
+			WHERE occurred_at >= ? AND occurred_at < ?
 				AND COALESCE(device_type, '') != 'bot'
 			GROUP BY substr(occurred_at, 1, 16)
 			ORDER BY bucket ASC`,
 			args: [trendFrom, to],
 			wantRows: true,
 		},
-	]);
+	], channels));
 
 	const summary = hranaRowsToObjects(summaryResult)[0] ?? {};
 	const rawTrend = hranaRowsToObjects(trendResult).map((row) => ({

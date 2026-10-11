@@ -18,8 +18,8 @@ import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
  */
 export function emitCommerceEvent(event: PaperCommerceEvent): void {
 	try {
-		after(() => {
-			void deliver(event);
+		after(async () => {
+			await deliver(event);
 		});
 	} catch (error) {
 		console.warn("[analytics] after() unavailable; dropping event", error);

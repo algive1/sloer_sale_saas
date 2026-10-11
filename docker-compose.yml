@@ -165,6 +165,9 @@ services:
       PAYMENT_REMINDER_FROM: ${PAYMENT_REMINDER_FROM:-}
       PAYMENT_REMINDER_SITES_JSON: ${PAYMENT_REMINDER_SITES_JSON:-}
       PAYMENT_REMINDER_CRON_SECRET: ${PAYMENT_REMINDER_CRON_SECRET:-}
+      # Per-brand server ad credentials: never pass these as build/public args.
+      ADS_SERVER_SITES_JSON: ${ADS_SERVER_SITES_JSON:-}
+      ANALYTICS_CLIENT_IP_HEADER: ${ANALYTICS_CLIENT_IP_HEADER:-}
       # Optional Chatwoot CE website chat and AI bot; never build into browser env.
       SUPPORT_CHATWOOT_BASE_URL: ${SUPPORT_CHATWOOT_BASE_URL:-}
       SUPPORT_CHATWOOT_SITES_JSON: ${SUPPORT_CHATWOOT_SITES_JSON:-}

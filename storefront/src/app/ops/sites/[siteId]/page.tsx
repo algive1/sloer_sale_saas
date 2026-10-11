@@ -6,6 +6,7 @@ import { io } from "next/cache";
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
 import { getBrandSites } from "@/config/brand-sites";
 import { readAnalyticsSummary } from "@/plugins/analytics/first-party-store";
+import { BrandOrders } from "@/ui/ops/brand-orders";
 
 export const metadata: Metadata = { title: "品牌经营概况 | Commerce Ops", robots: { index: false, follow: false } };
 
@@ -68,6 +69,7 @@ async function BrandOverviewPageContent({ params, searchParams }: Props) {
           className="inline-flex rounded-lg border border-stone-300 bg-white px-4 py-2 text-sm font-semibold hover:bg-stone-50">
           查看流量、商品及结账分析 →
         </Link>
+        <Link href={`/ops/sites/${encodeURIComponent(site.id)}/realtime`} className="ml-3 inline-flex rounded-lg border border-border px-4 py-2 text-sm font-semibold">查看品牌实时数据 →</Link>
       </div>
       <div className="mt-6 rounded-lg border border-stone-200 bg-white p-4 text-sm text-stone-600">
         <b className="text-stone-900">当前范围：</b> {site.channels.join("、")}
@@ -129,6 +131,7 @@ async function BrandOverviewPageContent({ params, searchParams }: Props) {
           </section>
         </>
       )}
+      <Suspense fallback={<p className="mt-5 text-sm" role="status">正在读取品牌订单…</p>}><BrandOrders siteId={site.id} /></Suspense>
     </main>
   );
 }
