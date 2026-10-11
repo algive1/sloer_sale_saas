@@ -1,6 +1,7 @@
 import { Box, List } from "@saleor/macaw-ui-next";
 
 import { Shortcusts } from "../shortcuts/Shortcuts";
+import styles from "./CommerceSidebar.module.css";
 import { useMenuStructure } from "./hooks/useMenuStructure";
 import { MenuItem } from "./Item";
 
@@ -11,7 +12,7 @@ export const Menu = () => {
     <Box
       padding={3}
       overflowY="auto"
-      className="hide-scrollbar"
+      className={`hide-scrollbar ${styles.menuRoot}`}
       display="flex"
       flexDirection="column"
       justifyContent="space-between"
