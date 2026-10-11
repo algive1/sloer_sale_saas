@@ -41,7 +41,12 @@ import { pageTypeListUrl } from "@dashboard/modelTypes/urls";
 import { messages as navigationPinMessages } from "@dashboard/navigationPins/constants";
 import { useResolvedNavigationPins } from "@dashboard/navigationPins/hooks/useResolvedNavigationPins";
 import { injectNavigationPins } from "@dashboard/navigationPins/injectNavigationPins";
-import { orderDraftListUrl, orderListUrl } from "@dashboard/orders/urls";
+import { orderDraftListUrl, orderListUrl, orderSettingsPath } from "@dashboard/orders/urls";
+import { permissionGroupListUrl } from "@dashboard/permissionGroups/urls";
+import { shippingZonesListUrl } from "@dashboard/shipping/urls";
+import { siteSettingsUrl } from "@dashboard/siteSettings/urls";
+import { staffListUrl } from "@dashboard/staff/urls";
+import { taxConfigurationListUrl } from "@dashboard/taxes/urls";
 import { productListUrl } from "@dashboard/products/urls";
 import { productTypeListUrl } from "@dashboard/productTypes/urls";
 import { Ripple } from "@dashboard/ripples/components/Ripple";
@@ -397,11 +402,12 @@ export function useMenuStructure() {
   const baseModeling = native("modeling");
   const baseTranslations = native("translations");
   const baseExtensions = native("installed-extensions");
-  const settings = native("configure");
+  const baseSettings = native("configure");
 
   const orders: SidebarMenuItem = {
     ...baseOrders,
     label: localized("订单", "Orders"),
+    defaultExpanded: true,
     children: [
       ...(baseOrders.children ?? []),
       ...available(opsItem(
@@ -446,6 +452,7 @@ export function useMenuStructure() {
     icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
     label: localized("数据分析", "Analytics"),
     type: "itemGroup",
+    defaultExpanded: true,
     permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_PRODUCTS],
     children: analyticsChildren,
   } : null;
@@ -453,6 +460,7 @@ export function useMenuStructure() {
   const onlineStore: SidebarMenuItem = {
     ...baseModeling,
     label: localized("在线商店", "Online store"),
+    defaultExpanded: true,
     // A translator should still see this section without page/model privileges.
     permissions: [...(baseModeling.permissions ?? []), PermissionEnum.MANAGE_TRANSLATIONS],
     children: [
@@ -497,6 +505,35 @@ export function useMenuStructure() {
         "/ops/plugins",
         [PermissionEnum.MANAGE_APPS],
       )),
+    ],
+  };
+
+  // Surface common Saleor settings as actual child routes, not fake settings pages.
+  // The complete Saleor Configuration landing page remains available.
+  const settings: SidebarMenuItem = {
+    ...baseSettings,
+    label: localized("设置", "Settings"),
+    type: "itemGroup",
+    children: [
+      { id: "commerce-settings-home", label: localized("设置总览", "All settings"),
+        url: configurationMenuUrl, type: "item" },
+      { id: "commerce-settings-store", label: localized("店铺信息", "Store details"),
+        url: siteSettingsUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_SETTINGS] },
+      { id: "commerce-settings-shipping", label: localized("配送运费", "Shipping"),
+        url: shippingZonesListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_SHIPPING] },
+      { id: "commerce-settings-order", label: localized("订单设置", "Order settings"),
+        url: orderSettingsPath, type: "item",
+        permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_SETTINGS] },
+      { id: "commerce-settings-tax", label: localized("税费设置", "Taxes"),
+        url: taxConfigurationListUrl(), type: "item" },
+      { id: "commerce-settings-staff", label: localized("员工管理", "Staff"),
+        url: staffListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF] },
+      { id: "commerce-settings-permissions", label: localized("权限组", "Permission groups"),
+        url: permissionGroupListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF] },
     ],
   };
 
