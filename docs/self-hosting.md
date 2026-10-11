@@ -53,7 +53,11 @@ if you store it elsewhere, or inject `SALEOR_RSA_PRIVATE_KEY` from a secret mana
 
 Use HTTPS public URLs in production.
 
-Before a production upgrade that includes Saleor migrations, take a PostgreSQL backup and keep the previously deployed Git commit available for rollback.
+Production upgrades run isolated database/migration/build rehearsal and a final
+backup/restore gate. Read [release recovery](release-recovery.md), keep encrypted
+off-host backups and retain old images. Configured external databases, Chatwoot
+and cloud media require backup/restore receipts. Use `bash scripts/deploy.sh
+--preflight-only` before a maintenance window.
 
 Then:
 
@@ -84,7 +88,11 @@ SALEOR_PUBLIC_URL=https://api.example.com/
 SALEOR_EMAIL_URL=smtp://USER:PASSWORD@smtp.example.com:587/?tls=True
 ```
 
-The storefront container also receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/` at runtime so server-side rendering calls Saleor over the private Docker network while browsers use the public API URL. During the Docker image build, `SALEOR_BUILD_API_URL` defaults to `http://127.0.0.1:8000/graphql/`; the deploy script therefore builds and starts Saleor first, applies migrations, waits for GraphQL, and only then builds Dashboard and Storefront.
+The storefront container receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/`
+at runtime while browsers use the public API URL. The deploy runner overrides
+`SALEOR_BUILD_API_URL` with a loopback-only API backed by an isolated migrated
+copy, so Dashboard and Storefront finish building before production migrations.
+Production application images are started by exact image ID without a rebuild.
 
 ## Reverse proxy and TLS
 
