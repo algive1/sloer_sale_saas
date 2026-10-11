@@ -60,6 +60,7 @@ import { useIntl } from "react-intl";
 
 import { SidebarIconSlot } from "../../SidebarIconSlot";
 import { createOpsHref } from "../commerceOpsLinks";
+import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
 import { type SidebarMenuItem } from "../types";
 import { mapToExtensionsItems } from "../utils";
@@ -369,16 +370,21 @@ export function useMenuStructure() {
 
     return item;
   };
-  const opsItem = (
-    id: string,
-    label: string,
-    path: `/ops${string}`,
-    permissions: PermissionEnum[] = [],
-  ): SidebarMenuItem | null => {
-    const externalUrl = createOpsHref(process.env.COMMERCE_OPS_URL, path);
+  const opsSection = (section: CommerceOpsSection): SidebarMenuItem[] =>
+    commerceOpsNavigation
+      .filter(entry => entry.section === section)
+      .flatMap(entry => {
+        const externalUrl = createOpsHref(process.env.COMMERCE_OPS_URL, entry.path);
 
-    return externalUrl ? { id, label, externalUrl, permissions, type: "item" } : null;
-  };
+        return externalUrl ? [{
+          id: entry.id,
+          label: localized(entry.zh, entry.en),
+          externalUrl,
+          permissions: entry.permissions,
+          type: "item" as const,
+        }] : [];
+      });
+
   const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
     items.filter((item): item is SidebarMenuItem => item !== null);
 
@@ -410,12 +416,7 @@ export function useMenuStructure() {
     defaultExpanded: true,
     children: [
       ...(baseOrders.children ?? []),
-      ...available(opsItem(
-        "commerce-payment-reminders",
-        localized("智能催付", "Payment reminders"),
-        "/ops/analytics/reminders",
-        [PermissionEnum.MANAGE_ORDERS],
-      )),
+      ...opsSection("orders"),
     ],
   };
   const catalog: SidebarMenuItem = {
@@ -427,12 +428,7 @@ export function useMenuStructure() {
     label: localized("客户", "Customers"),
     children: [
       ...(baseCustomers.children ?? []),
-      ...available(opsItem(
-        "commerce-support",
-        localized("在线客服", "Customer support"),
-        "/ops/support",
-        [PermissionEnum.MANAGE_USERS, PermissionEnum.MANAGE_ORDERS],
-      )),
+      ...opsSection("customers"),
     ],
   };
   const marketing: SidebarMenuItem = {
@@ -440,13 +436,7 @@ export function useMenuStructure() {
     label: localized("营销", "Marketing"),
   };
 
-  const analyticsChildren = available(
-    opsItem("commerce-analytics-overview", localized("经营总览", "Overview"), "/ops/analytics"),
-    opsItem("commerce-analytics-realtime", localized("实时数据", "Realtime"), "/ops/analytics/realtime"),
-    opsItem("commerce-analytics-traffic", localized("流量分析", "Traffic analytics"), "/ops/analytics/traffic"),
-    opsItem("commerce-analytics-checkout", localized("结账分析", "Checkout analytics"), "/ops/analytics/checkout"),
-    opsItem("commerce-analytics-products", localized("商品分析", "Product analytics"), "/ops/analytics/products"),
-  );
+  const analyticsChildren = opsSection("analytics");
   const analytics: SidebarMenuItem | null = analyticsChildren.length ? {
     id: "commerce-analytics",
     icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
@@ -464,19 +454,9 @@ export function useMenuStructure() {
     // A translator should still see this section without page/model privileges.
     permissions: [...(baseModeling.permissions ?? []), PermissionEnum.MANAGE_TRANSLATIONS],
     children: [
-      ...available(
-        opsItem("commerce-brand-sites", localized("品牌站点", "Brand sites"), "/ops/sites", [PermissionEnum.MANAGE_PAGES]),
-        opsItem("commerce-theme-builder", localized("主题装修", "Theme editor"), "/ops/themes", [PermissionEnum.MANAGE_PAGES]),
-        opsItem("commerce-product-theme", localized("商品详情页模板", "Product detail template"), "/ops/themes?pageType=product", [PermissionEnum.MANAGE_PAGES]),
-      ),
+      ...opsSection("store"),
       ...(baseModeling.children ?? []),
       { ...baseTranslations, label: localized("语言翻译", "Translations") },
-      ...available(opsItem(
-        "commerce-ai-translations",
-        localized("AI 多语言", "AI translations"),
-        "/ops/translations",
-        [PermissionEnum.MANAGE_TRANSLATIONS],
-      )),
     ],
   };
   const channels: SidebarMenuItem = {
@@ -499,12 +479,7 @@ export function useMenuStructure() {
     label: localized("应用", "Apps"),
     children: [
       ...(baseExtensions.children ?? []),
-      ...available(opsItem(
-        "commerce-system-apps",
-        localized("自研系统插件", "System extensions"),
-        "/ops/plugins",
-        [PermissionEnum.MANAGE_APPS],
-      )),
+      ...opsSection("apps"),
     ],
   };
 
