@@ -75,7 +75,23 @@ forbiddenCheckout(await graphql(checkoutUpdate, { id: checkoutId }), "direct che
 const aliasedCheckout = `query($id: ID!) {
   hidden: node(id: $id) { ... on Checkout { email } }
 }`;
-forbiddenCheckout(await graphql(aliasedCheckout, { id: checkoutId }), "node fragment checkout email bypass");
+// Some Saleor versions do not expose Query.node; GraphQL then rejects this
+// attempt at schema validation (HTTP 400). If the field exists, the Checkout
+// object middleware must reject its sensitive fields. Neither case may leak.
+const nodeAttempt = await fetch(endpoint, {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ query: aliasedCheckout, variables: { id: checkoutId } }),
+});
+const nodeBody = await nodeAttempt.json();
+if (nodeAttempt.status === 200) {
+  forbiddenCheckout(nodeBody, "node fragment checkout email bypass");
+} else {
+  assert.equal(nodeAttempt.status, 400, JSON.stringify(nodeBody));
+  assert.ok(Array.isArray(nodeBody.errors) && nodeBody.errors.length > 0,
+    JSON.stringify(nodeBody));
+  assert.equal(nodeBody.data?.hidden ?? null, null, JSON.stringify(nodeBody));
+}
 
 const registered = await graphql(`
   mutation {
