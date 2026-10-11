@@ -409,4 +409,56 @@ test.describe("live editor -> libSQL -> published Saleor homepage", () => {
     }
   });
 
+
+  test("AI image preview and upload stay draft-only until explicit save",async({browser})=>{
+    test.skip(!password,"Requires authenticated operations editor");
+    const context=await browser.newContext({
+      httpCredentials:{username:"analytics",password:password!},viewport:{width:1366,height:860},
+    });
+    const page=await context.newPage();
+    const authorized=await playwrightRequest.newContext({
+      baseURL,httpCredentials:{username:"analytics",password:password!},
+    });
+    const tinyWebp=await (await import("sharp")).default({
+      create:{width:12,height:8,channels:3,background:"#eee9dc"},
+    }).webp().toBuffer();
+    try{
+      await page.route("**/ops/themes/ai/providers?**",async route=>{
+        await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+          ready:true,allowedEndpoints:["https://api.openai.com/v1"],
+          items:[{id:"fake",title:"CI image model",model:"gpt-image-1",
+            baseUrl:"https://api.openai.com/v1",active:true}],
+        })});
+      });
+      await page.route("**/ops/themes/ai/images/generate",async route=>{
+        expect(route.request().method()).toBe("POST");
+        await route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({
+          image:{base64:tinyWebp.toString("base64"),mime:"image/webp",width:12,
+            provider:"CI image model",model:"gpt-image-1"},
+        })});
+      });
+      await page.route("**/ops/themes/upload?**",async route=>{
+        expect(route.request().method()).toBe("POST");
+        await route.fulfill({status:200,contentType:"application/json",
+          body:JSON.stringify({url:"https://media.example.com/media/generated.webp"})});
+      });
+      const before=await (await authorized.get(scope)).json() as {draft:ThemeData|null;published:ThemeData|null};
+      await page.goto("/ops/themes");
+      await expect(page.getByRole("button",{name:"发布上线",exact:true}).first()).toBeVisible({timeout:30_000});
+      await page.getByRole("button",{name:"打开 AI 图片生成"}).click();
+      const panel=page.getByRole("complementary",{name:"AI 图片生成"});
+      await panel.getByLabel("选择图片模块").selectOption({index:1});
+      await panel.getByLabel("图片生成描述").fill("Soft minimal studio photo with room for copy");
+      await panel.getByRole("button",{name:"生成 1 张图片"}).click();
+      await expect(panel.getByRole("img",{name:"AI 生成图片预览"})).toBeVisible();
+      await panel.getByRole("button",{name:"确认上传并应用到当前模块"}).click();
+      await expect(panel.getByRole("status")).toContainText("图片已上传并应用到中间预览");
+      const after=await (await authorized.get(scope)).json() as {draft:ThemeData|null;published:ThemeData|null};
+      expect(after.draft).toEqual(before.draft);
+      expect(after.published).toEqual(before.published);
+    }finally{
+      await page.close();await context.close();await authorized.dispose();
+    }
+  });
+
 });
