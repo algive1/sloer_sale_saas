@@ -41,9 +41,9 @@ test.describe("Merchant navigation – desktop admin", () => {
 
     await page.getByTestId("commerce-rail-products").click();
     await expect(page.getByTestId("commerce-sidebar-expanded")).toBeVisible();
-    await expect(
-      page.locator('[data-test-id="menu-item-label-products"].sidebar-item-group-trigger'),
-    ).toHaveAttribute("aria-expanded", "true");
+    // Macaw's group trigger is an LI and does not set aria-expanded. Verify
+    // actual submenu visibility instead of asserting an absent HTML attribute.
+    await expect(page.getByTestId("menu-item-label-categories")).toBeVisible();
   });
 });
 
@@ -67,7 +67,9 @@ test.describe("Merchant navigation – mobile admin", () => {
   test("keeps a full, keyboard-accessible drawer at mobile widths", async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await new HomePage(page).goto();
-    await new HomePage(page).expectSignedIn();
+    // On mobile the signed-in account menu lives in a closed drawer;
+    // asserting its visibility before opening the drawer is incorrect.
+    await expect(page.getByTestId("commerce-admin-topbar")).toBeVisible();
 
     await expect(page.getByTestId("sidebar-drawer-open")).toBeVisible();
     await page.getByTestId("sidebar-drawer-open").click();
@@ -77,6 +79,7 @@ test.describe("Merchant navigation – mobile admin", () => {
     await expect(drawer).toBeVisible();
     await expect(drawer.getByTestId("commerce-sidebar-expanded")).toBeVisible();
     await expect(drawer.getByTestId("commerce-admin-search")).toBeVisible();
+    await expect(drawer.getByTestId("userMenu")).toBeVisible();
 
     await testInfo.attach("admin-mobile-drawer", {
       body: await page.screenshot(),
