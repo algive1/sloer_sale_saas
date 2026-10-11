@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { storeFirstPartyCommerceEvent } from "@/plugins/analytics/first-party-store";
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
@@ -76,6 +77,7 @@ async function boundedBody(request: Request): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
+  if (pluginPauseReason("analytics")) return new NextResponse(null, { status: 204, headers: { "cache-control": "private, no-store" } });
   if (!analyticsDatabaseConfigured()) return new NextResponse(null, { status: 204 });
 
   // Consent is not only a UI concern: enforce the same policy at ingestion.

@@ -6,10 +6,8 @@ import { getDefaultLocaleSlug, resolveLocaleFromSlug } from "@/config/locale";
 import { getRootHtmlFontProps } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 import { speedInsightsSampleRate } from "@/lib/speed-insights";
-import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
 import { AnalyticsMount } from "@/ui/components/analytics-mount";
 import { brandSitesConfigured } from "@/config/brand-sites";
-import { WebAnalytics } from "@/ui/components/web-analytics";
 
 const defaultHtmlLang = resolveLocaleFromSlug(getDefaultLocaleSlug()).htmlLang;
 
@@ -29,8 +27,8 @@ export default function CheckoutLayout(props: { children: ReactNode }) {
 				<main className="min-h-dvh">{props.children}</main>
 				{/* Sampled — unsampled Speed Insights dominates the Vercel bill at scale. */}
 				<SpeedInsights sampleRate={speedInsightsSampleRate()} />
-				{/* Unsampled page views — the denominator; `?checkout=` and `/order/<key>` are redacted in beforeSend. */}
-				{webAnalyticsEnabled() && <WebAnalytics />}
+				{/* AnalyticsMount controls runtime tracking policy and redaction. */}
+
 				<AnalyticsMount />
 			</body>
 		</html>

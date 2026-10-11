@@ -3,6 +3,7 @@ import type { SystemPluginId } from "./registry";
 /** Only modules whose entry points enforce pause are configurable here. */
 export const PAUSABLE_SYSTEM_PLUGINS = [
   "theme-builder", "payment-reminders", "customer-support", "ai-translations",
+  "analytics", "ads-tracking", "seo-merchant",
 ] as const satisfies readonly SystemPluginId[];
 export type PausableSystemPluginId = (typeof PAUSABLE_SYSTEM_PLUGINS)[number];
 export type SystemPluginPolicy = Readonly<{

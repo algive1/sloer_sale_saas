@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
@@ -38,7 +39,7 @@ const money=(value:number,currency:string)=>{
 };
 export default function AnalyticsPage({searchParams}:{searchParams:Promise<Params>}) {
   return <Suspense fallback={<div className="mx-auto mt-10 h-96 max-w-7xl animate-pulse rounded-xl bg-secondary"/>}>
-    <AnalyticsContent searchParams={searchParams}/>
+    <PluginPauseNotice plugin="analytics"/><AnalyticsContent searchParams={searchParams}/>
   </Suspense>;
 }
 async function AnalyticsContent({searchParams}:{searchParams:Promise<Params>}) {

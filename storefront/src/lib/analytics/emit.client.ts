@@ -1,4 +1,5 @@
 "use client";
+import { withClientTrackingPolicy } from "@/plugins/system/tracking-policy.client";
 
 import { track } from "@vercel/analytics";
 import { sendGa4Event } from "@/lib/analytics/browser";
@@ -18,11 +19,12 @@ export type ClientEmitOptions = BrowserAdContext & {
 };
 
 export function emitCommerceEvent(event: PaperCommerceEvent, options: ClientEmitOptions = {}): void {
+	withClientTrackingPolicy(policy => {
 	try {
 		sendFirstPartyCommerceEvent(event);
 		if (options.coreDestinations !== false) {
 			const vercel = projectVercel(event);
-			if (vercel) {
+			if (policy.collectAnalytics && vercel) {
 				track(vercel.name, vercel.props);
 			}
 			const ga4 = projectGa4(event);
@@ -38,4 +40,5 @@ export function emitCommerceEvent(event: PaperCommerceEvent, options: ClientEmit
 	} catch (error) {
 		console.warn("[analytics] destination failed", error);
 	}
+	});
 }

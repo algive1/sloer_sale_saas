@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import { io } from "next/cache";
 import { getBrandSites } from "@/config/brand-sites";
 import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
@@ -15,6 +16,6 @@ export async function RealtimeContent({ siteId }: { siteId?: string }) {
   let data;
   try { data = await readRealtimeAnalytics(new Date(), site?.channels ?? null); }
   catch { return <p className="p-8" role="alert">实时数据暂时不可用，请稍后重试。</p>; }
-  return <RealtimeDashboard initialData={data} scopeLabel={site ? `${site.name} · ${site.channels.join("、")}` : "全品牌汇总"}
-    endpoint={site ? `/ops/sites/${encodeURIComponent(site.id)}/realtime/api` : "/ops/api/analytics/realtime"} />;
+  return <><PluginPauseNotice plugin="analytics"/><RealtimeDashboard initialData={data} scopeLabel={site ? `${site.name} · ${site.channels.join("、")}` : "全品牌汇总"}
+    endpoint={site ? `/ops/sites/${encodeURIComponent(site.id)}/realtime/api` : "/ops/api/analytics/realtime"} /></>;
 }

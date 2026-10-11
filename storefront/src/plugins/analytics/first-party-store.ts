@@ -1,4 +1,5 @@
 import "server-only";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 
 import type { PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { checkoutAnalyticsDimensions } from "@/lib/analytics/checkout-dimensions";
@@ -61,6 +62,7 @@ export async function storeFirstPartyCommerceEvent(
 	event: PaperCommerceEvent,
 	headers: HeaderReader,
 ): Promise<void> {
+	if (pluginPauseReason("analytics")) return;
 	if (!analyticsDatabaseConfigured()) return;
 	await ensureSchema();
 
@@ -554,6 +556,7 @@ export async function recordRefundTotal(
 	totalRefunded: number,
 	currency: string,
 ): Promise<number> {
+	if (pluginPauseReason("analytics")) return 0;
 	if (!analyticsDatabaseConfigured() || !orderId || totalRefunded <= 0 || !currency) return 0;
 	await ensureSchema();
 	const [previousResult] = await libsqlPipeline([{

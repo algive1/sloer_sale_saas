@@ -1,4 +1,5 @@
 import "server-only";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 
 import { isIP } from "node:net";
 import { serverAdScope, type ServerAdScope, type AdDestination } from "./server-config";
@@ -44,6 +45,7 @@ export async function deliverServerDestinations(
 	event: PaperCommerceEvent,
 	requestHeaders: HeaderReader,
 ): Promise<void> {
+	if (pluginPauseReason("ads-tracking")) return;
 	const scope = safeScope(event.channel, requestHeaders.get("host"));
 	if (!scope) return;
 	const choice = parseConsentChoice(readCookie(requestHeaders, ANALYTICS_CONSENT_COOKIE));
@@ -65,6 +67,7 @@ export async function deliverGa4ServerEvent(
 	requestHeaders: HeaderReader,
   verifiedOrderChannel: string,
 ): Promise<void> {
+  if (pluginPauseReason("ads-tracking")) return;
   if (event.channel !== verifiedOrderChannel) return;
   const scope = safeScope(verifiedOrderChannel, null, true);
   if (!scope) return;

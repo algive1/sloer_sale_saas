@@ -372,6 +372,12 @@ jobs:
           PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
         run: pnpm --dir storefront exec playwright test e2e/api-boundaries-live.spec.ts --workers=1
 
+      - name: Native ProductGroup and initial HTML structured data E2E
+        env:
+          PLAYWRIGHT_SEO_BASE_URL: http://127.0.0.1:3100
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+        run: pnpm --dir storefront exec playwright test e2e/product-group-seo-live.spec.ts --workers=1
+
       - name: Storefront theme editor draft and published homepage E2E
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3100
@@ -552,7 +558,7 @@ jobs:
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
-          SYSTEM_PLUGINS_DISABLED: '["theme-builder","payment-reminders","customer-support","ai-translations"]'
+          SYSTEM_PLUGINS_DISABLED: '["theme-builder","payment-reminders","customer-support","ai-translations","analytics","ads-tracking","seo-merchant"]'
           SUPPORT_AI_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
           TRANSLATION_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
         run: |

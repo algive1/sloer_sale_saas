@@ -236,6 +236,7 @@ export async function fetchGoogleMerchantProducts(
 	channel: string,
 	localeSlug: string,
 ): Promise<GoogleMerchantProduct[]> {
+	assertPluginActive("seo-merchant");
 	const languageCode = getGraphqlLanguageCode(localeSlug);
 	const products: GoogleMerchantProduct[] = [];
 	let after: string | null = null;
@@ -285,3 +286,4 @@ export async function fetchGoogleMerchantProducts(
 
 	return products;
 }
+import { assertPluginActive } from "@/plugins/system/runtime.server";

@@ -1,4 +1,8 @@
 import { Suspense } from "react";
+import { io } from "next/cache";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
+import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
+import { WebAnalytics } from "@/ui/components/web-analytics";
 import { analyticsConsentMode } from "@/lib/analytics/consent";
 import { gaMeasurementId } from "@/plugins/ads-tracking/ga4-config";
 import { brandSitesConfigured } from "@/config/brand-sites";
@@ -9,25 +13,25 @@ import { GoogleAnalytics } from "@/ui/components/google-analytics";
 import { AdPixels } from "@/ui/components/ad-pixels";
 import { AnalyticsConsentBanner } from "@/ui/components/analytics-consent-banner";
 
-/**
- * Root-layout mount: merchant tag when a measurement id is set, plus the
- * always-on runtime. Pathname-driven page views sit in Suspense so fallback
- * CMS/catalog params (`pages/[slug]`, …) can still prerender. First-touch and
- * `window.paperAnalytics` stay outside that hole.
- * https://nextjs.org/docs/messages/blocking-prerender-client-hook
- */
+/** Request-time policy remains outside the cached storefront/checkout shell. */
 export function AnalyticsMount() {
-	const measurementId = brandSitesConfigured() ? null : gaMeasurementId();
-	const hasAdvertisingPixels = !brandSitesConfigured() && browserAdsConfigured();
+  return <Suspense fallback={null}><TrackingSlot /></Suspense>;
+}
+async function TrackingSlot() {
+  await io();
+  const policy = { collectAnalytics: !pluginPauseReason("analytics"), trackAds: !pluginPauseReason("ads-tracking") };
+	const measurementId = !policy.trackAds || brandSitesConfigured() ? null : gaMeasurementId();
+	const hasAdvertisingPixels = policy.trackAds && !brandSitesConfigured() && browserAdsConfigured();
 
 	return (
 		<>
 			{measurementId ? (
 				<GoogleAnalytics measurementId={measurementId} consentMode={analyticsConsentMode()} />
 			) : null}
-			<AnalyticsRuntime />
+			<AnalyticsRuntime policy={policy} />
+            {policy.collectAnalytics && webAnalyticsEnabled() ? <WebAnalytics /> : null}
 			{hasAdvertisingPixels ? <AdPixels /> : null}
-			<AnalyticsConsentBanner />
+			{policy.collectAnalytics || policy.trackAds ? <AnalyticsConsentBanner /> : null}
 			<Suspense fallback={null}>
 				<AnalyticsPathnameViews />
 			</Suspense>
