@@ -35,7 +35,7 @@ export const UserInfo = ({ compact = false }: { compact?: boolean }) => {
           </Box>
         )}
       </Box>
-      <UserControls />
+      <UserControls compact={compact} />
     </Box>
   );
 };
