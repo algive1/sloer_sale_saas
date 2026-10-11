@@ -16,7 +16,7 @@ type Operator = Readonly<{
 }>;
 
 export type OpsAuthorization = "allowed" | "unauthenticated" | "forbidden" | "disabled";
-export type OpsViewer = Readonly<{ role: OpsRole; siteIds: readonly string[] }>;
+export type OpsViewer = Readonly<{ username: string; role: OpsRole; siteIds: readonly string[] }>;
 
 export type OpsIdentityInput = {
   authorization: string | null;
@@ -28,7 +28,7 @@ export type OpsIdentityInput = {
 const USERNAME = /^[a-z][a-z0-9_-]{2,63}$/;
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const PASSWORD = /^[\x21-\x7e]{32,256}$/;
-const BRAND_READ_ROUTE = /^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|readiness))?\/?$/;
+const BRAND_READ_ROUTE = /^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|readiness(?:\/api)?))?\/?$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -99,12 +99,12 @@ export function resolveOpsViewer(input: OpsIdentityInput): OpsViewer | null {
     if (!creds) return null;
     const account = operators.find((entry) => entry.username === creds.username);
     if (!account || !equalConstantTime(creds.password, account.password)) return null;
-    return { role: account.role, siteIds: account.siteIds };
+    return { username: account.username, role: account.role, siteIds: account.siteIds };
   }
   if (!input.legacySecret?.trim()) return null;
   if (!creds || creds.username !== "analytics" ||
     !equalConstantTime(creds.password, input.legacySecret.trim())) return null;
-  return { role: "platform_admin", siteIds: [] };
+  return { username: "analytics", role: "platform_admin", siteIds: [] };
 }
 
 export function authorizeOpsRequest(input: OpsIdentityInput & {

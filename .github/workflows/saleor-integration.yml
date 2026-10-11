@@ -489,6 +489,11 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/payment-reminders-live.spec.ts --workers=1
 
+      - name: Brand launch evidence, ownership and scope E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/readiness-live.spec.ts --workers=1
+
       - name: Multi-brand localized browser, market and SEO E2E
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101

@@ -39,12 +39,14 @@ describe("operations operator accounts", () => {
       "/ops/sites/fashion?days=7".split("?")[0]!,
       "/ops/sites/fashion/insights",
       "/ops/sites/fashion/readiness",
+      "/ops/sites/fashion/readiness/api",
     ]) expect(check(auth,path)).toBe("allowed");
     expect(check(auth,"/ops/sites/fashion/insights","HEAD")).toBe("allowed");
 
     for (const path of [
       "/ops", "/ops/sites/jewelry",
       "/ops/sites/jewelry/insights", "/ops/analytics",
+      "/ops/sites/jewelry/readiness/api",
       "/ops/analytics/products", "/ops/plugins", "/ops/themes",
       "/ops/themes/api", "/ops/translations", "/ops/translations/api",
       "/ops/support", "/ops/sites/fashion/insights/export",
@@ -59,15 +61,15 @@ describe("operations operator accounts", () => {
   it("resolves server-only viewer identity without trusting selected UI site", () => {
     const args = {operatorsJson: accounts, legacySecret:shared, trustedSiteIds:sites};
     expect(resolveOpsViewer({...args, authorization:basic("fashion_staff",analystPassword)})).toEqual({
-      role:"brand_analyst",siteIds:["fashion"],
+      username:"fashion_staff",role:"brand_analyst",siteIds:["fashion"],
     });
     expect(resolveOpsViewer({...args, authorization:basic("platform_owner",adminPassword)})).toEqual({
-      role:"platform_admin",siteIds:[],
+      username:"platform_owner",role:"platform_admin",siteIds:[],
     });
     expect(resolveOpsViewer({...args, authorization:basic("analytics",shared)})).toBeNull();
     expect(resolveOpsViewer({...args, authorization:null})).toBeNull();
     expect(resolveOpsViewer({...args, operatorsJson:"", authorization:basic("analytics",shared)})).toEqual({
-      role:"platform_admin",siteIds:[],
+      username:"analytics",role:"platform_admin",siteIds:[],
     });
   });
 
