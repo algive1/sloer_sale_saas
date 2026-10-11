@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
@@ -165,7 +164,11 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
                 {!compact && expanded && (
                   <div id={`ops-submenu-${group.id}`} className={styles.submenu}>
                     {group.children.map(item => (
-                      <Link
+                      // Full-page navigation is deliberate: Puck registers
+                      // beforeunload for unsaved drafts; a Next Link soft
+                      // transition would skip that protection. It also
+                      // resets the editor when the pageType query changes.
+                      <a
                         key={item.id}
                         href={item.href}
                         aria-current={currentItem(item) ? "page" : undefined}
@@ -173,7 +176,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
                         onClick={() => setMobileOpen(false)}
                       >
                         {item.label}
-                      </Link>
+                      </a>
                     ))}
                   </div>
                 )}
