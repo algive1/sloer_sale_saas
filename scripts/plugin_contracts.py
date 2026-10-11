@@ -32,7 +32,9 @@ def check_snapshot(source, expected_plugins):
     with sqlite3.connect(Path(source).resolve().as_uri() + "?mode=ro", uri=True) as db:
         db.execute("PRAGMA query_only=ON")
         tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-        for module_id, module in modules.items():
+        groups = dict(modules)
+        groups.update({"core:" + name: group for name, group in contract.get("core", {}).items()})
+        for module_id, module in groups.items():
             checked, absent, additions = [], [], []
             for table, expected in module["tables"].items():
                 if table not in tables:
@@ -80,10 +82,27 @@ def check_snapshot(source, expected_plugins):
                     allowed = ("queued", "processing", "draft", "approved", "rejected", "failed", "publishing", "published", "needs_reconciliation")
                     if db.execute("SELECT 1 FROM ops_translation_items WHERE status NOT IN (" + ",".join("?" for _ in allowed) + ") LIMIT 1", allowed).fetchone():
                         raise ValueError("Plugin snapshot contains unsupported translation state")
+                if table == "ops_tracking_attempts":
+                    allowed = ("sending", "applied", "uncertain", "rejected")
+                    if db.execute("SELECT 1 FROM ops_tracking_attempts WHERE state NOT IN (?,?,?,?) LIMIT 1", allowed).fetchone():
+                        raise ValueError("Operations snapshot contains unsupported tracking state")
+                    if db.execute("SELECT 1 FROM ops_tracking_attempts WHERE state IN ('sending','applied','uncertain') GROUP BY site_id,fulfillment_id HAVING COUNT(*) > 1 LIMIT 1").fetchone():
+                        raise ValueError("Operations snapshot has duplicate active tracking claims")
+                    index = db.execute("SELECT sql FROM sqlite_master WHERE type='index' AND name='ops_tracking_active_claim'").fetchone()
+                    if index is None:
+                        additions.append("ops_tracking_active_claim")
+                    else:
+                        normalized = "".join(index[0].split()).lower()
+                        expected_index = "createuniqueindexops_tracking_active_claimonops_tracking_attempts(site_id,fulfillment_id)wherestatein('sending','applied','uncertain')"
+                        # SQLite removes IF NOT EXISTS when persisting CREATE.
+                        normalized = normalized.replace("ifnotexists", "")
+                        if normalized != expected_index:
+                            raise ValueError("Operations snapshot has incompatible tracking claim index")
                 checked.append(table)
             if module_id in expected_plugins and module["tables"] and not checked:
                 raise ValueError("Expected plugin data is absent from snapshot: " + module_id)
             reports[module_id] = {"apiVersion": module["apiVersion"], "storageContractVersion": module["storageContractVersion"],
                                   "checkedTables": checked, "uninitializedTables": absent, "runtimeAdditions": additions}
     return {"contractVersion": contract["contractVersion"], "contractSha256": hashlib.sha256(CONTRACT_PATH.read_bytes()).hexdigest(),
-            "expectedPlugins": expected_plugins, "modules": reports}
+            "expectedPlugins": expected_plugins, "modules": {name: report for name, report in reports.items() if not name.startswith("core:")},
+            "core": {name.removeprefix("core:"): report for name, report in reports.items() if name.startswith("core:")}}

@@ -530,6 +530,12 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/fulfillment-ops-live.spec.ts --workers=1
 
+      - name: Native fulfillment tracking preview, writeback, replay and operator E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_TRACKING_REAL_BACKEND: "true"
+        run: pnpm --dir storefront exec playwright test e2e/tracking-ops-live.spec.ts --workers=1
+
       - name: Multi-brand localized browser, market and SEO E2E
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101

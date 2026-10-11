@@ -1,0 +1,26 @@
+fragment OpsTrackingOrder on Order {
+  id number status isPaid isShippingRequired
+  channel { slug }
+  fulfillments {
+    id status trackingNumber
+    lines { quantity orderLine { isShippingRequired } }
+  }
+}
+query OpsTrackingQueue($channel: String!, $after: String) {
+  orders(first: 25, after: $after, channel: $channel, where: { status: { oneOf: [FULFILLED, PARTIALLY_FULFILLED] } }, sortBy: { field: CREATED_AT, direction: DESC }) {
+    pageInfo { hasNextPage endCursor }
+    edges { node { ...OpsTrackingOrder } }
+  }
+}
+query OpsTrackingOrders($channel: String!, $ids: [ID!]) {
+  orders(first: 10, channel: $channel, where: { ids: $ids }) {
+    edges { node { ...OpsTrackingOrder } }
+  }
+}
+mutation OpsUpdateTracking($id: ID!, $trackingNumber: String!) {
+  orderFulfillmentUpdateTracking(id: $id, input: { trackingNumber: $trackingNumber, notifyCustomer: false }) {
+    fulfillment { id status trackingNumber }
+    order { id channel { slug } }
+    errors { code field }
+  }
+}

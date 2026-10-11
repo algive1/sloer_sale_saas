@@ -148,3 +148,5 @@ additions; no provider database is migrated by this check. Source-schema drift i
 a CI gate. See release-recovery.md for explicit receipt `plugins`, preflight,
 final backup and target-version rollback validation. Real recovery/keys/provider
 acceptance and destructive downgrade plans remain necessary.
+
+Core operations separately declares three audit tables in `core.operations`: freight exports, tracking previews and tracking attempts. They are not analytics plugin data and remain required for operations when collection is paused. Snapshot preflight also rejects future tracking states, duplicate active claims and incompatible claim indexes; missing safe indexes are reported for runtime creation without modifying the source snapshot. See [tracking writeback](tracking-writeback.md). Source paths in this contract are relative to `storefront/src`.

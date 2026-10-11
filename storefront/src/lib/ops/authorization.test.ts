@@ -56,6 +56,7 @@ describe("operations operator accounts", () => {
       "/ops/sites/jewelry/realtime/api", "/ops/api/analytics/realtime",
       "/ops/sites/jewelry/catalog/api",
       "/ops/sites/jewelry/fulfillment/api",
+      "/ops/sites/fashion/tracking", "/ops/sites/fashion/tracking/api",
       "/ops/analytics/products", "/ops/plugins", "/ops/themes",
       "/ops/themes/api", "/ops/translations", "/ops/translations/api",
       "/ops/support", "/ops/sites/fashion/insights/export",

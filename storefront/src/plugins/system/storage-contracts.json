@@ -21,7 +21,7 @@
             "channel",
             "locale"
           ],
-          "source": "theme-builder/store.ts",
+          "source": "plugins/theme-builder/store.ts",
           "notNull": [
             "site_id",
             "channel",
@@ -51,7 +51,7 @@
             "page_type",
             "template_key"
           ],
-          "source": "theme-builder/pages-store.ts",
+          "source": "plugins/theme-builder/pages-store.ts",
           "notNull": [
             "site_id",
             "channel",
@@ -81,7 +81,7 @@
             "page_type",
             "template_id"
           ],
-          "source": "theme-builder/saved-templates.ts",
+          "source": "plugins/theme-builder/saved-templates.ts",
           "notNull": [
             "site_id",
             "channel",
@@ -108,7 +108,7 @@
             "site_id",
             "profile_id"
           ],
-          "source": "theme-builder/ai-providers.server.ts",
+          "source": "plugins/theme-builder/ai-providers.server.ts",
           "notNull": [
             "site_id",
             "profile_id",
@@ -159,7 +159,7 @@
           "primaryKey": [
             "id"
           ],
-          "source": "analytics/first-party-store.ts",
+          "source": "plugins/analytics/first-party-store.ts",
           "notNull": [
             "occurred_at",
             "event_name",
@@ -178,7 +178,7 @@
           "primaryKey": [
             "order_id"
           ],
-          "source": "analytics/first-party-store.ts",
+          "source": "plugins/analytics/first-party-store.ts",
           "notNull": [
             "total_refunded",
             "currency",
@@ -206,7 +206,7 @@
             "event_id",
             "item_index"
           ],
-          "source": "analytics/first-party-store.ts",
+          "source": "plugins/analytics/first-party-store.ts",
           "notNull": [
             "event_name",
             "event_id",
@@ -223,7 +223,7 @@
           "primaryKey": [
             "key"
           ],
-          "source": "analytics/first-party-store.ts",
+          "source": "plugins/analytics/first-party-store.ts",
           "notNull": [
             "applied_at"
           ]
@@ -252,7 +252,7 @@
             "destination",
             "event_key"
           ],
-          "source": "ads-tracking/delivery-store.ts",
+          "source": "plugins/ads-tracking/delivery-store.ts",
           "notNull": [
             "site_id",
             "destination",
@@ -283,7 +283,7 @@
           "primaryKey": [
             "id"
           ],
-          "source": "payment-reminders/service.ts",
+          "source": "plugins/payment-reminders/service.ts",
           "notNull": [
             "enabled",
             "first_after_hours",
@@ -306,7 +306,7 @@
             "order_id",
             "stage"
           ],
-          "source": "payment-reminders/service.ts",
+          "source": "plugins/payment-reminders/service.ts",
           "notNull": [
             "order_id",
             "stage",
@@ -326,7 +326,7 @@
           "primaryKey": [
             "site_id"
           ],
-          "source": "payment-reminders/service.ts",
+          "source": "plugins/payment-reminders/service.ts",
           "notNull": [
             "enabled",
             "first_after_hours",
@@ -353,7 +353,7 @@
             "order_id",
             "stage"
           ],
-          "source": "payment-reminders/service.ts",
+          "source": "plugins/payment-reminders/service.ts",
           "notNull": [
             "site_id",
             "order_id",
@@ -385,7 +385,7 @@
             "site_id",
             "message_id"
           ],
-          "source": "customer-support/ai/bot-runtime.ts",
+          "source": "plugins/customer-support/ai/bot-runtime.ts",
           "notNull": [
             "site_id",
             "message_id",
@@ -403,7 +403,7 @@
           "primaryKey": [
             "id"
           ],
-          "source": "customer-support/ai/bot-runtime.ts",
+          "source": "plugins/customer-support/ai/bot-runtime.ts",
           "notNull": [
             "seen_at"
           ]
@@ -427,7 +427,7 @@
           "primaryKey": [
             "id"
           ],
-          "source": "ai-translations/store.ts",
+          "source": "plugins/ai-translations/store.ts",
           "notNull": [
             "site_id",
             "channel",
@@ -453,7 +453,7 @@
             "job_id",
             "item_id"
           ],
-          "source": "ai-translations/store.ts",
+          "source": "plugins/ai-translations/store.ts",
           "notNull": [
             "job_id",
             "item_id",
@@ -493,6 +493,90 @@
       "category_id": "TEXT",
       "category_name": "TEXT",
       "image_url": "TEXT"
+    }
+  },
+  "core": {
+    "operations": {
+      "apiVersion": 1,
+      "storageContractVersion": 1,
+      "tables": {
+        "ops_shipping_exports": {
+          "columns": {
+            "id": "TEXT",
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "actor": "TEXT",
+            "prepared_at": "TEXT",
+            "order_count": "INTEGER",
+            "row_count": "INTEGER",
+            "order_ids_digest": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "notNull": [
+            "site_id",
+            "channel",
+            "actor",
+            "prepared_at",
+            "order_count",
+            "row_count",
+            "order_ids_digest"
+          ],
+          "source": "lib/ops/fulfillment.ts"
+        },
+        "ops_tracking_previews": {
+          "columns": {
+            "id": "TEXT",
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "actor": "TEXT",
+            "expires_at": "TEXT",
+            "input_digest": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "notNull": [
+            "site_id",
+            "channel",
+            "actor",
+            "expires_at",
+            "input_digest"
+          ],
+          "source": "lib/ops/tracking.ts"
+        },
+        "ops_tracking_attempts": {
+          "columns": {
+            "id": "TEXT",
+            "site_id": "TEXT",
+            "channel": "TEXT",
+            "actor": "TEXT",
+            "order_id": "TEXT",
+            "fulfillment_id": "TEXT",
+            "tracking_digest": "TEXT",
+            "state": "TEXT",
+            "reason": "TEXT",
+            "started_at": "TEXT",
+            "finished_at": "TEXT"
+          },
+          "primaryKey": [
+            "id"
+          ],
+          "notNull": [
+            "site_id",
+            "channel",
+            "actor",
+            "order_id",
+            "fulfillment_id",
+            "tracking_digest",
+            "state",
+            "reason",
+            "started_at"
+          ],
+          "source": "lib/ops/tracking.ts"
+        }
+      }
     }
   }
 }
