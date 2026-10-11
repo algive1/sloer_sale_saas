@@ -24,7 +24,7 @@ export function manualReadinessChecks(site: BrandSite): ReadinessCheck[] {
   for (const domain of site.domains) add(`domain:${domain}`, `${domain} · DNS / HTTPS`,
     "从公网确认 DNS、证书与品牌页面；记录测试日期、工具和证据编号。不能用登记域名代替实测。", `https://${domain}`);
   for (const channel of site.channels) {
-    add(`catalog:${channel}`, `${channel} · 商品、库存与币种`, "用真实在售商品检查规格、库存、图片、币种和市场价格；注明测试商品编号。", "/ops/translations");
+    add(`catalog:${channel}`, `${channel} · 商品、库存与币种`, "用真实在售商品检查规格、库存、图片、币种和市场价格；注明测试商品编号。", `/ops/sites/${encodeURIComponent(site.id)}/catalog?channel=${encodeURIComponent(channel)}`);
     add(`shipping:${channel}`, `${channel} · 目标国家配送`, "记录目标国家/邮编、配送方式、费用与预计时效；同时验证不可配送地址的错误提示。");
     add(`payment:${channel}`, `${channel} · 支付与恢复`, "注明网关及沙盒/正式环境；验证成功、失败、3DS、关闭页面恢复和重复回调。上线前必须验证正式结算资格。");
     add(`refund:${channel}`, `${channel} · 退款与对账`, "验证退款、部分退款、重复请求、失败后核对，并记录供应商交易/验收记录的脱敏编号。");
