@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   BarChart3, Blocks, ChevronDown, ChevronRight, ChevronsLeft,
@@ -33,13 +33,15 @@ interface Props {
 
 export function OpsShell({ children, groups, username, role, dashboardHref }: Props) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const pageType = searchParams.get("pageType");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     analytics: true, store: true,
   });
   const [accent, setAccent] = useState<Accent>("blue");
-  const [pageType, setPageType] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -52,8 +54,15 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
   }, []);
 
   useEffect(() => {
-    setPageType(new URLSearchParams(window.location.search).get("pageType"));
-  }, [pathname]);
+    const media = window.matchMedia("(max-width: 1023px)");
+    const update = () => setMobileViewport(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  // The desktop compact preference must never hide labels inside a mobile drawer.
+  const compact = collapsed && !mobileViewport;
 
   const changeCollapsed = (value: boolean) => {
     setCollapsed(value);
@@ -75,7 +84,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
   };
 
   const onGroup = (id: string) => {
-    if (collapsed) {
+    if (compact) {
       changeCollapsed(false);
       setOpenGroups(prev => ({ ...prev, [id]: true }));
     } else {
@@ -85,7 +94,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
 
   return (
     <div
-      className={`${styles.shell} ${collapsed ? styles.compact : ""} ${mobileOpen ? styles.mobileOpen : ""}`}
+      className={`${styles.shell} ${compact ? styles.compact : ""} ${mobileOpen ? styles.mobileOpen : ""}`}
       style={{ "--ops-nav-accent": ACCENTS[accent] } as CSSProperties}
       data-testid="ops-shell"
     >
@@ -101,18 +110,18 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
       <aside className={styles.sidebar} aria-label="运营管理导航" data-testid="ops-sidebar">
         <div className={styles.brandRow}>
           <span className={styles.mark} aria-hidden="true">S</span>
-          {!collapsed && (
+          {!compact && (
             <span className={styles.brandName}>SLOER Commerce <span className={styles.adminPill}>Admin</span></span>
           )}
           <button
             type="button"
             className={styles.collapseButton}
-            title={collapsed ? "展开侧边栏" : "收起侧边栏"}
-            aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
+            title={compact ? "展开侧边栏" : "收起侧边栏"}
+            aria-label={compact ? "展开侧边栏" : "收起侧边栏"}
             aria-expanded={!collapsed}
             onClick={() => changeCollapsed(!collapsed)}
           >
-            {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+            {compact ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
           </button>
           <button
             type="button"
@@ -124,7 +133,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
           </button>
         </div>
 
-        {!collapsed && <div className={styles.sectionCaption}>运营中心 · 实际功能页面</div>}
+        {!compact && <div className={styles.sectionCaption}>运营中心 · 实际功能页面</div>}
         <nav className={styles.navigation} aria-label="Commerce Ops 功能菜单">
           {groups.map(group => {
             const Icon = groupIcons[group.id];
@@ -135,18 +144,18 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
               <div className={styles.group} key={group.id}>
                 <button
                   type="button"
-                  aria-expanded={!collapsed && expanded}
-                  aria-controls={`ops-submenu-${group.id}`}
+                  aria-expanded={!compact && expanded}
+                  aria-controls={!compact && expanded ? `ops-submenu-${group.id}` : undefined}
                   className={`${styles.groupButton} ${active ? styles.groupSelected : ""}`}
                   onClick={() => onGroup(group.id)}
-                  title={collapsed ? group.label : undefined}
+                  title={compact ? group.label : undefined}
                 >
                   <Icon size={18} aria-hidden="true" />
-                  {!collapsed && <span className={styles.groupLabel}>{group.label}</span>}
-                  {!collapsed && (expanded ? <ChevronDown size={15} aria-hidden="true" /> :
+                  {!compact && <span className={styles.groupLabel}>{group.label}</span>}
+                  {!compact && (expanded ? <ChevronDown size={15} aria-hidden="true" /> :
                     <ChevronRight size={15} aria-hidden="true" />)}
                 </button>
-                {!collapsed && expanded && (
+                {!compact && expanded && (
                   <div id={`ops-submenu-${group.id}`} className={styles.submenu}>
                     {group.children.map(item => (
                       <Link
@@ -167,7 +176,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
         </nav>
 
         <footer className={styles.sidebarFooter}>
-          {!collapsed && (
+          {!compact && (
             <>
               <div className={styles.accentRow}>
                 <span>后台强调色</span>
@@ -192,7 +201,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
               </div>
             </>
           )}
-          {collapsed && <span className={styles.avatar} title={username}>{username.slice(0, 2).toUpperCase()}</span>}
+          {compact && <span className={styles.avatar} title={username}>{username.slice(0, 2).toUpperCase()}</span>}
         </footer>
       </aside>
 
