@@ -77,6 +77,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
 
   const currentItem = (item: OpsNavigationItem) => {
     const path = item.href.split("?")[0];
+    if (item.id === "sites" && pathname.startsWith("/ops/sites/")) return true;
     if (path !== pathname) return false;
     if (item.id === "product-theme") return pageType === "product";
     if (item.id === "themes") return pageType !== "product";
@@ -118,7 +119,7 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
             className={styles.collapseButton}
             title={compact ? "展开侧边栏" : "收起侧边栏"}
             aria-label={compact ? "展开侧边栏" : "收起侧边栏"}
-            aria-expanded={!collapsed}
+            aria-expanded={!compact}
             onClick={() => changeCollapsed(!collapsed)}
           >
             {compact ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
