@@ -532,6 +532,7 @@ jobs:
 
       - name: Native fulfillment tracking preview, writeback, replay and operator E2E
         env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           OPS_TRACKING_REAL_BACKEND: "true"
         run: pnpm --dir storefront exec playwright test e2e/tracking-ops-live.spec.ts --workers=1

@@ -26,7 +26,7 @@ async function native<T>(query: string, variables: Record<string, unknown> = {})
   // This fixture performs native stock/order mutations ONLY in isolated CI.
   if (!real || process.env.CI !== "true" || !["127.0.0.1", "localhost"].includes(url.hostname) || !process.env.OPS_FULFILLMENT_SALEOR_TOKEN) throw new Error("Tracking native fixture requires explicit loopback CI stack");
   const response = await fetch(endpoint, { method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${process.env.OPS_FULFILLMENT_SALEOR_TOKEN}` }, body: JSON.stringify({ query, variables }) });
-  expect(response.status()).toBe(200);
+  expect(response.status).toBe(200);
   const body = await response.json() as { data: T; errors?: unknown[] }; expect(body.errors).toBeUndefined(); return body.data;
 }
 test.beforeAll(async ({ request }) => {

@@ -71,3 +71,5 @@
 - 2026-10-11：本批185文件/1107单元及12原生保护verify通过；7项真实SQLite契约负例、8项本地发布测试通过，2项Docker/PostgreSQL恢复测试由CI执行。所有结构检查只读，源snapshot字节与不透明加密凭据保持不变；发布前失败不会构建/停写/生产迁移。
 
 - 2026-10-12：PR #61六项CI全部通过（含真实Saleor联调和Docker/PostgreSQL恢复），已合并5ebd29b。继续A19单号回填：复用原生已付款/实物履约、专用MANAGE_ORDERS凭证、个人管理员及品牌/channel边界；预检5分钟，原子防重，超时/丢回执不自动重发，顾客邮件notifyCustomer=false。原生API无CAS，保留并发人工核对限制，不修改Core。新增 `/ops/sites/{siteId}/tracking`，请导航/Ops外壳任务保留个人管理员入口。3个运营审计表纳入core.operations契约，17个插件表归属未变；不改AI图片或其他任务布局。
+
+- 2026-10-12：PR #62首次五项CI通过，原生联调在测试准备阶段因Node fetch.status被误写为方法失败，尚未合并。修正属性读取，增加两份运营E2E的独立TypeScript闸门并纳入verify，保留原生库存/履约创建/单号回填断言后重跑。本地七个可选模块全部暂停时，回填与核心审计3项HTTP/浏览器流程仍通过。
