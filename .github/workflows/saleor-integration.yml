@@ -137,7 +137,7 @@ jobs:
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_multibrand_ci.py
 
-      - name: Seed isolated catalog inspection credential
+      - name: Seed isolated catalog and fulfillment credential
         shell: bash
         run: |
           set -euo pipefail
@@ -146,6 +146,7 @@ jobs:
           [[ "$ops_catalog_token" =~ ^[A-Za-z0-9]{30}$ ]] || exit 1
           echo "::add-mask::$ops_catalog_token"
           echo "OPS_CATALOG_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
+          echo "OPS_FULFILLMENT_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
 
       - name: Start vendored Saleor API and worker
         shell: bash
@@ -517,6 +518,11 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           OPS_CATALOG_REAL_BACKEND: "true"
         run: pnpm --dir storefront exec playwright test e2e/catalog-ops-live.spec.ts --workers=1
+
+      - name: Native Saleor fulfillment queue and freight CSV E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/fulfillment-ops-live.spec.ts --workers=1
 
       - name: Multi-brand localized browser, market and SEO E2E
         env:

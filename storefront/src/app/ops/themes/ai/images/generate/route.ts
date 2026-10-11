@@ -88,8 +88,10 @@ export async function POST(request:NextRequest) {
         provider:provider.title,model:provider.model},
     });
   }catch(error) {
-    if(error instanceof ThemeValidationError||error instanceof SyntaxError)
-      return reply({error:error instanceof SyntaxError?"Invalid model JSON response":error.message},422);
+    if(error instanceof ThemeValidationError||error instanceof SyntaxError) {
+      const message=error.message;
+      return reply({error:error instanceof SyntaxError?"Invalid model JSON response":message},422);
+    }
     console.error("[theme-ai] Image generation or conversion failed");
     return reply({error:"Image generation unavailable. Check model settings and retry."},503);
   }

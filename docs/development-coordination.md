@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A11 商品发布清单、A21 商品内容检查 | ops/sites/catalog、lib/ops/catalog、原生商品读取 GraphQL、CSV资料校验及集成测试 | 分支 feat/brand-operations-workflows；PR #54/#55 已合并；避开 PR #53 Dashboard 导航及 AI 图片目录 |
+| Codex：产品审核整改 | A19 品牌发货与货代交接 | ops/sites/fulfillment、lib/ops/fulfillment、原生订单读取 GraphQL、CSV导出审计及集成测试 | 分支 feat/brand-fulfillment-operations；PR #54/#55/#56已合并；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -41,3 +41,11 @@
 - 2026-10-11：PR #54 上线证据与备份恢复已合并，6项 CI 通过（含真实 Docker/PostgreSQL 恢复演练与生产构建/Saleor 集成）。继续 A14/A15：品牌广告账户、原子投递记录、品牌实时页面/API/自动刷新、品牌 Saleor 最近订单。新增 ADS_SERVER_SITES_JSON、ANALYTICS_CLIENT_IP_HEADER；请其他任务保留这些服务端配置。真实广告请求未发送，供应商响应仅模拟验证。
 
 - 2026-10-11：PR #55 的6项 CI已通过并合并。继续商品发布检查，新增服务器 OPS_CATALOG_SALEOR_TOKEN（原生 MANAGE_PRODUCTS 读取），请保留共享 Compose 和环境模板字段。此批只读取原生商品并校验CSV资料，不写入商品，不改原生 Dashboard 编辑器；真实后端检查使用CI专用随机凭证。
+
+- 2026-10-11：PR #56首次真实原生商品读取测试返回503，已定位CI自建凭证43字符被原生App认证要求30字符拒绝；改用原生AppTokenManager生成，新增头f1d04c2，6项CI重跑。未因其他5项绿色跳过原生验收合并。
+
+- 2026-10-11：A19首批品牌发货队列与货代CSV导出完成，本地1076项单元测试/12项原生保护和2项浏览器API通过。新增 OPS_FULFILLMENT_SALEOR_TOKEN，请保留共享部署配置。PR #51已有两处422错误处理在本地TypeScript5.3下被缩窄为never，做了仅提前读取message的等价类型兼容修复；未修改AI模型、图片生成、素材或编辑器业务。单号导入、退货和通知重试仍待后续。
+
+- 2026-10-11：PR #56的6项CI全部通过，已合并52aaf78。发现原负责人另有草稿PR #57统一Ops外壳，仍保持其layout/navigation范围。请导航任务保留 `/ops/sites/{siteId}/catalog`、`realtime`、`readiness`、新增`fulfillment`及各API的品牌只读授权；为发货/商品检查增加合适入口，本任务仅改品牌概况中的链接。完整A01–A25状态与具体缺口见product-audit-status.md，仍不能标记全部完成。
+
+- 2026-10-11：PR #58原生409已定位为export_sku_incomplete：原生populatedb的81个规格有14个无SKU，Transactions smoke原先只按ID选中首个缺SKU规格。改为选择有库存、SKU完整的实物测试规格；不篡改原生缺资料fixture，不放宽导出校验。列表将“可原生发货”与“可CSV导出”分开，缺SKU禁选导出但保留原生处理入口；增加负例。
