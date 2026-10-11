@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Puck, type Data } from "@puckeditor/core";
 import "@puckeditor/core/puck.css";
 import { createScopedFashionEditorConfig } from "@/plugins/theme-builder/config.client";
-import { ThemeAiAssistant } from "@/plugins/theme-builder/ai-assistant.client";
+import { ThemeAiImageAssistant } from "@/plugins/theme-builder/ai-image-assistant.client";
 import { BLANK_TEMPLATE, freshTemplate, freshStarterTemplate, type ThemeData } from "@/plugins/theme-builder/template";
 import { PRODUCT_DETAIL_TEMPLATE } from "@/plugins/theme-builder/page-document";
 
@@ -417,10 +417,10 @@ export function ThemeEditor({
 					>
 						空白页面
 					</button>
-                    <button type="button" aria-label="打开 AI 装修助手"
+                    <button type="button" aria-label="打开 AI 图片生成"
                       onClick={()=>setAiOpen(v=>!v)}
                       className="rounded-lg border border-stone-200 px-3 py-2 text-sm">
-                      ✦ AI 设计
+                      ✦ AI 图片
                     </button>
                     <details className="relative">
                       <summary className="cursor-pointer rounded-lg border border-stone-200 px-3 py-2 text-sm">我的模板</summary>
@@ -503,10 +503,10 @@ export function ThemeEditor({
 					{status}
 				</p>
 			)}
-            {channel&&document?<ThemeAiAssistant
+            {channel&&document?<ThemeAiImageAssistant
               key={pageType+":"+channel+":"+locale}
               open={aiOpen} onClose={()=>setAiOpen(false)}
-              channel={channel} locale={locale} pageType={pageType}
+              channel={channel} locale={locale}
               getDocument={()=>documentRef.current as ThemeData}
               onApply={(next,original)=>{
                 if(JSON.stringify(documentRef.current)!==JSON.stringify(original))return false;

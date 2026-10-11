@@ -28,6 +28,8 @@ function validTurns(raw:unknown):AiTurn[]{
     &&item.content.length<=600).map(item=>({role:item.role,content:item.content}));
 }
 export async function POST(request:NextRequest) {
+  // Reserved for future AI page/text editing. Images-only is the default release.
+  if(process.env.THEME_AI_TEXT_ENABLED!=="true")return reply({error:"Page/text AI is not enabled"},404);
   const origin=request.headers.get("origin"),fetchSite=request.headers.get("sec-fetch-site");
   if(origin!==request.nextUrl.origin||(fetchSite&&fetchSite!=="same-origin"))
     return reply({error:"Cross-origin generation blocked"},403);
