@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { brandSiteForHost, getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getChatwootBinding, parseChatwootSupportConfig } from "./config";
 import { ChatwootLauncher } from "./chatwoot-launcher";
+import { parseWhatsAppBindings, whatsappLink } from "./whatsapp-config";
 
 /**
  * A request-scoped optional slot, never a PPR cached component. Trust the Host
@@ -20,36 +21,63 @@ export async function CustomerSupportSlot({
 	if (pluginPauseReason("customer-support")) return null;
 	const baseUrl = process.env.SUPPORT_CHATWOOT_BASE_URL;
 	const rawSites = process.env.SUPPORT_CHATWOOT_SITES_JSON;
-	if (!baseUrl && !rawSites) return null;
+	const rawWhatsApp = process.env.SUPPORT_WHATSAPP_SITES_JSON;
+	if (!baseUrl && !rawSites && !rawWhatsApp) return null;
 
-	let launcher: { siteId: string; baseUrl: string; websiteToken: string; locale: string };
+	const { locale, channel } = await params;
+	const brands = getBrandSites();
+	const site = brands ? brandSiteForHost((await headers()).get("host")) : null;
+	if (brands && (!site || !site.channels.includes(channel))) return null;
+	const siteId = site?.id ?? siteIdForChannel(channel);
+	const expected = brands?.map((item) => item.id) ?? [siteId];
+	let launcher: { baseUrl: string; websiteToken: string } | null = null;
+	let whatsapp: string | null = null;
+
 	try {
-		const { locale, channel } = await params;
-		const brands = getBrandSites();
-		const site = brands ? brandSiteForHost((await headers()).get("host")) : null;
-		if (brands && (!site || !site.channels.includes(channel))) return null;
-
-		const siteId = site?.id ?? siteIdForChannel(channel);
 		const config = parseChatwootSupportConfig(
 			baseUrl,
 			rawSites,
-			brands?.map((item) => item.id) ?? [siteId],
+			expected,
 			process.env.NODE_ENV !== "production",
 		);
 		const binding = getChatwootBinding(config, siteId);
-		if (!binding || !config) return null;
-		launcher = { siteId, baseUrl: config.baseUrl, websiteToken: binding.websiteToken, locale };
-	} catch (error) {
+		if (binding && config) launcher = { baseUrl: config.baseUrl, websiteToken: binding.websiteToken };
+	} catch {
 		// Chat is optional: invalid settings cannot break catalog or checkout.
-		console.error("[customer-support] widget disabled due to invalid configuration", error);
-		return null;
+		console.error("[customer-support] Chatwoot disabled due to invalid configuration");
 	}
+	try {
+		const binding = parseWhatsAppBindings(rawWhatsApp, expected).find((item) => item.siteId === siteId);
+		if (binding) whatsapp = whatsappLink(binding, locale);
+	} catch {
+		console.error("[customer-support] WhatsApp disabled due to invalid configuration");
+	}
+	if (!launcher && !whatsapp) return null;
 	return (
-		<ChatwootLauncher
-			key={launcher.siteId}
-			baseUrl={launcher.baseUrl}
-			websiteToken={launcher.websiteToken}
-			locale={launcher.locale}
-		/>
+		<div
+			className="fixed bottom-24 right-4 z-[45] flex flex-col items-end gap-2 sm:bottom-6"
+			style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+		>
+			{launcher && (
+				<ChatwootLauncher
+					key={siteId}
+					baseUrl={launcher.baseUrl}
+					websiteToken={launcher.websiteToken}
+					locale={locale}
+					embedded
+				/>
+			)}
+			{whatsapp && (
+				<a
+					href={whatsapp}
+					target="_blank"
+					rel="noopener noreferrer"
+					referrerPolicy="no-referrer"
+					className="flex min-h-11 items-center rounded-full border border-border bg-background px-4 py-3 text-sm font-semibold text-foreground shadow-lg hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+				>
+					WhatsApp ↗
+				</a>
+			)}
+		</div>
 	);
 }

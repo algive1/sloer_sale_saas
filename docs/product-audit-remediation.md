@@ -195,3 +195,12 @@ PR #60 final acceptance: 26539e1 passed all five applicable CI workflows, includ
 - 新增原生生产构建下的商品totalCount独立核对，开发101商品fixture已触发实际第二页；全量verify与原生CI以本批PR最终记录为准。政策事实、死链/重定向、正式Search Console/Merchant验收仍未完成。说明：[Sitemap完整性](sitemap-integrity.md)。
 
 PR #62 final acceptance: 58a85bba passed all six CI workflows including native fulfillment/tracking writeback and Docker/Postgres recovery; merged to main dce09f2.
+
+
+PR #63 final acceptance: be6e9656 passed all four applicable workflows including native product totalCount/per-language sitemap discovery checks; merged48c6fe7.
+
+## A17：品牌 WhatsApp 入口与客服加载恢复（2026-10-12）
+
+- 可选运行时配置选择品牌与独立公开号码，未配置品牌无回退；拒绝跨品牌/共享号码/格式注入/额外凭证。前台固定问候、无来源转发，渲染不查询顾客/订单或连接WhatsApp；与Chatwoot独立诊断、共享customer-support暂停。
+- Chatwoot SDK/ready等待15秒，异常恢复按钮、重试复用已加载有效SDK；卸载清理计时器/监听，已有SDK语言同步。
+- Ops配置诊断真实区分号码校验与正式消息收发。8项新增单元、本地实际组件超时/重试与375px Next后台各1项通过，完整verify和原生生产CI以本批PR最终记录为准。经过认证的订单上下文、会话同步和真实服务/人工接管仍待完成；入口不等于WhatsApp Business API已集成。说明：[客服配置与边界](customer-support.md)。

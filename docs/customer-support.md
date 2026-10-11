@@ -8,7 +8,7 @@ This is the **first integration slice**, not a completed multi-channel customer-
 - **Exactly one Chatwoot Account per brand**. Each Account has its own Website Inbox (and may later add email/social Inboxes).
 - The existing trusted Host → brand → Saleor Channel mapping selects the Chatwoot binding. A browser-provided siteId, channel, Account ID or email is **never** an authorization input.
 - A single platform-wide, code-registered `customer-support` plugin; a brand-specific *configuration* is not a plugin install toggle.
-- No Saleor Core changes and no Chatwoot source fork. Phase 1 only loads Chatwoot's official website SDK when a visitor clicks the support launcher. It intentionally does **not** fetch contacts/orders or call `setUser`.
+- No Saleor Core changes and no Chatwoot source fork. Phase 1 loads Chatwoot's official website SDK only after a visitor clicks its support launcher, and optionally offers a separately bound public WhatsApp click-to-chat link. It intentionally does **not** fetch contacts/orders or call `setUser`.
 
 ## Setup (self-hosted)
 
@@ -52,3 +52,22 @@ Additional browser acceptance:
 6. Log out clears any later authenticated integration session before identity features launch.
 
 Related design: `docs/multibrand-architecture.md`, `docs/system-plugins.md`.
+
+
+## Brand WhatsApp and chat recovery
+
+Set `SUPPORT_WHATSAPP_SITES_JSON` at runtime with selected configured brands and distinct public international business numbers (8–15 digits, no plus sign/spaces):
+
+```env
+SUPPORT_WHATSAPP_SITES_JSON=[{"siteId":"fashion","phone":"12025550101"},{"siteId":"jewelry","phone":"12025550102"}]
+```
+
+The numbers above are illustrative fixtures, not real support accounts. Omitted brands have no link; foreign brands, duplicate numbers, invalid formatting and extra fields (including provider tokens) reject the configuration. The optional WhatsApp entry is independent of Chatwoot configuration; `/ops/support` shows each brand's number or missing/invalid configuration. Both entries obey the customer-support runtime pause.
+
+Only a fixed greeting is prefilled (en/de/fr/es/ja/ko, English fallback). The link carries no automatic email, address, order ID/token, cart, page URL or authenticated identity. It uses `noopener noreferrer` and a no-referrer policy; the storefront makes no WhatsApp request before a visitor follows the link. Sending a message and receiving replies remain the visitor's and brand operator's actions. This is a public entry, not a WhatsApp Business API integration or synchronized inbox.
+
+Chatwoot loading times out after 15 seconds if the SDK/ready event never arrives, displays a retry action and keeps the independent WhatsApp link available. SDK errors restore the launcher; retry reuses a valid loaded SDK instead of fetching duplicate scripts. Pending timers/listeners are cleaned up on unmount, and supported SDK locale updates follow the storefront language. Real service replies, mobile widget dimensions and offline behavior still require production acceptance.
+
+Verification: configuration/Host/Channel/pause tests, actual client-component timeout/retry with a simulated SDK, and native production browser checks for both brand links, operator visibility, no pre-click requests and a 375px viewport. Final results are recorded in the PR. No real WhatsApp message or Chatwoot conversation is sent by these tests.
+
+Official references: [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934), [Chatwoot SDK settings/events](https://www.chatwoot.com/hc/user-guide/articles/1677587234-how-to-send-additional-user-information-to-chatwoot-using-sdk), [Chatwoot widget locales](https://app.chatwoot.com/hc/user-guide/articles/1677695546-languages-supported-in-chatwoot). Verified Saleor order context, staff workflow and message synchronization remain separate unfinished work.

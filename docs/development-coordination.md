@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A21 Sitemap完整性 | lib/seo/sitemap、核心公开GraphQL完整性选项及原生发现测试 | 分支 feat/sitemap-integrity；A19回填PR #62六项CI通过并合并dce09f2；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
+| Codex：产品审核整改 | A17 品牌客服入口与可用性 | customer-support品牌WhatsApp/Chatwoot超时重试、ops/support诊断及测试 | 分支 feat/brand-support-links；PR #62/#63分别6/4项CI通过并合并；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -77,3 +77,5 @@
 - 2026-10-12：继续A21 Sitemap，修复下一页缺失/循环、部分GraphQL结果、无界请求及超限XML输出；保持核心SEO不依赖可选插件。开发101商品fixture实际分页/两品牌语言/未知Host404通过，原生CI新增totalCount独立核对。大目录index/分片仍待完成，不把故障拒绝当分片支持；不修改装修/AI/原生导航。
 
 - 2026-10-12：PR #62最终58a85bba六项CI全部通过并合并dce09f2，含实际分配库存/orderFulfill/单号回填重读、重复提交/品牌隔离/375px及Docker/Postgres恢复。Sitemap全量verify通过190文件/1134单元+12品牌保护，0 lint错误/27既有警告，等待原生生产CI。
+
+- 2026-10-12：PR #63 be6e9656四项适用CI全部通过（含原生Saleor商品数/各品牌语言XML核对、生产构建及已有回归），已合并48c6fe7。继续A17：新增运行时 SUPPORT_WHATSAPP_SITES_JSON、公开号码独占品牌绑定、固定本地化问候/no-referrer链接、Ops逐品牌诊断和Chatwoot15秒超时/重试/错误恢复。请其他任务保留Compose/env字段；不传顾客/订单资料，不接管AI图片/导航/Ops外壳。8项新增配置/Host/Channel/暂停单元、本地实际组件超时重试与375px Next后台诊断各1项通过；生产构建/原生CI待本批。

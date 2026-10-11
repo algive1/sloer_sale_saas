@@ -472,6 +472,9 @@ jobs:
           ANALYTICS_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
           RESEND_API_KEY: ""
           PAYMENT_REMINDER_SITES_JSON: ""
+          SUPPORT_CHATWOOT_BASE_URL: https://support.example.test
+          SUPPORT_CHATWOOT_SITES_JSON: '[{"siteId":"fashion-ci","accountId":1,"websiteToken":"fashion_public_token"},{"siteId":"jewelry-ci","accountId":2,"websiteToken":"jewelry_public_token"}]'
+          SUPPORT_WHATSAPP_SITES_JSON: '[{"siteId":"fashion-ci","phone":"12025550101"},{"siteId":"jewelry-ci","phone":"12025550102"}]'
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
@@ -538,6 +541,12 @@ jobs:
           OPS_TRACKING_REAL_BACKEND: "true"
         run: pnpm --dir storefront exec playwright test e2e/tracking-ops-live.spec.ts --workers=1
 
+      - name: Brand WhatsApp scope and mobile lazy-chat timeout/retry E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/customer-support-live.spec.ts --workers=1
+
       - name: Multi-brand localized browser, market and SEO E2E
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
@@ -563,6 +572,9 @@ jobs:
           ANALYTICS_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
           RESEND_API_KEY: ""
           PAYMENT_REMINDER_SITES_JSON: ""
+          SUPPORT_CHATWOOT_BASE_URL: https://support.example.test
+          SUPPORT_CHATWOOT_SITES_JSON: '[{"siteId":"fashion-ci","accountId":1,"websiteToken":"fashion_public_token"},{"siteId":"jewelry-ci","accountId":2,"websiteToken":"jewelry_public_token"}]'
+          SUPPORT_WHATSAPP_SITES_JSON: '[{"siteId":"fashion-ci","phone":"12025550101"},{"siteId":"jewelry-ci","phone":"12025550102"}]'
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
