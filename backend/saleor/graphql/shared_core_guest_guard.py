@@ -7,6 +7,8 @@ It does NOT make Saleor Channels independent merchant tenants: staff, apps,
 checkout bearer IDs, payment integrations and webhooks need separate controls.
 """
 
+from hmac import compare_digest
+
 from django.conf import settings
 from graphql import GraphQLError
 from jwt import InvalidTokenError
@@ -47,6 +49,50 @@ BLOCKED_MUTATIONS = frozenset(
 )
 
 
+# Checkout UUIDs are bearer identifiers; public Saleor GraphQL must not accept
+# them independently of the Host-verified Paper server actions. Query.node and
+# aliases/fragments are covered by checking the actual GraphQL parent type.
+CHECKOUT_ROOT_QUERIES = frozenset({"checkout"})
+CHECKOUT_OBJECT_TYPES = frozenset({"Checkout", "CheckoutLine"})
+CHECKOUT_ROOT_MUTATIONS = frozenset({
+    "orderCreateFromCheckout",
+    "paymentGatewayInitialize",
+    "transactionInitialize",
+    "transactionProcess",
+    "transactionRequestAction",
+})
+CHECKOUT_GATEWAY_ERROR_CODE = "SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED"
+
+
+def checkout_gateway_required(info) -> bool:
+    parent = info.parent_type.name
+    field = info.field_name
+    return (
+        parent in CHECKOUT_OBJECT_TYPES
+        or parent == "Query" and field in CHECKOUT_ROOT_QUERIES
+        or parent == "Mutation" and (
+            field.startswith("checkout") or field in CHECKOUT_ROOT_MUTATIONS
+        )
+    )
+
+
+def checkout_gateway_allowed(context) -> bool:
+    # Saleor's own staff/app permission checks still apply. Do not treat an
+    # anonymous user as staff just because a caller supplied identity headers.
+    if context.app:
+        return True
+    if get_token_from_request(context) and context.user and context.user.is_staff:
+        return True
+
+    expected = settings.SHARED_CORE_CHECKOUT_GATEWAY_SECRET
+    received = context.META.get("HTTP_X_PAPER_CHECKOUT_GATEWAY_SECRET", "")
+    return (
+        len(expected) >= 32
+        and isinstance(received, str)
+        and compare_digest(expected, received)
+    )
+
+
 def customer_identity_blocked(context) -> bool:
     """Return True for a customer JWT, but retain app and staff GraphQL access.
 
@@ -82,6 +128,15 @@ class GuestOnlySharedCoreMiddleware:
             raise GraphQLError(
                 "Customer accounts are unavailable in shared-Core multi-brand mode.",
                 extensions={"code": ERROR_CODE},
+            )
+
+        # Direct public GraphQL cannot bypass the Host+Channel checks in Paper
+        # just by presenting a leaked Checkout ID. A wrong/missing key fails
+        # closed, including when this request is a node/fragment traversal.
+        if checkout_gateway_required(info) and not checkout_gateway_allowed(context):
+            raise GraphQLError(
+                "Checkout operations require the trusted storefront gateway.",
+                extensions={"code": CHECKOUT_GATEWAY_ERROR_CODE},
             )
 
         # Staff/app requests retain their original permissions. TokenCreate and

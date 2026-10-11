@@ -378,6 +378,13 @@ async function executeGraphQL<Result, Variables>(
 		requestHeaders.Authorization = `Bearer ${token}`;
 	}
 
+	// Only server-to-Saleor requests carry the shared-Core checkout capability.
+	// User-supplied headers cannot override it; this key is never in NEXT_PUBLIC_*.
+	const checkoutGatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
+	if (checkoutGatewaySecret && checkoutGatewaySecret.length >= 32) {
+		requestHeaders["x-paper-checkout-gateway-secret"] = checkoutGatewaySecret;
+	}
+
 	const input: RequestInit = {
 		method: "POST",
 		headers: requestHeaders,
@@ -498,10 +505,17 @@ export async function executeRawGraphQL<T = unknown>(options: RawGraphQLOptions)
 	const { query, variables, headers } = options;
 	const operationName = query.match(/(?:query|mutation)\s+(\w+)/)?.[1] || "RawOperation";
 
+	const checkoutGatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
+
 	try {
 		const response = await fetch(url, {
 			method: "POST",
-			headers: { "Content-Type": "application/json", "User-Agent": USER_AGENT, ...headers },
+			headers: {
+				"Content-Type": "application/json", "User-Agent": USER_AGENT, ...headers,
+				...(checkoutGatewaySecret && checkoutGatewaySecret.length >= 32
+					? { "x-paper-checkout-gateway-secret": checkoutGatewaySecret }
+					: {}),
+			},
 			body: JSON.stringify({ query, variables }),
 		});
 

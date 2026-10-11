@@ -29,10 +29,17 @@ export async function verifyCheckoutHostAtRequestBoundary(
   const api = process.env.NEXT_PUBLIC_SALEOR_API_URL;
   if (!api) return "unavailable";
 
+  const gatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
   try {
     const response = await fetcher(api, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        ...(gatewaySecret && gatewaySecret.length >= 32
+          ? { "x-paper-checkout-gateway-secret": gatewaySecret }
+          : {}),
+      },
       body: JSON.stringify({
         query: CHANNEL_QUERY,
         variables: { id: checkoutId },

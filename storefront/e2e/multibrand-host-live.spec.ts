@@ -102,19 +102,31 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     const variantId = listData?.data?.products?.edges?.[0]?.node?.variants?.[0]?.id as string | undefined;
     expect(variantId, JSON.stringify(listData)).toBeTruthy();
 
-    const response = await request.post(saleor, {
-      data: {
+    // Direct anonymous callers cannot create or read checkouts in shared-Core mode.
+    const checkoutKey = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
+    expect(checkoutKey?.length).toBeGreaterThanOrEqual(32);
+    const createPayload = {
         query: `mutation($input: CheckoutCreateInput!) {
           checkoutCreate(input: $input) { checkout { id channel { slug } } errors { field message } }
         }`,
         variables: { input: { channel: "us", email: "multibrand-ci@example.test", lines: [{ variantId, quantity: 1 }] } },
-      },
+    };
+    const deniedCreate = await request.post(saleor, { data: createPayload });
+    expect(deniedCreate.status()).toBe(200);
+    expect((await deniedCreate.json()).errors?.[0]?.extensions?.code).toBe("SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED");
+    const response = await request.post(saleor, {
+      headers: { "x-paper-checkout-gateway-secret": checkoutKey! },
+      data: createPayload,
     });
     expect(response.status()).toBe(200);
     const checkoutData = await response.json();
     const checkoutId = checkoutData?.data?.checkoutCreate?.checkout?.id as string | undefined;
     expect(checkoutId, JSON.stringify(checkoutData)).toBeTruthy();
     expect(checkoutData.data.checkoutCreate.checkout.channel.slug).toBe("us");
+    const deniedRead = await request.post(saleor, {
+      data: { query: "query($id: ID!) { checkout(id: $id) { id email } }", variables: { id: checkoutId } },
+    });
+    expect((await deniedRead.json()).errors?.[0]?.extensions?.code).toBe("SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED");
 
     const checkoutPath = origin + "/checkout?checkout=" + encodeURIComponent(checkoutId!);
     const [sameHost, foreignHost, localizedCheckout, localizedForeignHost] = await Promise.all([
