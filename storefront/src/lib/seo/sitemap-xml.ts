@@ -1,4 +1,5 @@
 import { assertSitemapSize } from "./sitemap-size";
+import { unstable_rethrow } from "next/navigation";
 export function escapeSitemapXml(text: string): string {
 	return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
 }
@@ -15,6 +16,8 @@ export function sitemapResponse(xml: string): Response {
 	return new Response(xml, { headers: { "Content-Type": "application/xml; charset=utf-8", "Cache-Control": "public, max-age=0, must-revalidate", Vary: "Host" } });
 }
 export function sitemapFailure(error: unknown): Response {
+	// Runtime/prerender control flow belongs to Next, never to an HTTP 503 shell.
+	unstable_rethrow(error);
 	const unknown = error instanceof Error && error.message === "unknown_sitemap_host";
 	return new Response(unknown ? "Not Found" : "Sitemap temporarily unavailable", {
 		status: unknown ? 404 : 503,

@@ -3,7 +3,8 @@ vi.mock("next/cache", () => ({ cacheLife: vi.fn(), cacheTag: vi.fn() }));
 vi.mock("./sitemap-page", () => ({ readSitemapPage: vi.fn() }));
 import { readSitemapPage, type SitemapPage } from "./sitemap-page";
 import { readSitemapChunk, scanSitemapChunks } from "./sitemap-manifest";
-import { sitemapXml } from "./sitemap-xml";
+import { sitemapFailure, sitemapXml } from "./sitemap-xml";
+import { redirect } from "next/navigation";
 const page = (slugs: string[], next = false, cursor: string | null = null): SitemapPage => ({ slugs, rows: slugs.length, next, cursor });
 afterEach(() => vi.restoreAllMocks());
 it("stores cursor ranges instead of catalog payloads and creates complete 1000 URL chunks", async () => {
@@ -49,4 +50,11 @@ it("escapes index/url XML and enforces address and UTF-8 byte limits independent
 	expect(sitemapXml(["https://brand.test/en/us"], false)).toContain("<urlset ");
 	expect(() => sitemapXml(Array.from({ length: 50_001 }, () => "https://brand.test"), true)).toThrow("partitioning");
 	expect(() => sitemapXml(["https://brand.test/" + "字".repeat(17_000_000)], false)).toThrow("partitioning");
+});
+it("lets actual Next runtime control flow escape instead of caching a successful static error shell", () => {
+	let internal: unknown;
+	try { redirect("/en/us"); } catch (error) { internal = error; }
+	expect(internal).toBeTruthy();
+	expect(() => sitemapFailure(internal)).toThrow();
+	expect(sitemapFailure(new Error("private application error")).status).toBe(503);
 });
