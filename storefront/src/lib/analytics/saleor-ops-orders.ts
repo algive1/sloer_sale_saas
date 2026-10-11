@@ -72,15 +72,15 @@ export async function fetchSaleorOrdersPage(first=24,after?:string,channel?:stri
   try{
    const ids=orders.map(o=>o.id);
    const [eventRows]=await libsqlPipeline([{
-     sql:"SELECT transaction_id, COALESCE(NULLIF(source_group,''),NULLIF(source,''),'direct') AS source FROM analytics_events WHERE event_name='checkout_completed' AND transaction_id IN ("+ids.map(()=>"?").join(",")+") ORDER BY occurred_at DESC LIMIT 200",
-     args:ids,wantRows:true,
+     sql:"SELECT transaction_id, channel, COALESCE(NULLIF(source_group,''),NULLIF(source,''),'direct') AS source FROM analytics_events WHERE event_name='checkout_completed' AND transaction_id IN ("+ids.map(()=>"?").join(",")+")"+(channel?" AND channel = ?":"")+" ORDER BY occurred_at DESC LIMIT 200",
+     args:channel?[...ids,channel]:ids,wantRows:true,
    }]);
    const attribution=new Map<string,string>();
    for(const row of hranaRowsToObjects(eventRows)){
-    const id=String(row.transaction_id??"");
+    const id=String(row.channel??"")+":"+String(row.transaction_id??"");
     if(!attribution.has(id))attribution.set(id,String(row.source??"direct"));
    }
-   for(const order of orders)order.source=attribution.get(order.id)??"—";
+   for(const order of orders)order.source=attribution.get((order.channel??"")+":"+order.id)??"—";
   }catch{/* Saleor orders remain usable if analytics attribution is unavailable. */}
  }
  return {orders,hasNextPage:Boolean(body.data?.orders?.pageInfo?.hasNextPage),endCursor:body.data?.orders?.pageInfo?.endCursor??null};

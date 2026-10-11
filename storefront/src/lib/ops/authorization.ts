@@ -28,7 +28,7 @@ export type OpsIdentityInput = {
 const USERNAME = /^[a-z][a-z0-9_-]{2,63}$/;
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const PASSWORD = /^[\x21-\x7e]{32,256}$/;
-const BRAND_READ_ROUTE = /^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|readiness(?:\/api)?))?\/?$/;
+const BRAND_READ_ROUTE = /^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|realtime(?:\/api)?|readiness(?:\/api)?))?\/?$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);

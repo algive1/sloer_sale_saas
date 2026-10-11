@@ -40,6 +40,8 @@ describe("operations operator accounts", () => {
       "/ops/sites/fashion/insights",
       "/ops/sites/fashion/readiness",
       "/ops/sites/fashion/readiness/api",
+      "/ops/sites/fashion/realtime",
+      "/ops/sites/fashion/realtime/api",
     ]) expect(check(auth,path)).toBe("allowed");
     expect(check(auth,"/ops/sites/fashion/insights","HEAD")).toBe("allowed");
 
@@ -47,6 +49,7 @@ describe("operations operator accounts", () => {
       "/ops", "/ops/sites/jewelry",
       "/ops/sites/jewelry/insights", "/ops/analytics",
       "/ops/sites/jewelry/readiness/api",
+      "/ops/sites/jewelry/realtime/api", "/ops/api/analytics/realtime",
       "/ops/analytics/products", "/ops/plugins", "/ops/themes",
       "/ops/themes/api", "/ops/translations", "/ops/translations/api",
       "/ops/support", "/ops/sites/fashion/insights/export",
@@ -55,6 +58,7 @@ describe("operations operator accounts", () => {
     expect(check(auth,"/ops/sites","POST")).toBe("forbidden");
     expect(check(auth,"/ops/sites/fashion","POST")).toBe("forbidden");
     expect(check(auth,"/ops/sites/fashion/insights","DELETE")).toBe("forbidden");
+    expect(check(auth,"/ops/sites/fashion/realtime/api","POST")).toBe("forbidden");
     expect(check(auth,"/ops/api/analytics/reminders/run","POST")).toBe("forbidden");
   });
 

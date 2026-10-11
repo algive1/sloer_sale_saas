@@ -494,6 +494,13 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/readiness-live.spec.ts --workers=1
 
+      - name: Brand realtime scope, refresh and ad delivery diagnostics E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_E2E_HRANA_URL: http://127.0.0.1:3789
+          OPS_E2E_HRANA_TOKEN: ci-theme-secret-only-for-testing
+        run: pnpm --dir storefront exec playwright test e2e/brand-growth-live.spec.ts --workers=1
+
       - name: Multi-brand localized browser, market and SEO E2E
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101

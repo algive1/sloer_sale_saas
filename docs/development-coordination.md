@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A07 品牌上线证据与 A08 发布/恢复闸门 | ops/sites/readiness、lib/ops/readiness、scripts/deploy/release、恢复测试及文档 | 分支 fix/release-readiness-gates；避开 PR #53 Dashboard 导航及 AI 图片目录 |
+| Codex：产品审核整改 | A14 品牌广告、A15 实时/原生订单范围 | plugins/ads-tracking、plugins/analytics/realtime、ops/analytics/destinations、ops/sites/realtime 及品牌订单 | 分支 fix/brand-scoped-ad-events；A07/A08 PR #54 已合并；避开 PR #53 Dashboard 导航及 AI 图片目录 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -37,3 +37,5 @@
 - 2026-10-11：提交 [PR #52](https://github.com/algive1/sloer_sale_saas/pull/52)。补上付款提醒侧栏入口和按品牌范围提示。AI 图片任务无需等待此 PR，但请保留共享部署配置并避免覆盖催付目录。
 
 - 2026-10-11：PR #51 AI 图片、PR #52 催付均已合并，各5项 CI 通过。用户要求持续整改审查清单。PR #53 正在修改 Dashboard 导航，本轮不改 Dashboard。新增 OPS_READINESS_CONFIG_REVISION 与非敏感品牌注册 build arg，请共享 Compose/Dockerfile 修改保留这些字段。
+
+- 2026-10-11：PR #54 上线证据与备份恢复已合并，6项 CI 通过（含真实 Docker/PostgreSQL 恢复演练与生产构建/Saleor 集成）。继续 A14/A15：品牌广告账户、原子投递记录、品牌实时页面/API/自动刷新、品牌 Saleor 最近订单。新增 ADS_SERVER_SITES_JSON、ANALYTICS_CLIENT_IP_HEADER；请其他任务保留这些服务端配置。真实广告请求未发送，供应商响应仅模拟验证。
