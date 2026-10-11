@@ -3,35 +3,46 @@ import sideBarDefaultLogo from "@assets/images/sidebar-default-logo.png";
 import { useCloud } from "@dashboard/auth/hooks/useCloud";
 import { useLegacyThemeHandler } from "@dashboard/components/Sidebar/user/Controls";
 import { Avatar, Box, Text, Tooltip } from "@saleor/macaw-ui-next";
-import { CloudIcon } from "lucide-react";
-import { useState } from "react";
-import { FormattedMessage } from "react-intl";
+import { CloudIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { FormattedMessage, useIntl } from "react-intl";
 
+import styles from "./menu/CommerceSidebar.module.css";
 import { useEnvLink } from "./menu/hooks/useEnvLink";
+import { useSidebarBreakpointContext } from "./SidebarContext";
 
-export const MountingPoint = () => {
+export const MountingPoint = ({
+  collapsible = false,
+  compact = false,
+}: {
+  collapsible?: boolean;
+  compact?: boolean;
+}) => {
   const { theme } = useLegacyThemeHandler();
+  const { setCollapsed } = useSidebarBreakpointContext();
   const logo = theme === "defaultLight" ? sideBarDefaultLogo : sideBarDefaultLogoDarkMode;
   const { isAuthenticatedViaCloud } = useCloud();
   const envLink = useEnvLink();
-  const [isHovered, setIsHovered] = useState(false);
+  const intl = useIntl();
+  const isZh = intl.locale.toLowerCase().startsWith("zh");
+  const toggleLabel = compact
+    ? (isZh ? "展开侧边导航" : "Expand sidebar")
+    : (isZh ? "收起侧边导航" : "Collapse sidebar");
 
   return (
-    <Box
-      display="flex"
-      gap={3}
-      paddingX={4}
-      paddingY={5}
-      alignItems="center"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Avatar.Store src={logo} scheme="accent1" size="small" />
-      <Text size={3} fontWeight="bold" __flex="1">
-        Saleor Dashboard
-      </Text>
-      {isAuthenticatedViaCloud && (
-        <>
+    <div className={`${styles.brandHeader} ${compact ? styles.brandHeaderCompact : ""}`}>
+      <div className={styles.brandIdentity}>
+        <Avatar.Store src={logo} scheme="accent1" size="small" />
+        {!compact && (
+          <div className={styles.brandText}>
+            <Text size={3} fontWeight="bold">
+              SLOER Commerce
+            </Text>
+            <span className={styles.adminTag}>Admin</span>
+          </div>
+        )}
+      </div>
+      <div className={styles.brandActions}>
+        {!compact && isAuthenticatedViaCloud && (
           <Tooltip>
             <Tooltip.Trigger>
               <Box
@@ -43,13 +54,9 @@ export const MountingPoint = () => {
                 alignItems="center"
                 color="default2"
                 paddingRight={1}
-                style={{
-                  opacity: isHovered ? 1 : 0,
-                  transition: "opacity 0.15s ease-in-out",
-                }}
                 data-test-id="cloud-environment-link"
               >
-                <CloudIcon size={16} />
+                <CloudIcon size={16} aria-hidden="true" />
               </Box>
             </Tooltip.Trigger>
             <Tooltip.Content side="bottom">
@@ -59,8 +66,22 @@ export const MountingPoint = () => {
               </Text>
             </Tooltip.Content>
           </Tooltip>
-        </>
-      )}
-    </Box>
+        )}
+        {collapsible && (
+          <button
+            type="button"
+            className={styles.collapseButton}
+            aria-label={toggleLabel}
+            aria-expanded={!compact}
+            title={toggleLabel}
+            onClick={() => setCollapsed(!compact)}
+            data-test-id="commerce-sidebar-toggle"
+          >
+            {compact ? <PanelLeftOpen size={17} aria-hidden="true" /> :
+              <PanelLeftClose size={17} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
