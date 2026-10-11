@@ -36,6 +36,7 @@ export default defineConfig(({ command, mode }) => {
   const {
     NODE_ENV,
     API_URL,
+    COMMERCE_OPS_URL,
     SW_INTERVAL,
     IS_CLOUD_INSTANCE,
     APP_MOUNT_URI,
@@ -147,6 +148,7 @@ export default defineConfig(({ command, mode }) => {
       "process.env": {
         NODE_ENV,
         API_URL,
+        COMMERCE_OPS_URL,
         SW_INTERVAL,
         IS_CLOUD_INSTANCE,
         APP_MOUNT_URI,
