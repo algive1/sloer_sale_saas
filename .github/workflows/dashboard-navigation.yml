@@ -46,5 +46,5 @@ jobs:
         run: pnpm --dir dashboard install --frozen-lockfile
       - name: Check Dashboard types
         run: pnpm --dir dashboard exec tsc --noEmit
-      - name: Validate navigation origins
-        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts --runInBand
+      - name: Navigation access, routing and link regression tests
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts --runInBand
