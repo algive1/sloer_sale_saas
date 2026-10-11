@@ -8,7 +8,7 @@ import type { OpsViewer } from "./authorization";
 
 const EXPORT_SCHEMA = "CREATE TABLE IF NOT EXISTS ops_shipping_exports(id TEXT PRIMARY KEY,site_id TEXT NOT NULL,channel TEXT NOT NULL,actor TEXT NOT NULL,prepared_at TEXT NOT NULL,order_count INTEGER NOT NULL,row_count INTEGER NOT NULL,order_ids_digest TEXT NOT NULL)";
 
-export type FulfillmentQueueOrder = Pick<OpsFulfillmentOrderFragment, "id" | "number" | "created" | "status" | "isPaid" | "isShippingRequired" | "lines" | "fulfillments"> & { channel: string; exportable: boolean };
+export type FulfillmentQueueOrder = Pick<OpsFulfillmentOrderFragment, "id" | "number" | "created" | "status" | "isPaid" | "isShippingRequired" | "lines" | "fulfillments"> & { channel: string; shippingReady: boolean; exportable: boolean };
 export type FulfillmentSnapshot = { siteId: string; siteName: string; channel: string; channels: readonly string[]; checkedAt: string; nextCursor: string | null; orders: FulfillmentQueueOrder[] };
 export function fulfillmentScope(siteId: string, viewer: OpsViewer | null, requestedChannel?: string) {
   if (!viewer || (viewer.role !== "platform_admin" && !viewer.siteIds.includes(siteId))) throw new Error("forbidden_fulfillment");
@@ -38,7 +38,8 @@ export function publicFulfillmentOrder(order: OpsFulfillmentOrderFragment, chann
   return { id: order.id, number: order.number, created: order.created, status: order.status, isPaid: order.isPaid,
     isShippingRequired: order.isShippingRequired,
     lines: order.lines.map(line => ({ id: line.id, productName: line.productName, productSku: line.productSku, quantity: line.quantity, quantityFulfilled: line.quantityFulfilled, quantityToFulfill: line.quantityToFulfill, isShippingRequired: line.isShippingRequired })),
-    fulfillments: order.fulfillments?.map(item => ({ id: item.id, status: item.status, trackingNumber: item.trackingNumber, created: item.created })), channel, exportable: shippingEligible(order) };
+    fulfillments: order.fulfillments?.map(item => ({ id: item.id, status: item.status, trackingNumber: item.trackingNumber, created: item.created })), channel, shippingReady: shippingEligible(order), exportable: shippingEligible(order) && order.lines
+      .filter(line => line.isShippingRequired && line.quantityToFulfill > 0).every(line => !!line.productSku?.trim()) };
 }
 export async function readFulfillmentSnapshot(siteId: string, viewer: OpsViewer | null, requestedChannel?: string, after?: string): Promise<FulfillmentSnapshot> {
   const { site, channel } = fulfillmentScope(siteId, viewer, requestedChannel);

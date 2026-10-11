@@ -32,3 +32,5 @@
 本地通过全量源码检查（176个文件/1076项单元测试、12项原生品牌保护测试），以及真实Next HTTP → Hrana → SQLite 的2项浏览器/API测试；本地Saleor源响应是隔离测试fixture。CI另用真正Saleor 3.23.40数据库、原生应用凭证和Transactions API订单验证读取/导出/后台入口。
 
 A19尚未整体完成：货代CSV单号回填/导入、异常物流跟进、退货申请/人工审批、失败通知重试记录，以及真实货代/原生部分发货退款和顾客查单验收仍需后续补齐。此批不连接货代账户或发送客户通知。
+
+Queue export selection now excludes physical remaining lines with missing/whitespace SKU; native fulfillment links stay available for an otherwise paid shippable order. Fresh export still rechecks SKU and returns 409 on changes. Native Transactions smoke chooses an actually stocked physical variant with a SKU from the original fixture; incomplete fixture variants remain visible for catalog/fulfillment negative checks.
