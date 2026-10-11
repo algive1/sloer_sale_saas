@@ -1,8 +1,5 @@
-import sideBarDefaultLogoDarkMode from "@assets/images/sidebar-deafult-logo-darkMode.png";
-import sideBarDefaultLogo from "@assets/images/sidebar-default-logo.png";
 import { useCloud } from "@dashboard/auth/hooks/useCloud";
-import { useLegacyThemeHandler } from "@dashboard/components/Sidebar/user/Controls";
-import { Avatar, Box, Text, Tooltip } from "@saleor/macaw-ui-next";
+import { Box, Text, Tooltip } from "@saleor/macaw-ui-next";
 import { CloudIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
@@ -17,9 +14,7 @@ export const MountingPoint = ({
   collapsible?: boolean;
   compact?: boolean;
 }) => {
-  const { theme } = useLegacyThemeHandler();
   const { setCollapsed } = useSidebarBreakpointContext();
-  const logo = theme === "defaultLight" ? sideBarDefaultLogo : sideBarDefaultLogoDarkMode;
   const { isAuthenticatedViaCloud } = useCloud();
   const envLink = useEnvLink();
   const intl = useIntl();
@@ -31,7 +26,7 @@ export const MountingPoint = ({
   return (
     <div className={`${styles.brandHeader} ${compact ? styles.brandHeaderCompact : ""}`}>
       <div className={styles.brandIdentity}>
-        <Avatar.Store src={logo} scheme="accent1" size="small" />
+        <span className={styles.brandMonogram} aria-hidden="true">S</span>
         {!compact && (
           <div className={styles.brandText}>
             <Text size={3} fontWeight="bold">
