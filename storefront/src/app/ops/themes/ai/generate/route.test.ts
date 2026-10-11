@@ -26,14 +26,21 @@ function req(overrides:Record<string,unknown>={},origin="http://localhost"){
   });
 }
 beforeEach(()=>{
+  process.env.THEME_AI_TEXT_ENABLED="true";
   mocks.channels.mockResolvedValue(["us"]);
   mocks.active.mockResolvedValue({
     id:"id-one",title:"Test AI",model:"test-json-model",
     baseUrl:"https://api.openai.com/v1",apiKey:"sk-only-on-server",
   });
 });
-afterEach(()=>{vi.clearAllMocks();vi.unstubAllGlobals();});
+afterEach(()=>{delete process.env.THEME_AI_TEXT_ENABLED;vi.clearAllMocks();vi.unstubAllGlobals();});
 describe("protected AI generation",()=>{
+  it("returns 404 without explicitly enabling reserved page/text AI",async()=>{
+    delete process.env.THEME_AI_TEXT_ENABLED;
+    const fetchSpy=vi.fn();vi.stubGlobal("fetch",fetchSpy);
+    expect((await POST(req())).status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
   it("rejects cross-origin requests and invalid brand/locale without using a model",async()=>{
     const upstream=vi.fn();vi.stubGlobal("fetch",upstream);
     expect((await POST(req({},"https://evil.example"))).status).toBe(403);
