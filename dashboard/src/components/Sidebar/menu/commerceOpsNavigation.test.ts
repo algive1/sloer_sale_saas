@@ -4,7 +4,7 @@ describe("Commerce Ops navigation registry", () => {
   it("has unique IDs and existing-ops-shaped paths", () => {
     expect(new Set(commerceOpsNavigation.map(entry => entry.id)).size).toBe(commerceOpsNavigation.length);
     for (const entry of commerceOpsNavigation) {
-      expect(entry.path).toMatch(/^\\/ops\\/|^\\/ops$/);
+      expect(entry.path === "/ops" || entry.path.startsWith("/ops/")).toBe(true);
       expect(entry.zh.trim()).not.toBe("");
       expect(entry.en.trim()).not.toBe("");
     }
