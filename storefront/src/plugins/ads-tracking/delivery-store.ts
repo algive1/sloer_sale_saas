@@ -1,4 +1,5 @@
 import "server-only";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { createHash } from "node:crypto";
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import type { AdDestination } from "./server-config";
@@ -19,6 +20,7 @@ async function schema() {
 }
 
 export async function claimAdDelivery(siteId: string, destination: AdDestination, destinationId: string, eventName: string, channel: string, eventId: string): Promise<boolean> {
+  if (pluginPauseReason("ads-tracking")) return false;
   if (!eventId || eventId.length > 256) return false;
   if (!analyticsDatabaseConfigured()) return siteId === "legacy:single";
   await schema();

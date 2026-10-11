@@ -1,4 +1,5 @@
 "use client";
+import { clientAdsActive } from "@/plugins/system/tracking-policy.client";
 
 import { googleAdsId, googleAdsPurchaseLabel, metaPixelId, tiktokPixelId } from "@/plugins/ads-tracking/config";
 import { globalMerchantTagsAllowed } from "@/lib/analytics/global-destinations-policy";
@@ -106,7 +107,7 @@ function schedulePendingFlush(): void {
 
 export function flushBrowserAdEvents(): void {
 	if (typeof window === "undefined") return;
-	if (!adsStorageAllowed(readConsentChoice())) {
+	if (!clientAdsActive() || !adsStorageAllowed(readConsentChoice())) {
 		pendingMetaEvents.clear();
 		pendingTikTokEvents.clear();
 		stopPendingFlushScheduler();
@@ -128,7 +129,7 @@ export function flushBrowserAdEvents(): void {
 }
 
 export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAdContext = {}): void {
-	if (typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
+	if (!clientAdsActive() || typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
 
 	const key = browserAdEventKey(event);
 	if (projectMeta(event) && metaPixelId()) {
@@ -157,7 +158,7 @@ export function sendBrowserAdEvent(event: PaperCommerceEvent, context: BrowserAd
 }
 
 export function sendAdPageView(): void {
-	if (typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
+	if (!clientAdsActive() || typeof window === "undefined" || !globalMerchantTagsAllowed() || !adsStorageAllowed(readConsentChoice())) return;
 
 	const canMeta = Boolean(metaPixelId() && typeof window.fbq === "function");
 	const canTikTok = Boolean(tiktokPixelId() && typeof window.ttq?.page === "function");

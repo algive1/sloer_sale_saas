@@ -1,3 +1,4 @@
+import { clientAnalyticsActive, clientAdsActive } from "@/plugins/system/tracking-policy.client";
 import { claimOnce } from "@/lib/analytics/claim";
 import { globalMerchantTagsAllowed } from "@/lib/analytics/global-destinations-policy";
 import {
@@ -72,6 +73,7 @@ export function setAnalyticsConsent(choice: AnalyticsConsentChoice): void {
 }
 
 export function persistFirstTouch(now = new Date()): void {
+	if (!clientAnalyticsActive() && !clientAdsActive()) return;
 	if (typeof window === "undefined") return;
 
 	const existing = parseLandingCookie(readDocumentCookie(ANALYTICS_LANDING_COOKIE));
@@ -102,12 +104,14 @@ export function persistFirstTouch(now = new Date()): void {
 }
 
 export function sendGa4Event(event: Ga4Event): void {
+	if (!clientAdsActive()) return;
 	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	if (!analyticsStorageAllowed(readConsentChoice())) return;
 	gtag("event", event.name, event.params);
 }
 
 export function applyConsentToGtag(): void {
+	if (!clientAdsActive()) return;
 	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	const choice = readConsentChoice();
 	const analyticsAllowed = analyticsStorageAllowed(choice);
@@ -121,6 +125,7 @@ export function applyConsentToGtag(): void {
 }
 
 export function applyCampaignFromSnapshot(): void {
+	if (!clientAdsActive()) return;
 	const id = gaMeasurementId();
 	if (!id || !analyticsStorageAllowed(readConsentChoice())) return;
 
@@ -147,6 +152,7 @@ export function pageViewClaimKey(href: string): string {
 }
 
 export function sendRedactedPageView(): void {
+	if (!clientAdsActive()) return;
 	if (!globalMerchantTagsAllowed() || !ga4Enabled()) return;
 	if (!analyticsStorageAllowed(readConsentChoice())) return;
 	if (typeof window === "undefined") return;

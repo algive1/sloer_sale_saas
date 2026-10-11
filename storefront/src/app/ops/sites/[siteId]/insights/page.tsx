@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ function formatCount(value: number) {
 export default function BrandInsightsPage({ params, searchParams }: Props) {
   return (
     <Suspense fallback={<main className="mx-auto max-w-6xl p-8 text-sm text-stone-500">正在载入品牌数据...</main>}>
+      <PluginPauseNotice plugin="analytics" />
       <BrandInsightsPageContent params={params} searchParams={searchParams} />
     </Suspense>
   );

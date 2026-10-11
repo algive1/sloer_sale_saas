@@ -105,6 +105,14 @@ describe("trusted brand destinations", () => {
 });
 
 describe("atomic delivery claims and conservative receipts", () => {
+  it("analytics pause retains independent ad delivery and ad pause retains readable receipts", async () => {
+    vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["analytics"]');
+    await api.deliverServerDestinations(event(), headers()); expect(provider).toHaveBeenCalledTimes(3);
+    vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["ads-tracking"]'); provider.mockClear();
+    await api.deliverServerDestinations(event("fashion-us", "2"), headers());
+    expect(provider).not.toHaveBeenCalled(); expect(await db.readAdDeliveries("fashion")).toHaveLength(3);
+  });
+
   it("concurrent requests and later reloads send one event to each destination", async () => {
     await Promise.all([api.deliverServerDestinations(event(), headers()), api.deliverServerDestinations(event(), headers())]);
     await api.deliverServerDestinations(event(), headers()); expect(provider).toHaveBeenCalledTimes(3);

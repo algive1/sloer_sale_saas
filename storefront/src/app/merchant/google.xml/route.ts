@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { getDefaultLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
@@ -22,7 +23,7 @@ function parsePrefixes(raw: string | undefined): string[] {
 function textResponse(message: string, status: number): Response {
 	return new Response(message, {
 		status,
-		headers: { "content-type": "text/plain; charset=utf-8" },
+		headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "private, no-store" },
 	});
 }
 
@@ -32,15 +33,15 @@ export async function GET(request: Request): Promise<Response> {
 	// require the route to be statically baked as a 404 or stale catalog response.
 	await connection();
 
-	if (!enabled()) {
-		return textResponse("Google Merchant feed is disabled.", 404);
-	}
-
 	const url = new URL(request.url);
 	// The requested Channel is not a tenant credential. Resolve and restrict
 	// the feed to the exact trusted merchant hostname before querying Saleor.
 	const site = brandSitesConfigured() ? brandSiteForHost(request.headers.get("host")) : null;
 	if (brandSitesConfigured() && !site) return textResponse("Store not found.", 404);
+	const paused = pluginPauseReason("seo-merchant");
+	if (paused) return new Response("Merchant feed paused: " + paused, { status: 503, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "private, no-store" } });
+
+	if (!enabled()) return textResponse("Google Merchant feed is disabled.", 404);
 	const availableChannels = await getStorefrontChannelSlugs();
 	const allowedChannels = site
 		? availableChannels.filter((slug) => site.channels.includes(slug))

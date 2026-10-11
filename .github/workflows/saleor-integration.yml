@@ -558,7 +558,7 @@ jobs:
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
-          SYSTEM_PLUGINS_DISABLED: '["theme-builder","payment-reminders","customer-support","ai-translations"]'
+          SYSTEM_PLUGINS_DISABLED: '["theme-builder","payment-reminders","customer-support","ai-translations","analytics","ads-tracking","seo-merchant"]'
           SUPPORT_AI_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
           TRANSLATION_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
         run: |

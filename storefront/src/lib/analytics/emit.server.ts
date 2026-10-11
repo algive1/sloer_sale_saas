@@ -1,4 +1,5 @@
 import "server-only";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 
 import { headers } from "next/headers";
 import { brandSitesConfigured, channelBelongsToHost } from "@/config/brand-sites";
@@ -17,6 +18,7 @@ import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
  * run in `after()` so they never hold open checkout mutations.
  */
 export function emitCommerceEvent(event: PaperCommerceEvent): void {
+	if (pluginPauseReason("analytics") && pluginPauseReason("ads-tracking")) return;
 	try {
 		after(async () => {
 			await deliver(event);
@@ -39,7 +41,7 @@ async function deliver(event: PaperCommerceEvent): Promise<void> {
 		];
 
 		const vercel = projectVercel(event);
-		if (vercel && webAnalyticsEnabled()) {
+		if (!pluginPauseReason("analytics") && vercel && webAnalyticsEnabled()) {
 			jobs.push(track(vercel.name, vercel.props, { headers: requestHeaders }));
 		}
 

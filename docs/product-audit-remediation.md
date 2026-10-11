@@ -161,3 +161,12 @@ Final A19 acceptance: PR #58 cbdbed17 passed all six CI workflows, including rea
 - 明确配置选择属性 slug，不推断缺失品牌、评价或配送退货承诺；缺资料、未知变化维度、超上限或源查询失败回退已有 Product/AggregateOffer。
 - 保留静态 PDP shell，只在服务器 Suspense 槽位复用原生选择器的有界缓存查询，最多200规格，不新增 GraphQL 全量火流。
 - 本地 verify 通过（180文件/1095单元测试及12原生品牌保护）；真实原生生产构建、初始HTML和浏览器首尾规格预选待本批CI。后台资料继续使用原生编辑器与品牌商品检查入口。A21政策事实、死链/重定向及真实Merchant验收仍未完成。说明：product-group-seo.md。
+
+## A23：分析、广告及 Merchant Feed 暂停
+
+- 七个扩展ID均支持系统暂停。新增采集、退款分析与广告投递/claim在SQL和服务调用前停止，历史报告和投递回执保留范围授权；退款webhook先验签，暂停返回明确503供重试。
+- 浏览器收到服务器请求时两个公开布尔值；未知状态不先启用，最多100个早到事件仅在内存等待同意/首次来源初始化后重放。暂停时不挂载外部像素/Vercel采集、不写事件和新来源存储；两类均暂停时跳过结账的可选营销资料补全。
+- seo-merchant仅暂停可选Feed，原生商品metadata/canonical/JSON-LD/sitemap保留；CDN旧Feed需部署时按域名清缓存，已下载的第三方副本不由此删除。
+- 本批合并verify通过184文件/1106单元及12原生保护（0 lint错误/27既有警告）；同生产构建的原生商品/SEO和浏览器暂停验证待本批CI。A23独立版本/迁移兼容与回滚验收仍待补齐，暂停不等于安装/卸载。
+
+PR #59 final acceptance: all six checks passed at 2ea3629 and merged to main 3753ed4.

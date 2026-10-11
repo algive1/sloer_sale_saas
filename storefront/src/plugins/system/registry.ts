@@ -67,7 +67,8 @@ export const SYSTEM_PLUGINS = {
     scope: "system",
     availability: "all-stores",
     integration: "legacy-inline",
-    capabilities: ["storefront.seo", "marketing.merchant-feed"],
+    // Baseline metadata/canonical/sitemap/JSON-LD belong to core, not this switch.
+    capabilities: ["marketing.merchant-feed"],
   },
 } as const satisfies Record<string, SystemPluginDefinition>;
 

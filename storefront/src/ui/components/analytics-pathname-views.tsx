@@ -1,4 +1,5 @@
 "use client";
+import { withClientTrackingPolicy } from "@/plugins/system/tracking-policy.client";
 
 import { useEffect } from "react";
 import { useParams, usePathname } from "next/navigation";
@@ -21,10 +22,10 @@ export function AnalyticsPathnameViews() {
 
 	useEffect(() => {
 		if (!pathname) return;
-		sendRedactedPageView();
-		sendAdPageView();
+		withClientTrackingPolicy(() => { sendRedactedPageView(); sendAdPageView(); });
 
-		const sendFirstPartyPageView = () => {
+		const sendFirstPartyPageView = () => withClientTrackingPolicy(policy => {
+			if (!policy.collectAnalytics) return;
 			if (!analyticsStorageAllowed(readConsentChoice())) return;
 			if (!claimOnce(`paper.analytics.first_party_page_view:${pathname}`)) return;
 			emitCommerceEvent({
@@ -33,7 +34,7 @@ export function AnalyticsPathnameViews() {
 				channel: params.channel ?? "",
 				path: pathname,
 			});
-		};
+		});
 		sendFirstPartyPageView();
 		window.addEventListener(ANALYTICS_CONSENT_EVENT, sendFirstPartyPageView);
 		return () => window.removeEventListener(ANALYTICS_CONSENT_EVENT, sendFirstPartyPageView);

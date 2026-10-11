@@ -17,6 +17,10 @@
 | payment-reminders | system/all stores | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved |
 | customer-support | system/all stores | `storefront-module`: optional per-brand Chatwoot CE website SDK mounted on click; no Saleor order/customer API access in phase 1 |
 | ai-translations | system/all stores | `partial`: operator-only AI draft generator and create-only Saleor fixture export; no shopper path or live admin UI |
+| analytics | Stops new first-party/browser/Vercel collection and refund ingestion before event SQL; reports remain readable with pause notices | Historical events/brand scopes retained; signed refund webhook still verifies signature and responds 503 for retry; its GA4 refund delivery depends on this ingestion |
+| ads-tracking | Stops new GA4/Meta/TikTok/Google Ads browser loaders/calls and server delivery/claims | Stored receipts readable; already in-flight receipt finalization retained; independent first-party analytics may stay enabled |
+| seo-merchant | Feed route returns 503/no-store and direct feed source rejects before native queries | Core SEO/JSON-LD/sitemap remain; Google/third-party stored feed copies are outside this switch; purge existing CDN feed entries during rollout |
+
 | seo-merchant | system/all stores | `legacy-inline`: original SEO and feed routes remain operational |
 
 Registry: `storefront/src/plugins/system/registry.ts`. Operations can inspect the system-wide catalog at `/ops/plugins` (read-only; no store-specific activation or customer-page I/O). `partial` means server-side business logic was extracted but other code still lives in Paper. `legacy-inline` means the feature is **not yet extracted**. Existing endpoints, schemas and reporting SQL remain unchanged.
@@ -36,9 +40,9 @@ Registry: `storefront/src/plugins/system/registry.ts`. Operations can inspect th
 
 The theme builder and reminders now use the shared libSQL transport at `storefront/src/lib/storage/libsql-http.ts` rather than importing the Analytics transport. Existing Analytics imports still work through a compatibility facade. Self-hosted Compose now injects optional theme storage credentials and `STOREFRONT_SITE_ID`.
 
-The current theme store uses deployment-level `STOREFRONT_SITE_ID + channel + locale`. Shared-host domain-to-site routing and per-site permissions are not implemented here. Existing analytics and reminder queries are not yet reliably site-scoped. Do not assume multi-tenant isolation because a plugin is listed in the registry.
+The initial extraction used deployment-level `STOREFRONT_SITE_ID + channel + locale`. Subsequent remediation added trusted Host/Channel guards, individual Ops identities, brand-scoped reports/reminders and authenticated write boundaries. Those own-brand controls do not isolate external SaaS merchants on shared Saleor Core identities; see product-audit-status.md for the current limits.
 
-Next: trusted request-scoped site context and site-scoped analytics queries; isolate remaining event projections/consent contracts; complete the Saleor App lifecycle for external services including reminders; implement complete global lifecycle controls only after their routes/workers are gated. Do not add store-specific plugin toggles unless requested.
+Next: complete versioned migration/compatibility and rollback contracts, plus real provider account acceptance. Global pause controls are documented below; store-specific installation is outside the current self-operated brand scope.
 
 ## Verification
 
@@ -68,22 +72,22 @@ text. A populated slug with no corresponding Page can still return 404; validate
 it before switching to production. There is no additional per-request SQL lookup
 or plugin registry discovery to render these URLs.
 
-## Deployment pause contract (A23, first lifecycle batch)
+## Deployment pause contract (A23)
 
 `SYSTEM_PLUGINS_DISABLED` is a server-only JSON array. Supported IDs are
-`theme-builder`, `payment-reminders`, `customer-support`, `ai-translations`.
+`theme-builder`, `payment-reminders`, `customer-support`, `ai-translations`,
+`analytics`, `ads-tracking`, `seo-merchant`.
 Blank / `[]` preserves the existing default. It is system-wide, not a brand
-permission or per-store activation setting. Unknown IDs (including the three
-modules not yet covered), duplicates, malformed JSON and oversized values pause
-all four supported modules. `/ops/plugins` shows this configuration failure
-without exposing credentials. Unsupported analytics/ads/SEO are explicitly
-labelled **not covered**, rather than falsely reporting stopped.
+permission or per-store activation setting. Unknown IDs, duplicates, malformed JSON and oversized values pause
+all seven modules. `/ops/plugins` shows this configuration failure
+without exposing credentials. The `seo-merchant` switch controls the optional Merchant feed only; baseline
+metadata, canonical, sitemap and product structured data are retained.
 
 Update the deployment environment and restart **every** storefront replica with
 the same configuration. The shopper extension slots and admin status evaluate
 policy after a Next `io()` boundary; rebuilding the application is not required.
 The native integration workflow starts a second process using the same production
-build with the four modules paused, then verifies authentication, worker responses,
+build with all seven modules paused, then verifies authentication, worker responses,
 historical rule reads and native catalog rendering.
 
 | Module | Paused behavior | Retained data / boundaries |
@@ -111,7 +115,21 @@ scripts from already open tabs; reload shopper tabs after rollout. Native Core,
 products, carts, checkout and payment callbacks are not disabled. Changes to this
 configuration invalidate existing launch evidence via the readiness config digest.
 
-Still pending for A23: analytics/browser/server ads collection pause (including
-consent and PPR behavior), separating merchant-feed from baseline SEO, versioned
-module/database migration compatibility contracts and a tested rollback procedure.
+Browser tracking receives only two public booleans from a request-time Suspense slot.
+Before hydration resolves policy, destinations stay off; up to100 early events wait
+in memory and replay after consent/first-touch initialization. No cookies, storage,
+pixels or first-party ingestion are written under unknown policy. Analytics and
+ads pause independently; attribution storage is needed if either remains active.
+Both paused means tier-2 checkout marketing/session enrichment skips I/O, while
+core checkout/origin/consent logic remains. New pages omit optional scripts; already
+open tabs must reload, and active in-flight calls may complete.
+
+Feed responses previously cached by a CDN or downloaded by a provider do not
+vanish on server restart. Purge `/merchant/google.xml` for every brand in the CDN
+when applying pause, then verify 503/no-store at the public edge and origin. Restore
+only after the source/feed is validated; never fake a successful empty feed.
+
+Still pending for A23: versioned module/database migration compatibility contracts
+and tested rollback acceptance. The existing release-recovery gate protects whole
+stack releases; it does not establish independent plugin schema downgrade safety.
 This static registry is not an official Saleor App installation manifest.

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   pipeline: vi.fn(async (statements: readonly { sql: string; args?: (string | number | null)[] }[]) =>
@@ -12,7 +12,14 @@ vi.mock("@/lib/storage/libsql-http", () => ({
 }));
 import { readAnalyticsSummary } from "./first-party-store";
 
+afterEach(() => vi.unstubAllEnvs());
 describe("brand operational analytics SQL tenant boundary", () => {
+  it("preserves brand-scoped historical report reads when collection is paused", async () => {
+    vi.stubEnv("SYSTEM_PLUGINS_DISABLED", '["analytics"]');
+    await readAnalyticsSummary(7, ["fashion-us"]);
+    expect(mocks.pipeline.mock.lastCall?.[0]).toHaveLength(7);
+    expect(mocks.pipeline.mock.lastCall?.[0][0].args).toContain("fashion-us");
+  });
   it("binds trusted Channel IDs in all seven subreports, including abandoned sessions", async () => {
     await readAnalyticsSummary(7, ["fashion-us", "fashion-eu"]);
     const statements = mocks.pipeline.mock.lastCall?.[0] ?? [];
