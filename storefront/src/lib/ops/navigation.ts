@@ -81,8 +81,8 @@ export function buildDashboardHref(base: string | undefined): string | null {
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
     if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) ||
       url.username || url.password || url.search || url.hash ||
-      !/^\/(?:[a-zA-Z0-9_-]+\/)*$/.test(url.pathname)) return null;
-    return url.origin + url.pathname;
+      !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*\/?$/.test(url.pathname)) return null;
+    return url.origin + url.pathname.replace(/\/?$/, "/");
   } catch {
     return null;
   }
