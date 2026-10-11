@@ -22,8 +22,12 @@ test.describe("Merchant navigation – desktop admin", () => {
     await expect(page.getByTestId("commerce-admin-topbar")).toBeVisible();
     await expect(page.getByTestId("commerce-admin-search")).toBeVisible();
 
-    // Commerce Ops entries are registered on the real sidebar; they remain
-    // independent, authenticated destinations. We verify link metadata only.
+    // The Apps accordion starts closed; expand it before inspecting links.
+    // Commerce Ops destinations remain independently authenticated, so the
+    // browser checks their anchors but never enters their protected service.
+    await page.locator(
+      '[data-test-id="menu-item-label-installed-extensions"].sidebar-item-group-trigger',
+    ).click();
     for (const [id, href] of [
       ["commerce-analytics-overview", "http://localhost:3000/ops/analytics"],
       ["commerce-theme-builder", "http://localhost:3000/ops/themes"],
@@ -35,6 +39,8 @@ test.describe("Merchant navigation – desktop admin", () => {
       await expect(link).toHaveAttribute("target", "_blank");
       await expect(link).toHaveAttribute("rel", /noopener/);
     }
+
+    await page.getByTestId("commerce-admin-search").scrollIntoViewIfNeeded();
 
     await testInfo.attach("admin-expanded", {
       body: await page.screenshot(),
