@@ -8,16 +8,21 @@ from saleor.core.auth import SALEOR_AUTH_HEADER
 from saleor.graphql.shared_core_guest_guard import (
     BLOCKED_MUTATIONS,
     ERROR_CODE,
+    CHECKOUT_GATEWAY_ERROR_CODE,
+    checkout_gateway_required,
     GuestOnlySharedCoreMiddleware,
     customer_identity_blocked,
 )
 
 
-def request(*, user=None, app=None, token=False):
+def request(*, user=None, app=None, token=False, checkout_key=None):
     return SimpleNamespace(
         app=app,
         user=user,
-        META={SALEOR_AUTH_HEADER: "legacy-jwt"} if token else {},
+        META={
+            **({SALEOR_AUTH_HEADER: "legacy-jwt"} if token else {}),
+            **({"HTTP_X_PAPER_CHECKOUT_GATEWAY_SECRET": checkout_key} if checkout_key else {}),
+        },
     )
 
 
@@ -53,13 +58,38 @@ def test_guest_account_mutations_blocked_even_if_aliased(field):
     assert error.value.extensions["code"] == ERROR_CODE
 
 
-@override_settings(SHARED_CORE_GUEST_ONLY=True)
-def test_public_storefront_and_guest_checkout_still_work():
+@override_settings(
+    SHARED_CORE_GUEST_ONLY=True,
+    SHARED_CORE_CHECKOUT_GATEWAY_SECRET="ci-checkout-gateway-secret-long-enough-123",
+)
+def test_guest_catalog_still_works_but_direct_checkout_requires_server_key():
     middleware = GuestOnlySharedCoreMiddleware()
-    context = request()
-    for field in ("checkout", "products", "checkoutCreate", "checkoutLinesAdd", "checkoutComplete"):
-        actual_parent = "Query" if field in ("checkout", "products") else "Mutation"
-        assert middleware.resolve(resolve, None, info(context, parent=actual_parent, field=field)) == "allowed"
+    expected_key = "ci-checkout-gateway-secret-long-enough-123"
+    assert middleware.resolve(resolve, None, info(request(), parent="Query", field="products")) == "allowed"
+    for parent, field in (
+        ("Query", "checkout"),
+        ("Mutation", "checkoutCreate"),
+        ("Mutation", "checkoutEmailUpdate"),
+        ("Mutation", "checkoutComplete"),
+        ("Mutation", "transactionInitialize"),
+        ("Mutation", "paymentGatewayInitialize"),
+        ("Checkout", "email"),  # Node/fragment traversal, not just root checkout()
+        ("CheckoutLine", "quantity"),
+    ):
+        assert checkout_gateway_required(info(request(), parent=parent, field=field))
+        for unauthorized in (request(), request(checkout_key="wrong"), request(checkout_key="x" * 64)):
+            with pytest.raises(GraphQLError) as error:
+                middleware.resolve(resolve, None, info(unauthorized, parent=parent, field=field))
+            assert error.value.extensions["code"] == CHECKOUT_GATEWAY_ERROR_CODE
+        trusted = request(checkout_key=expected_key)
+        assert middleware.resolve(resolve, None, info(trusted, parent=parent, field=field)) == "allowed"
+
+
+@override_settings(SHARED_CORE_GUEST_ONLY=True, SHARED_CORE_CHECKOUT_GATEWAY_SECRET="")
+def test_checkout_fails_closed_if_gateway_key_is_missing():
+    with pytest.raises(GraphQLError) as error:
+        GuestOnlySharedCoreMiddleware().resolve(resolve, None, info(request(), field="checkoutCreate"))
+    assert error.value.extensions["code"] == CHECKOUT_GATEWAY_ERROR_CODE
 
 
 @override_settings(SHARED_CORE_GUEST_ONLY=True)
@@ -78,6 +108,7 @@ def test_staff_and_app_keep_dashboard_and_service_access(staff_user, app):
     for context in (request(user=staff_user, token=True), request(app=app)):
         assert middleware.resolve(resolve, None, info(context)) == "allowed"
         assert middleware.resolve(resolve, None, info(context, parent="Query", field="me")) == "allowed"
+        assert middleware.resolve(resolve, None, info(context, parent="Mutation", field="checkoutComplete")) == "allowed"
 
 
 @override_settings(SHARED_CORE_GUEST_ONLY=False)
