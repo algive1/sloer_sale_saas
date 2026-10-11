@@ -1,6 +1,7 @@
 import { Box, List, sprinkles } from "@saleor/macaw-ui-next";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useIntl } from "react-intl";
 
 import { useIsMenuActive } from "./hooks/useIsMenuActive";
 import styles from "./CommerceSidebar.module.css";
@@ -13,6 +14,10 @@ interface Props {
 
 export const SingleItem = ({ menuItem }: Props) => {
   const active = useIsMenuActive(menuItem);
+  const intl = useIntl();
+  const isZh = intl.locale.toLowerCase().startsWith("zh");
+  const label = typeof menuItem.label === "string" ? menuItem.label : "";
+  const externalDescription = isZh ? `在新标签页打开${label}` : `Open ${label} in a new tab`;
   const handleMenuItemClick = () => {
     if (menuItem.onClick) {
       menuItem.onClick();
@@ -35,7 +40,7 @@ export const SingleItem = ({ menuItem }: Props) => {
   return (
     <List.Item
       borderRadius={3}
-      paddingX={2}
+      paddingX={0}
       active={active}
       onClick={handleMenuItemClick}
       data-test-id={`menu-item-label-${menuItem.id}`}
@@ -48,8 +53,9 @@ export const SingleItem = ({ menuItem }: Props) => {
           href={menuItem.externalUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="Open Commerce Ops in a new tab"
-          className={sprinkles({ display: "block", width: "100%" })}
+          title={externalDescription}
+          aria-label={externalDescription}
+          className={`${sprinkles({ display: "block", width: "100%" })} ${styles.clickArea}`}
         >
           {content}
         </a>
