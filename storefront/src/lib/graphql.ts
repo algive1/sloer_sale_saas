@@ -505,13 +505,15 @@ export async function executeRawGraphQL<T = unknown>(options: RawGraphQLOptions)
 	const { query, variables, headers } = options;
 	const operationName = query.match(/(?:query|mutation)\s+(\w+)/)?.[1] || "RawOperation";
 
+	const checkoutGatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
+
 	try {
 		const response = await fetch(url, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json", "User-Agent": USER_AGENT, ...headers,
-				...(process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET?.length >= 32
-					? { "x-paper-checkout-gateway-secret": process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET }
+				...(checkoutGatewaySecret && checkoutGatewaySecret.length >= 32
+					? { "x-paper-checkout-gateway-secret": checkoutGatewaySecret }
 					: {}),
 			},
 			body: JSON.stringify({ query, variables }),
