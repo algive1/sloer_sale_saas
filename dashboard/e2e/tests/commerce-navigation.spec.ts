@@ -1,4 +1,3 @@
-import { parallel } from "../config.ts";
 import { expect, test } from "../fixtures/test.ts";
 import { HomePage } from "../pages/homePage.ts";
 
@@ -10,7 +9,7 @@ import { HomePage } from "../pages/homePage.ts";
  * HTTP Basic authentication and must be tested against their own service.
  */
 
-test.describe("Merchant navigation – desktop admin", { tag: parallel() }, () => {
+test.describe("Merchant navigation – desktop admin", () => {
   test.use({ actor: "admin" });
 
   test("collapses and expands to the selected section and persists the preference", async ({
@@ -48,7 +47,7 @@ test.describe("Merchant navigation – desktop admin", { tag: parallel() }, () =
   });
 });
 
-test.describe("Merchant navigation – limited staff", { tag: parallel() }, () => {
+test.describe("Merchant navigation – limited staff", () => {
   test.use({ actor: "staff" });
 
   test("does not expose Search to staff without Saleor search permissions", async ({ page }) => {
@@ -62,7 +61,7 @@ test.describe("Merchant navigation – limited staff", { tag: parallel() }, () =
   });
 });
 
-test.describe("Merchant navigation – mobile admin", { tag: parallel() }, () => {
+test.describe("Merchant navigation – mobile admin", () => {
   test.use({ actor: "admin" });
 
   test("keeps a full, keyboard-accessible drawer at mobile widths", async ({ page }, testInfo) => {
