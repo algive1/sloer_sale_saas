@@ -2,7 +2,7 @@
    Use the token below (and Macaw's existing light/dark theme) for backend colors. */
 .sidebarShell,
 .menuRoot {
-  --commerce-admin-nav-accent: #2563eb;
+  --commerce-admin-nav-accent: var(--commerce-admin-preference-accent, #2563eb);
   --commerce-admin-nav-active: color-mix(in srgb, var(--commerce-admin-nav-accent) 13%, transparent);
   --commerce-admin-nav-soft: color-mix(in srgb, currentColor 4%, transparent);
   min-width: 0;
@@ -259,4 +259,42 @@
   .itemRow {
     transition: none;
   }
+}
+
+.accentSettings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  padding: 10px 12px 12px;
+}
+
+.accentLabel {
+  font-size: 12px;
+  opacity: .8;
+}
+
+.accentSwatches {
+  display: flex;
+  gap: 9px;
+}
+
+.accentSwatch {
+  position: relative;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.accentSwatchSelected {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.accentSwatch:focus-visible {
+  outline: 2px solid var(--commerce-admin-nav-accent);
+  outline-offset: 2px;
 }
