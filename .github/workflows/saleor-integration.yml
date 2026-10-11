@@ -143,7 +143,7 @@ jobs:
           set -euo pipefail
           ops_catalog_token=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_ops_ci.py | tail -n 1)
-          [[ "$ops_catalog_token" =~ ^[A-Za-z0-9_-]{40,64}$ ]] || exit 1
+          [[ "$ops_catalog_token" =~ ^[A-Za-z0-9]{30}$ ]] || exit 1
           echo "::add-mask::$ops_catalog_token"
           echo "OPS_CATALOG_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
 

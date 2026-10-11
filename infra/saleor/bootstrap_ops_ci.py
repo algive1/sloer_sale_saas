@@ -1,6 +1,4 @@
 """CI-only app credential for native catalog inspection; never use in production."""
-import secrets
-
 from saleor.app.models import App, AppToken
 from saleor.permission.enums import ProductPermissions
 from saleor.permission.models import Permission
@@ -16,5 +14,7 @@ app.permissions.set(Permission.objects.filter(content_type__app_label=label, cod
 if app.permissions.count() != 1:
     raise RuntimeError("Catalog CI app permission missing")
 app.tokens.all().delete()
-_, raw_token = AppToken.objects.create(app=app, name="isolated-ci", auth_token=secrets.token_urlsafe(32))
+_, raw_token = AppToken.objects.create(app=app, name="isolated-ci")
+if len(raw_token) != 30:
+    raise RuntimeError("Native app token shape mismatch")
 print(raw_token)
