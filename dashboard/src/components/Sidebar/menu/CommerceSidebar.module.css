@@ -18,6 +18,23 @@
   border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
 }
 
+.brandMonogram {
+  width: 32px;
+  height: 32px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-weight: 850;
+  font-size: 21px;
+  line-height: 1;
+  color: var(--commerce-admin-nav-accent);
+  border-radius: 9px;
+  border: 2px solid var(--commerce-admin-nav-accent);
+  transform: skew(-7deg);
+  background: color-mix(in srgb, var(--commerce-admin-nav-accent) 7%, transparent);
+}
 .brandIdentity {
   min-width: 0;
   flex: 1;
@@ -152,6 +169,8 @@
 }
 
 .groupActive {
+  color: var(--commerce-admin-nav-accent);
+  background-color: color-mix(in srgb, var(--commerce-admin-nav-accent) 7%, transparent);
   box-shadow: inset 3px 0 var(--commerce-admin-nav-accent);
 }
 
