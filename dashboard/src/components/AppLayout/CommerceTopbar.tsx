@@ -4,6 +4,7 @@ import { SearchShortcut } from "@dashboard/search/SearchShortcut";
 import { getUserInitials, getUserName } from "@dashboard/misc";
 import { staffMemberDetailsUrl } from "@dashboard/staff/urls";
 import { Search } from "lucide-react";
+import { Box } from "@saleor/macaw-ui-next";
 import { useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
@@ -19,7 +20,7 @@ export const CommerceTopbar = () => {
   const isZh = intl.locale.toLowerCase().startsWith("zh");
 
   return (
-    <header className={styles.topbar} data-test-id="commerce-admin-topbar">
+    <Box as="header" backgroundColor="default1" className={styles.topbar} data-test-id="commerce-admin-topbar">
       <Link
         to="/search"
         className={styles.globalSearch}
@@ -40,6 +41,6 @@ export const CommerceTopbar = () => {
           <span className={styles.accountName}>{getUserName(user, true)}</span>
         </Link>
       )}
-    </header>
+    </Box>
   );
 };
