@@ -99,6 +99,8 @@ class FailureBoundaryTests(unittest.TestCase):
         runner.backup = lambda: phase("backup-restore")
 
         def command(args, **kwargs):
+            if "inspect" in args and any("NetworkSettings" in str(arg) for arg in args):
+                return b"172.18.0.2\n"
             if "run" in args and args[-1] == "migrate":
                 phase("production-migrate" if "production" in args else "isolated-migrate")
             elif "stop" in args:

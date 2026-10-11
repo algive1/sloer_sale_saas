@@ -10,18 +10,17 @@ import argparse
 import datetime as dt
 import fcntl
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
 import secrets
 import shutil
-import socket
 import sqlite3
 import subprocess
 import sys
 import tarfile
 import time
-import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
 APPLICATIONS = ("api", "worker", "migrate", "dashboard", "storefront")
@@ -149,18 +148,16 @@ class Release:
             raise ValueError("Database dump was empty")
 
     def prepare_stage(self):
-        with socket.socket() as listener:
-            listener.bind(("127.0.0.1", 0))
-            port = listener.getsockname()[1]
-        self.port = port
         secret = secrets.token_hex(32)
         stage_environment = {
             "DEBUG": "False", "DATABASE_URL": "postgres://preflight:" + secret + "@db:5432/preflight",
             "SECRET_KEY": secret, "RSA_PRIVATE_KEY": self.config["services"]["api"]["environment"]["RSA_PRIVATE_KEY"],
             "CACHE_URL": "redis://cache:6379/0", "CELERY_BROKER_URL": "redis://cache:6379/1",
             "EMAIL_URL": "console://", "DEFAULT_CHANNEL_SLUG": self.config["services"]["api"]["environment"].get("DEFAULT_CHANNEL_SLUG", "us"),
-            "ALLOWED_HOSTS": "localhost,127.0.0.1,api", "HTTP_IP_FILTER_ENABLED": "True",
-            "PUBLIC_URL": "http://127.0.0.1:" + str(port) + "/", "DASHBOARD_URL": "http://127.0.0.1:9000/",
+            # No published ports; only the isolated network/host can reach this
+            # API. Its IP is assigned after startup and used by Linux host builds.
+            "ALLOWED_HOSTS": "*", "HTTP_IP_FILTER_ENABLED": "True",
+            "PUBLIC_URL": self.config["services"]["api"]["environment"].get("PUBLIC_URL", "http://api:8000/"), "DASHBOARD_URL": "http://127.0.0.1:9000/",
         }
         write_json(self.stage_file, compose_escape({
             "services": {
@@ -169,7 +166,7 @@ class Release:
                        "healthcheck": {"test": ["CMD-SHELL", "pg_isready -U preflight -d preflight"], "interval": "2s", "timeout": "3s", "retries": 30}},
                 "cache": {"image": self.config["services"]["cache"]["image"], "networks": ["isolated"]},
                 "migrate": {"image": self.images["migrate"], "environment": stage_environment, "command": ["python3", "manage.py", "migrate", "--noinput"], "networks": ["isolated"]},
-                "api": {"image": self.images["api"], "environment": stage_environment, "ports": ["127.0.0.1:" + str(port) + ":8000"], "networks": ["isolated"]},
+                "api": {"image": self.images["api"], "environment": stage_environment, "networks": ["isolated"]},
             }, "volumes": {"db": {}}, "networks": {"isolated": {"internal": True}},
         }))
         run(self.stage + ["up", "-d", "--wait", "db", "cache"])
@@ -243,7 +240,12 @@ class Release:
         run(self.stage + ["run", "--rm", "--no-deps", "-T", "migrate"])
         run(self.stage + ["up", "-d", "--no-build", "api"])
         self.wait_api(self.stage)
-        environment = {**os.environ, "SALEOR_BUILD_API_URL": "http://127.0.0.1:" + str(self.port) + "/graphql/"}
+        api_container = run(self.stage + ["ps", "-q", "api"], capture=True).decode().strip()
+        address = run(["docker", "inspect", "--format", "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}", api_container], capture=True).decode().strip()
+        parsed = ipaddress.ip_address(address)
+        if parsed.version != 4 or not parsed.is_private:
+            raise ValueError("Preflight API must have a private IPv4 address")
+        environment = {**os.environ, "SALEOR_BUILD_API_URL": "http://" + address + ":8000/graphql/"}
         print("Building Dashboard and Storefront against the isolated migrated copy.", flush=True)
         self.build(["dashboard", "storefront"], environment)
         # Pin actual content digests for deployment and retain rollback images.

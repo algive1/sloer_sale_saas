@@ -90,7 +90,7 @@ SALEOR_EMAIL_URL=smtp://USER:PASSWORD@smtp.example.com:587/?tls=True
 
 The storefront container receives `SALEOR_INTERNAL_API_URL=http://api:8000/graphql/`
 at runtime while browsers use the public API URL. The deploy runner overrides
-`SALEOR_BUILD_API_URL` with a loopback-only API backed by an isolated migrated
+`SALEOR_BUILD_API_URL` with a private bridge API backed by an isolated migrated
 copy, so Dashboard and Storefront finish building before production migrations.
 Production application images are started by exact image ID without a rebuild.
 

@@ -2,9 +2,10 @@
 
 `bash scripts/deploy.sh` now builds backend images first, restores a live
 PostgreSQL dump into a randomly named **isolated** Compose project, rehearses
-migrations there, starts its loopback-only API with outbound networking disabled,
+migrations there, starts its private Docker API with no published port and outbound networking disabled,
 and builds Dashboard/Paper against that API. A clean source checkout is required.
-No production DDL or application
+The Linux build host reaches its private bridge IP directly; an internal network
+does not expose a usable published port. No production DDL or application
 shutdown occurs before all application images build. Allow additional disk/RAM
 for a database copy; copied merchant data is sensitive.
 
