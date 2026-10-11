@@ -377,7 +377,18 @@ export function useMenuStructure() {
   const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
     items.filter((item): item is SidebarMenuItem => item !== null);
 
-  const home = native("home");
+  const baseHome = native("home");
+  // When home widgets are pinned, Home becomes an accordion in upstream Saleor.
+  // Keep the actual /home destination visible now that group headings only toggle.
+  const home: SidebarMenuItem = baseHome.type === "itemGroup" ? {
+    ...baseHome,
+    children: [{
+      id: "commerce-dashboard-home",
+      label: localized("首页概览", "Home overview"),
+      url: "/home",
+      type: "item",
+    }, ...(baseHome.children ?? [])],
+  } : baseHome;
   const search = native("search");
   const baseOrders = native("orders");
   const baseCatalog = native("products");
