@@ -91,6 +91,13 @@ test("mobile support never loads a service before click and recovers from a miss
 		expect(await link.getAttribute("href")).not.toContain("never-share-fixture");
 		expect(sdkRequests).toBe(0);
 		expect(whatsappRequests).toBe(0);
+		// The production storefront asks for analytics consent first. Decline
+		// optional tracking so the dialog does not cover the mobile launcher;
+		// customer-requested support must still work without a marketing grant.
+		const consent = page.getByRole("dialog", { name: "Analytics and advertising preferences" });
+		if (process.env.CI === "true") await expect(consent).toBeVisible();
+		if (await consent.isVisible())
+			await consent.getByRole("button", { name: "Essential only", exact: true }).click();
 		await page.clock.install();
 		await page.getByRole("button", { name: "Chat with us", exact: true }).click();
 		await expect(page.getByRole("button", { name: "Opening chat…", exact: true })).toBeDisabled();
