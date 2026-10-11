@@ -47,7 +47,7 @@ jobs:
       - name: Check Dashboard types
         run: pnpm --dir dashboard exec tsc --noEmit
       - name: Navigation access, routing and link regression tests
-        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts --runInBand
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts src/components/Sidebar/menu/filterSidebarMenu.test.ts --runInBand
       - name: Check Playwright acceptance test types
         run: pnpm --dir dashboard exec tsc --noEmit --project e2e/tsconfig.json
 
