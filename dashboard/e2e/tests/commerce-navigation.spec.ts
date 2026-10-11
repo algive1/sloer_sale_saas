@@ -22,6 +22,20 @@ test.describe("Merchant navigation – desktop admin", () => {
     await expect(page.getByTestId("commerce-admin-topbar")).toBeVisible();
     await expect(page.getByTestId("commerce-admin-search")).toBeVisible();
 
+    // Commerce Ops entries are registered on the real sidebar; they remain
+    // independent, authenticated destinations. We verify link metadata only.
+    for (const [id, href] of [
+      ["commerce-analytics-overview", "http://localhost:3000/ops/analytics"],
+      ["commerce-theme-builder", "http://localhost:3000/ops/themes"],
+      ["commerce-system-apps", "http://localhost:3000/ops/plugins"],
+    ] as const) {
+      const link = page.getByTestId(`menu-item-label-${id}`).locator("a");
+
+      await expect(link).toHaveAttribute("href", href);
+      await expect(link).toHaveAttribute("target", "_blank");
+      await expect(link).toHaveAttribute("rel", /noopener/);
+    }
+
     await testInfo.attach("admin-expanded", {
       body: await page.screenshot(),
       contentType: "image/png",
