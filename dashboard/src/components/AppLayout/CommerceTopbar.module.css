@@ -43,6 +43,18 @@
   outline: 2px solid var(--commerce-admin-preference-accent, #2563eb);
   outline-offset: 2px;
 }
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, currentColor 17%, transparent);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  font-family: inherit;
+  opacity: .75;
+}
 .spacer { flex: 1; }
 .accountLink {
   display: flex;
