@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 
 import { getConfiguredLocaleChannelPairs } from "@/config/locale-channel";
@@ -8,7 +9,7 @@ import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { fetchSitemapCatalogSlugs } from "@/lib/seo/sitemap-source";
 import { getBaseUrl } from "@/lib/seo/config";
 import { buildStorefrontPath } from "@/lib/storefront-path";
-
+import { assertSitemapSize } from "@/lib/seo/sitemap-size";
 
 function absoluteUrl(pathname: string, baseUrl: string): string {
 	const base = baseUrl.replace(/\/$/, "");
@@ -30,11 +31,11 @@ async function storefrontPairs(): Promise<Array<{ locale: string; channel: strin
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // A single domain must never advertise the catalog of another brand.
-  const site = brandSitesConfigured() ? brandSiteForHost((await headers()).get("host")) : null;
-  if (brandSitesConfigured() && !site) return [];
-  const pairs = (await storefrontPairs()).filter(({ channel }) => !site || site.channels.includes(channel));
-  const baseUrl = site ? `https://${site.domains[0]}` : getBaseUrl();
+	// A single domain must never advertise the catalog of another brand.
+	const site = brandSitesConfigured() ? brandSiteForHost((await headers()).get("host")) : null;
+	if (brandSitesConfigured() && !site) notFound();
+	const pairs = (await storefrontPairs()).filter(({ channel }) => !site || site.channels.includes(channel));
+	const baseUrl = site ? `https://${site.domains[0]}` : getBaseUrl();
 	const entries: MetadataRoute.Sitemap = [];
 
 	for (const { locale, channel } of pairs) {
@@ -69,6 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 				priority: 0.7,
 			});
 		}
+		assertSitemapSize(entries);
 	}
 
 	return entries;

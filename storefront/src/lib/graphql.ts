@@ -474,6 +474,9 @@ interface RawGraphQLOptions {
 	query: string;
 	variables?: Record<string, unknown>;
 	headers?: HeadersInit;
+	/** Opt-in for catalog/export completeness; preserve legacy callers' semantics. */
+	rejectPartialData?: boolean;
+	timeoutMs?: number;
 }
 
 /**
@@ -502,7 +505,7 @@ export async function executeRawGraphQL<T = unknown>(options: RawGraphQLOptions)
 		return networkError("Missing SALEOR_INTERNAL_API_URL / NEXT_PUBLIC_SALEOR_API_URL env variable");
 	}
 
-	const { query, variables, headers } = options;
+	const { query, variables, headers, rejectPartialData, timeoutMs } = options;
 	const operationName = query.match(/(?:query|mutation)\s+(\w+)/)?.[1] || "RawOperation";
 
 	const checkoutGatewaySecret = process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET;
@@ -510,6 +513,7 @@ export async function executeRawGraphQL<T = unknown>(options: RawGraphQLOptions)
 	try {
 		const response = await fetch(url, {
 			method: "POST",
+			...(timeoutMs !== undefined ? { signal: AbortSignal.timeout(timeoutMs) } : {}),
 			headers: {
 				"Content-Type": "application/json", "User-Agent": USER_AGENT, ...headers,
 				...(checkoutGatewaySecret && checkoutGatewaySecret.length >= 32
@@ -526,6 +530,7 @@ export async function executeRawGraphQL<T = unknown>(options: RawGraphQLOptions)
 
 		const body = (await response.json()) as GraphQLResponseBody<T>;
 		const messages = body.errors?.map((e) => e.message).filter((m): m is string => Boolean(m)) ?? [];
+		if (rejectPartialData && body.errors?.length) return graphqlError(messages.length ? messages : ["Incomplete GraphQL response"], extractErrorCodes(body.errors));
 
 		if (body.data !== null && body.data !== undefined) {
 			return success(body.data);

@@ -186,3 +186,12 @@ PR #60 final acceptance: 26539e1 passed all five applicable CI workflows, includ
 - 新增个人管理员物流页与CSV模板/上传/预检/确认/逐笔结果/下载/历史。单批最多10笔，可信品牌/channel，重新读取原生付款/实物/履约状态；不同已有单号拒绝。专用凭证与可写审计为必要条件。
 - 原生履约更新不创建发货、不调用货代，notifyCustomer=false；原子占位阻止Ops重复提交。未知回执停止批次、不自动重发，同目标原生值一致可核对审计。原生API无CAS，后台并发处理限制明确，跨服务批次不能冒充原子事务。
 - 三个核心运营表与活动占位索引纳入恢复检查，插件自身仍是7模块/17表。只读快照检查不迁移真实provider；本地verify与浏览器/原生CI结果以本批PR记录为准。异常物流、RMA、通知重试和真实顾客查单仍待完成。
+
+
+## A21：Sitemap 分页完整性与有界生成（2026-10-12）
+
+- 修复缺失游标导致静默漏收录、重复游标无限循环、GraphQL部分数据被当作完整目录的问题；保持品牌Host、市场和语言范围。未知Host返回404。
+- 每页请求超时、资源级时间/页数上限、地址唯一与合并XML大小检查；超限或上游错误拒绝成功输出，不截断。大目录分片/index仍待实现。
+- 新增原生生产构建下的商品totalCount独立核对，开发101商品fixture已触发实际第二页；全量verify与原生CI以本批PR最终记录为准。政策事实、死链/重定向、正式Search Console/Merchant验收仍未完成。说明：[Sitemap完整性](sitemap-integrity.md)。
+
+PR #62 final acceptance: 58a85bba passed all six CI workflows including native fulfillment/tracking writeback and Docker/Postgres recovery; merged to main dce09f2.

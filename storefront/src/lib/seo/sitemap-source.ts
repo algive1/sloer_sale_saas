@@ -1,23 +1,16 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { getGraphqlLanguageCode } from "@/config/locale";
 import { executeRawGraphQL } from "@/lib/graphql";
+import { collectSitemapConnection, type SitemapConnection } from "@/lib/seo/sitemap-pagination";
 
 const PAGE_SIZE = 100;
-
-type PageInfo = {
-	hasNextPage: boolean;
-	endCursor?: string | null;
-};
 
 type SlugNode = {
 	slug: string;
 	translation?: { slug?: string | null } | null;
 };
 
-type Connection<T> = {
-	edges: Array<{ node: T }>;
-	pageInfo: PageInfo;
-};
+type Connection<T> = SitemapConnection<T>;
 
 type ProductNode = SlugNode;
 type CategoryNode = SlugNode & {
@@ -27,25 +20,6 @@ type CollectionNode = SlugNode;
 
 function localizedSlug(node: SlugNode): string {
 	return node.translation?.slug?.trim() || node.slug;
-}
-
-async function collectConnection<T>(
-	fetchPage: (after: string | null) => Promise<Connection<T>>,
-): Promise<T[]> {
-	const nodes: T[] = [];
-	let after: string | null = null;
-
-	for (;;) {
-		const page = await fetchPage(after);
-		nodes.push(...page.edges.map((edge) => edge.node));
-
-		if (!page.pageInfo.hasNextPage || !page.pageInfo.endCursor) {
-			break;
-		}
-		after = page.pageInfo.endCursor;
-	}
-
-	return nodes;
 }
 
 export type SitemapCatalogSlugs = {
@@ -65,7 +39,7 @@ export async function fetchSitemapCatalogSlugs(
 	const languageCode = getGraphqlLanguageCode(localeSlug);
 
 	const [products, categories, collections] = await Promise.all([
-		collectConnection<ProductNode>(async (after) => {
+		collectSitemapConnection<ProductNode>(async (after, timeoutMs) => {
 			const result = await executeRawGraphQL<{
 				products: Connection<ProductNode> | null;
 			}>({
@@ -88,16 +62,16 @@ export async function fetchSitemapCatalogSlugs(
 					}
 				`,
 				variables: { channel, languageCode, first: PAGE_SIZE, after },
+				timeoutMs,
+				rejectPartialData: true,
 			});
 
 			if (!result.ok || !result.data.products) {
-				throw new Error(
-					`[sitemap] Failed to fetch products for ${channel}: ${result.ok ? "missing connection" : result.error.message}`,
-				);
+				throw new Error(`[sitemap] Products unavailable for ${channel}`);
 			}
 			return result.data.products;
-		}),
-		collectConnection<CategoryNode>(async (after) => {
+		}, localizedSlug),
+		collectSitemapConnection<CategoryNode>(async (after, timeoutMs) => {
 			const result = await executeRawGraphQL<{
 				categories: Connection<CategoryNode> | null;
 			}>({
@@ -121,16 +95,16 @@ export async function fetchSitemapCatalogSlugs(
 					}
 				`,
 				variables: { channel, languageCode, first: PAGE_SIZE, after },
+				timeoutMs,
+				rejectPartialData: true,
 			});
 
 			if (!result.ok || !result.data.categories) {
-				throw new Error(
-					`[sitemap] Failed to fetch categories for ${channel}: ${result.ok ? "missing connection" : result.error.message}`,
-				);
+				throw new Error(`[sitemap] Categories unavailable for ${channel}`);
 			}
 			return result.data.categories;
-		}),
-		collectConnection<CollectionNode>(async (after) => {
+		}, localizedSlug),
+		collectSitemapConnection<CollectionNode>(async (after, timeoutMs) => {
 			const result = await executeRawGraphQL<{
 				collections: Connection<CollectionNode> | null;
 			}>({
@@ -153,22 +127,20 @@ export async function fetchSitemapCatalogSlugs(
 					}
 				`,
 				variables: { channel, languageCode, first: PAGE_SIZE, after },
+				timeoutMs,
+				rejectPartialData: true,
 			});
 
 			if (!result.ok || !result.data.collections) {
-				throw new Error(
-					`[sitemap] Failed to fetch collections for ${channel}: ${result.ok ? "missing connection" : result.error.message}`,
-				);
+				throw new Error(`[sitemap] Collections unavailable for ${channel}`);
 			}
 			return result.data.collections;
-		}),
+		}, localizedSlug),
 	]);
 
 	return {
 		products: products.map(localizedSlug),
-		categories: categories
-			.filter((category) => (category.products?.totalCount ?? 0) > 0)
-			.map(localizedSlug),
+		categories: categories.filter((category) => (category.products?.totalCount ?? 0) > 0).map(localizedSlug),
 		collections: collections.map(localizedSlug),
 	};
 }
