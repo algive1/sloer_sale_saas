@@ -112,7 +112,7 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
       className={`${styles.menuRoot} ${styles.menuColumn}`}
       display="flex"
       flexDirection="column"
-      minHeight={0}
+      minHeight="0px"
     >
       {search && (
         <Link
