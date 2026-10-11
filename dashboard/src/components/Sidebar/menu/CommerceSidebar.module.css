@@ -1,27 +1,165 @@
-/* Dashboard-only navigation tokens. Never import this module from Paper/storefront.
-   The native Macaw light/dark theme still controls text, surfaces and controls.
-   Override the first variable to change only the admin navigation accent. */
+/* Scoped to Saleor Dashboard. Paper storefront themes never import this file.
+   Use the token below (and Macaw's existing light/dark theme) for backend colors. */
+.sidebarShell,
 .menuRoot {
   --commerce-admin-nav-accent: #2563eb;
-  --commerce-admin-nav-active: color-mix(in srgb, var(--commerce-admin-nav-accent) 14%, transparent);
-  --commerce-admin-nav-subtle: color-mix(in srgb, currentColor 3%, transparent);
+  --commerce-admin-nav-active: color-mix(in srgb, var(--commerce-admin-nav-accent) 13%, transparent);
+  --commerce-admin-nav-soft: color-mix(in srgb, currentColor 4%, transparent);
+  min-width: 0;
+}
+
+.brandHeader {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.brandIdentity {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brandText {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 6px;
+  white-space: nowrap;
+}
+
+.brandText > *:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.adminTag {
+  border-radius: 5px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  color: var(--commerce-admin-nav-accent);
+  background-color: var(--commerce-admin-nav-active);
+}
+
+.brandActions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.collapseButton {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: .76;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapseButton:hover {
+  opacity: 1;
+  background: var(--commerce-admin-nav-soft);
+}
+
+.brandHeaderCompact {
+  min-height: 94px;
+  padding: 13px 8px 8px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+}
+
+.brandHeaderCompact .brandIdentity {
+  flex: none;
+}
+
+.menuColumn {
+  min-height: 0;
+  overflow: hidden;
+  gap: 8px;
+}
+
+.menuScroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 1px 10px;
+}
+
+.searchBox {
+  display: flex;
+  min-height: 39px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: inherit;
+  text-decoration: none;
+  background: var(--commerce-admin-nav-soft);
+  border: 1px solid color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.searchBox:hover {
+  border-color: color-mix(in srgb, var(--commerce-admin-nav-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--commerce-admin-nav-accent) 6%, transparent);
+}
+
+.searchPlaceholder {
+  font-size: 12px;
+  opacity: .72;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.settingsFooter {
+  padding-top: 7px;
+  border-top: 1px solid color-mix(in srgb, currentColor 9%, transparent);
+  overflow-y: auto;
+  max-height: 52vh;
+  flex-shrink: 0;
 }
 
 .groupTrigger {
-  min-height: 42px;
+  min-height: 43px;
   cursor: pointer;
   transition: background-color 120ms ease;
 }
 
 .groupTrigger:hover,
-.groupTrigger[aria-expanded="true"] {
-  background-color: color-mix(in srgb, currentColor 5%, transparent);
+.groupTrigger[aria-expanded="true"],
+.groupActive {
+  background: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.groupActive {
+  box-shadow: inset 3px 0 var(--commerce-admin-nav-accent);
 }
 
 .subMenu {
-  border-radius: 10px;
-  background-color: var(--commerce-admin-nav-subtle);
-  padding: 4px 6px 5px;
+  padding: 5px 4px 5px 7px;
+  margin-right: 1px;
+  background: var(--commerce-admin-nav-soft);
+  border-radius: 9px;
 }
 
 .itemRow {
@@ -33,16 +171,87 @@
   background-color: color-mix(in srgb, currentColor 7%, transparent);
 }
 
+.selected,
+.selected:hover {
+  background-color: var(--commerce-admin-nav-active) !important;
+  box-shadow: inset 3px 0 var(--commerce-admin-nav-accent);
+}
+
+.menuRoot a:focus-visible,
+.menuRoot button:focus-visible,
+.collapseButton:focus-visible,
 .itemRow:focus-within,
 .groupTrigger:focus-visible {
   outline: 2px solid var(--commerce-admin-nav-accent);
   outline-offset: -2px;
 }
 
-.selected,
-.selected:hover {
-  background-color: var(--commerce-admin-nav-active) !important;
-  box-shadow: inset 3px 0 var(--commerce-admin-nav-accent);
+.railColumn {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 6px 7px;
+}
+
+.railScroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scrollbar-width: none;
+  overscroll-behavior: contain;
+}
+
+.railList {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.railFooter {
+  padding: 8px 0 4px;
+  border-top: 1px solid color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.railItem {
+  color: inherit;
+  border: 0;
+  border-radius: 9px;
+  width: 100%;
+  height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.railItem:hover {
+  background-color: var(--commerce-admin-nav-soft);
+}
+
+.railIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compactUser {
+  flex-direction: column;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  justify-content: center;
+}
+
+.compactUser > :first-child {
+  flex-grow: 0;
+}
+
+.compactUser button {
+  min-width: 28px;
 }
 
 @media (prefers-reduced-motion: reduce) {
