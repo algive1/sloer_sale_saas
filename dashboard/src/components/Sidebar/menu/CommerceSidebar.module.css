@@ -1,0 +1,53 @@
+/* Dashboard-only navigation tokens. Never import this module from Paper/storefront.
+   The native Macaw light/dark theme still controls text, surfaces and controls.
+   Override the first variable to change only the admin navigation accent. */
+.menuRoot {
+  --commerce-admin-nav-accent: #2563eb;
+  --commerce-admin-nav-active: color-mix(in srgb, var(--commerce-admin-nav-accent) 14%, transparent);
+  --commerce-admin-nav-subtle: color-mix(in srgb, currentColor 3%, transparent);
+}
+
+.groupTrigger {
+  min-height: 42px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.groupTrigger:hover,
+.groupTrigger[aria-expanded="true"] {
+  background-color: color-mix(in srgb, currentColor 5%, transparent);
+}
+
+.subMenu {
+  border-radius: 10px;
+  background-color: var(--commerce-admin-nav-subtle);
+  padding: 4px 6px 5px;
+}
+
+.itemRow {
+  min-height: 37px;
+  transition: background-color 120ms ease;
+}
+
+.itemRow:hover {
+  background-color: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.itemRow:focus-within,
+.groupTrigger:focus-visible {
+  outline: 2px solid var(--commerce-admin-nav-accent);
+  outline-offset: -2px;
+}
+
+.selected,
+.selected:hover {
+  background-color: var(--commerce-admin-nav-active) !important;
+  box-shadow: inset 3px 0 var(--commerce-admin-nav-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .groupTrigger,
+  .itemRow {
+    transition: none;
+  }
+}
