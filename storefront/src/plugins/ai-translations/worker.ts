@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import "server-only";
 import { claimNext, claimScope, completeGenerated } from "./store";
 import { parseTranslation, validateScope, type TranslatedFields } from "./policy";
@@ -34,7 +35,9 @@ async function generate(source:TranslatedFields,locale:string):Promise<Translate
 }
 
 /** Bounded worker tick; never imported by shoppers or called by /ops GET requests. */
-export async function runTranslationWorker():Promise<{processed:number;failed:number}> {
+export async function runTranslationWorker():Promise<{processed:number;failed:number;reason?:string}> {
+  const paused = pluginPauseReason("ai-translations");
+  if (paused) return { processed: 0, failed: 0, reason: paused };
   const item=await claimNext();
   if(!item)return {processed:0,failed:0};
   try {

@@ -1,3 +1,5 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -98,7 +100,8 @@ async function TranslationCenterRuntime() {
             查看前台文案覆盖率，按品牌与销售市场创建 AI 商品翻译任务，逐条审核后受控发布。
           </p>
         </header>
-        <TranslationCenter brands={brands} coverage={coverage}
+        <PluginPauseNotice plugin="ai-translations" />
+        <TranslationCenter paused={Boolean(pluginPauseReason("ai-translations"))} brands={brands} coverage={coverage}
           storageReady={translationDatabaseConfigured()}
           workerReady={(process.env.TRANSLATION_WORKER_SECRET?.trim().length??0)>=32 &&
             Boolean(process.env.TRANSLATION_AI_BASE_URL&&process.env.TRANSLATION_AI_API_KEY&&process.env.TRANSLATION_AI_MODEL)}

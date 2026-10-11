@@ -1,3 +1,4 @@
+import { assertPluginActive } from "@/plugins/system/runtime.server";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -71,6 +72,7 @@ export async function getSavedTemplate(
 export async function saveNamedTemplate(
   channel:string,locale:string,pageType:EditablePage,title:string,input:unknown,
 ):Promise<SavedTemplateSummary> {
+  assertPluginActive("theme-builder");
   const clean=title.trim();
   if(clean.length<2||clean.length>60||/[\u0000-\u001f]/.test(clean))
     throw new ThemeValidationError("Template name must contain 2–60 readable characters");
@@ -97,6 +99,7 @@ export async function saveNamedTemplate(
 export async function deleteSavedTemplate(
   channel:string,locale:string,pageType:EditablePage,id:string,
 ):Promise<boolean> {
+  assertPluginActive("theme-builder");
   idGuard(id);await ensureSchema();
   const [result]=await libsqlPipeline([{
     sql:`DELETE FROM storefront_theme_saved_templates

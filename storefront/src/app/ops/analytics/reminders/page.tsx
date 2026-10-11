@@ -1,3 +1,5 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { io } from "next/cache";
@@ -41,6 +43,7 @@ async function ReminderContent({ searchParams }: { searchParams: Params }) {
 	};
 	return (
 		<div className="space-y-5">
+			<PluginPauseNotice plugin="payment-reminders" />
 			<form method="get" className="flex items-end gap-3">
 				<label className="text-sm">
 					品牌
@@ -87,6 +90,7 @@ async function ReminderContent({ searchParams }: { searchParams: Params }) {
 			{rule ? (
 				<ReminderSettings
 					key={site.id}
+					paused={Boolean(pluginPauseReason("payment-reminders"))}
 					initial={rule}
 					siteId={site.id}
 					emailReady={site.emailReady}

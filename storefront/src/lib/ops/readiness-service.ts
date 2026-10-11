@@ -11,7 +11,7 @@ import type { OpsViewer } from "./authorization";
 import { manualReadinessChecks, launchAllowed, readinessActorAllowed, recordStatus, type ReadinessCheck, type ReadinessSnapshot } from "./readiness-model";
 import { appendReadinessRecord, ReadinessConflictError, readinessRecords, readinessStorageConfigured } from "./readiness-store";
 
-const RELEVANT_ENV = /^(?:STOREFRONT_|NEXT_PUBLIC_|SALEOR_SHARED_CORE_|ENABLE_STRIPE|RESEND_API_KEY|PAYMENT_REMINDER_|SUPPORT_|TRANSLATION_PUBLISH_ENABLED|OPS_READINESS_CONFIG_REVISION)/;
+const RELEVANT_ENV = /^(?:STOREFRONT_|NEXT_PUBLIC_|SALEOR_SHARED_CORE_|ENABLE_STRIPE|RESEND_API_KEY|PAYMENT_REMINDER_|SUPPORT_|TRANSLATION_PUBLISH_ENABLED|OPS_READINESS_CONFIG_REVISION|SYSTEM_PLUGINS_DISABLED)/;
 
 export async function brandReadiness(siteId: string): Promise<ReadinessSnapshot> {
   const site = getBrandSites()?.find(entry => entry.id === siteId);

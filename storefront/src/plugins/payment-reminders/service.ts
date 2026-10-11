@@ -1,3 +1,4 @@
+import { assertPluginActive, pluginPauseReason } from "@/plugins/system/runtime.server";
 import "server-only";
 import { createHash } from "node:crypto";
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
@@ -26,6 +27,8 @@ export function reminderEmailConfigured(siteId?: string): boolean {
 	return reminderUnavailableReason(siteId) === null;
 }
 export function reminderUnavailableReason(siteId?: string): string | null {
+	const paused = pluginPauseReason("payment-reminders");
+	if (paused) return paused;
 	try {
 		const scopes = siteId === undefined ? reminderScopes() : [reminderScope(siteId)];
 		return scopes.some((s) => s.emailReady)
@@ -102,6 +105,7 @@ export async function setReminderRule(
 	rule: PaymentReminderRule,
 	siteId?: string,
 ): Promise<PaymentReminderRule> {
+	assertPluginActive("payment-reminders");
 	const scope = reminderScope(siteId);
 	if (rule.enabled && !scope.emailReady) throw new Error("email_not_configured");
 	if (

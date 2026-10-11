@@ -2,12 +2,13 @@
 import {useState} from "react";
 import type {PaymentReminderRule} from "@/plugins/payment-reminders/service";
 
-export function ReminderSettings({initial,emailReady,cronReady,siteId}:{initial:PaymentReminderRule;emailReady:boolean;cronReady:boolean;siteId:string}){
+export function ReminderSettings({initial,emailReady,cronReady,siteId,paused=false}:{paused?:boolean;initial:PaymentReminderRule;emailReady:boolean;cronReady:boolean;siteId:string}){
  const [rule,setRule]=useState(initial);
  const [saving,setSaving]=useState(false);
  const [notice,setNotice]=useState("");
  const update=(name:keyof PaymentReminderRule,value:boolean|number)=>setRule(v=>({...v,[name]:value}));
  async function save(){
+  if(paused){setNotice("系统已暂停，规则暂不可修改。");return;}
   setSaving(true);setNotice("");
   try{
    const r=await fetch("/ops/api/analytics/reminders/rules",{method:"POST",credentials:"same-origin",headers:{"content-type":"application/json","x-requested-with":"analytics"},body:JSON.stringify({...rule,siteId})});
@@ -17,7 +18,7 @@ export function ReminderSettings({initial,emailReady,cronReady,siteId}:{initial:
   }catch(e){setNotice(e instanceof Error?e.message:"保存失败");}
   finally{setSaving(false);}
  }
- return <section className="max-w-3xl rounded-xl border border-border bg-card p-6">
+ return <fieldset disabled={paused} className="min-w-0"><section className="max-w-3xl rounded-xl border border-border bg-card p-6">
   <header><h2 className="text-lg font-semibold">付款提醒规则</h2><p className="mt-2 text-sm text-muted-foreground">仅针对 Saleor 已创建但仍未付款的有效订单。不会把弃单访问直接视为订单，也不会向已付款订单发送。</p></header>
   <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
    <p className="rounded-lg bg-secondary p-3">邮件提供商：<b>{emailReady?"已配置":"未配置"}</b></p>
@@ -35,5 +36,5 @@ export function ReminderSettings({initial,emailReady,cronReady,siteId}:{initial:
    <p>• 需正确设置发件人域名及订单查询页面。邮件只用于订单付款提醒，不附加营销内容。</p>
   </div>
   <div className="mt-5 flex items-center justify-between gap-3"><span className="text-xs text-muted-foreground" role="status">{notice}</span><button disabled={saving||(!emailReady&&rule.enabled)||(!cronReady&&rule.enabled)} onClick={()=>void save()} className="rounded-lg bg-foreground px-4 py-2 text-sm font-medium text-background disabled:opacity-40">{saving?"保存中":"保存规则"}</button></div>
- </section>;
+ </section></fieldset>;
 }

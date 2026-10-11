@@ -8,6 +8,7 @@ import { brandSitesConfigured, brandSiteForHost, getBrandSites } from "@/config/
 import { verifyCheckoutHostAtRequestBoundary } from "@/lib/brand/checkout-host-guard";
 import { channelForExplicitLocale, localeForChannel, resolveEntryLocalization, verifiedCountryFromHeader } from "@/lib/entry-localization";
 import { isAllowedLocaleChannelPair } from "@/config/locale-channel";
+import { opsMutationPlugin, parseSystemPluginPolicy, systemPluginPauseReason } from "@/plugins/system/policy";
 import { authorizeOpsRequest } from "@/lib/ops/authorization";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
@@ -98,6 +99,11 @@ export async function middleware(request: NextRequest) {
 				status: 403, headers: { "Cache-Control": "private, no-store" },
 			});
 		}
+		const plugin = opsMutationPlugin(pathname, request.method);
+		const pause = plugin && systemPluginPauseReason(plugin, parseSystemPluginPolicy(process.env.SYSTEM_PLUGINS_DISABLED));
+		if (pause) return NextResponse.json({ error: pause }, {
+			status: 503, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+		});
 		return NextResponse.next({
 			headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
 		});

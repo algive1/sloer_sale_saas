@@ -1,3 +1,4 @@
+import { assertPluginActive } from "@/plugins/system/runtime.server";
 import "server-only";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import { parseTheme, serializeTheme } from "./validate";
@@ -97,6 +98,7 @@ export async function saveTheme(
   publish: boolean,
   expectedRevision: number,
 ): Promise<number> {
+  assertPluginActive("theme-builder");
   if (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0) {
     throw new ThemeConflictError("Invalid revision; reload the editor.");
   }

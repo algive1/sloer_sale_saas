@@ -145,6 +145,7 @@ services:
       # Server-only settings must be explicitly mapped into the running container.
       SALEOR_APP_TOKEN: ${SALEOR_APP_TOKEN:-}
       OPS_CATALOG_SALEOR_TOKEN: ${OPS_CATALOG_SALEOR_TOKEN:-}
+      SYSTEM_PLUGINS_DISABLED: ${SYSTEM_PLUGINS_DISABLED:-[]}
       OPS_FULFILLMENT_SALEOR_TOKEN: ${OPS_FULFILLMENT_SALEOR_TOKEN:-}
       # Only server-side Paper GraphQL calls may access guest Checkout data.
       SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ${SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET:-}
