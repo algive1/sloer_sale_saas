@@ -84,7 +84,7 @@ const FeedbackButton = () => {
   );
 };
 
-export const UserControls = () => {
+export const UserControls = ({ compact = false }: { compact?: boolean }) => {
   const { user, logout } = useUser();
   const { changeTheme, theme } = useLegacyThemeHandler();
   const [open, setOpen] = useState(false);
@@ -93,7 +93,7 @@ export const UserControls = () => {
   return (
     <>
       <Box display="flex" alignItems="center" gap={1} flexShrink="0">
-        <FeedbackButton />
+        {!compact && <FeedbackButton />}
         <Dropdown
           open={open}
           onOpenChange={value => {
