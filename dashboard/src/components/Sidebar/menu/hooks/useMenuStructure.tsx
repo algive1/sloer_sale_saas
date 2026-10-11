@@ -61,6 +61,7 @@ import { useIntl } from "react-intl";
 import { SidebarIconSlot } from "../../SidebarIconSlot";
 import { createOpsHref } from "../commerceOpsLinks";
 import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
+import { DASHBOARD_SEARCH_PERMISSIONS } from "../navigationAccess";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
 import { type SidebarMenuItem } from "../types";
 import { mapToExtensionsItems } from "../utils";
@@ -170,12 +171,7 @@ export function useMenuStructure() {
       ),
       id: "search",
       url: "/search",
-      permissions: [
-        PermissionEnum.MANAGE_PRODUCTS,
-        PermissionEnum.MANAGE_PAGES,
-        PermissionEnum.MANAGE_PAGE_TYPES_AND_ATTRIBUTES,
-        PermissionEnum.MANAGE_ORDERS,
-      ],
+      permissions: [...DASHBOARD_SEARCH_PERMISSIONS],
       type: "item",
     },
     {
@@ -491,7 +487,7 @@ export function useMenuStructure() {
     type: "itemGroup",
     children: [
       { id: "commerce-settings-home", label: localized("设置总览", "All settings"),
-        url: configurationMenuUrl, type: "item" },
+        url: configurationMenuUrl, type: "item", exactMatch: true },
       { id: "commerce-settings-store", label: localized("店铺信息", "Store details"),
         url: siteSettingsUrl(), type: "item",
         permissions: [PermissionEnum.MANAGE_SETTINGS] },
