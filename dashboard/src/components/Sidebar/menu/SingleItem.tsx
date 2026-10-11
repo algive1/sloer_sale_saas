@@ -64,7 +64,7 @@ export const SingleItem = ({ menuItem }: Props) => {
           to={menuItem.url || ""}
           replace={active}
           aria-current={active ? "page" : undefined}
-          className={sprinkles({ display: "block", width: "100%" })}
+          className={`${sprinkles({ display: "block", width: "100%" })} ${styles.clickArea}`}
         >
           {content}
         </Link>
