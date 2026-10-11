@@ -16,7 +16,8 @@ test("native fulfillment queue enforces brand scope and exports fresh paid physi
   expect((await request.post(base + path, { headers: { ...headers, authorization: reader }, data })).status()).toBe(403);
   expect((await request.post(base + path, { headers: { ...headers, origin: "https://foreign.example" }, data })).status()).toBe(403);
   expect((await request.post(base + path, { headers, data: { ...data, confirm: false } })).status()).toBe(400);
-  const exported = await request.post(base + path, { headers, data }); expect(exported.status()).toBe(200); expect(exported.headers()["x-shipping-export-id"]).toBeTruthy();
+  const exported = await request.post(base + path, { headers, data });
+  expect(exported.status(), exported.ok() ? "CSV prepared" : await exported.text()).toBe(200); expect(exported.headers()["x-shipping-export-id"]).toBeTruthy();
   const csv = await exported.text(); expect(csv).toContain('"quantity_to_ship"'); expect(csv).toContain('"recipient"'); expect(csv).toContain(`"${paid.id}"`); expect(csv).not.toContain("jewelry-us");
   const after = await (await request.get(base + path, { headers: { authorization: owner } })).json(); expect(after.orders.find((order: { id: string }) => order.id === paid.id).status).toBe(paid.status);
 });
@@ -28,7 +29,13 @@ test("administrator selects an order, confirms freight purpose and downloads CSV
     await expect(page.getByRole("link", { name: "原生发货 ↗" }).first()).toBeVisible();
     await page.locator('input[aria-label^="选择订单 "]:not(:disabled)').first().check();
     await expect(page.getByRole("button", { name: /导出交接CSV/ })).toBeDisabled(); await page.getByRole("checkbox", { name: "我已核对选择，将收件资料仅用于货代履约交接。" }).check();
-    const downloadPromise = page.waitForEvent("download"); await page.getByRole("button", { name: /导出交接CSV/ }).click(); expect((await downloadPromise).suggestedFilename()).toBe("fashion-ci-us-shipping.csv");
+    const responsePromise = page.waitForResponse(response => response.url().endsWith(path) && response.request().method() === "POST");
+    const downloadPromise = page.waitForEvent("download", { timeout: 15_000 });
+    // Consume a rejected download promise even when the API assertion fails first.
+    void downloadPromise.catch(() => undefined);
+    await page.getByRole("button", { name: /导出交接CSV/ }).click();
+    const response = await responsePromise; expect(response.status(), response.ok() ? "CSV prepared" : await response.text()).toBe(200);
+    expect((await downloadPromise).suggestedFilename()).toBe("fashion-ci-us-shipping.csv");
     await expect(page.getByRole("status")).toContainText("已准备"); await expect(page.getByRole("status")).toContainText("导出没有创建发货");
     await page.reload(); await expect(page.getByText(/ops_owner · \d+笔/).first()).toBeVisible();
     await page.setViewportSize({ width: 375, height: 812 });
