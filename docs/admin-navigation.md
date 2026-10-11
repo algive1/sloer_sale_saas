@@ -57,7 +57,7 @@ embeds the public (non-secret) origin in its JS bundle.
 ## Visual themes and storefront isolation
 
 - Saleor already supports light/dark switching in the account menu.
-- Desktop navigation expands to 280px or collapses to a 72px icon rail. The collapse choice is stored only in this browser; mobile and tablet continue to use Saleor's full navigation drawer.
+- Desktop navigation expands to 296px or collapses to a 72px icon rail. The collapse choice is stored only in this browser; mobile and tablet continue to use Saleor's full navigation drawer.
 - Clicking a group icon while collapsed reopens the sidebar and expands that group. The global search still targets Saleor `/search` and retains its native `/` shortcut.
 - Navigation emphasis is scoped to
   `dashboard/src/components/Sidebar/menu/CommerceSidebar.module.css`.
@@ -70,8 +70,10 @@ embeds the public (non-secret) origin in its JS bundle.
 ## Extension path
 
 To add a real custom function: first implement and secure its actual ops route,
-then register its link in `useMenuStructure.tsx` through `opsItem` with the
-appropriate Saleor navigation permission. Custom Saleor Apps should continue
+then add its route, name, section and navigation permissions to
+`dashboard/src/components/Sidebar/menu/commerceOpsNavigation.ts`. The existing
+`useMenuStructure.tsx` builds the link from this registry without editing the
+Saleor module for each additional custom page. Custom Saleor Apps should continue
 to use upstream extension mount points instead of direct core changes.
 
 Future work, not included here: a single-session, same-shell Commerce Ops
@@ -87,7 +89,7 @@ coverage with both services running.
 - Verify sensitive ops pages remain inaccessible to users without ops
   authorization even if the user types the URL directly.
 - Test secure HTTPS deployment and local http://localhost setup separately.
-- Run `pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts --runInBand`
+- Run `pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts --runInBand`
   and `pnpm --dir dashboard exec tsc --noEmit` on a checkout with dependencies.
 
 ## Navigation regression notes
@@ -97,3 +99,25 @@ coverage with both services running.
 - Orders, Analytics, and Online store start expanded, but operators can close them.
 - Search appears as a clickable field only when the account has native Search permission.
 - Only two UI preferences use browser localStorage: `commerce-admin-sidebar-collapsed` and `commerce-admin-navigation-accent`. No merchant data or storefront colors are stored.
+
+## Visual prototype comparison (11 October 2026)
+
+Design language: Macaw UI-based **modern minimal SaaS commerce administration**,
+with merchant-oriented information architecture inspired by Shoplazza.
+Do not mistake the generated reference graphic for a screenshot of the running app.
+
+| Reference feature | Implemented in PR #53 | Follow-up / caveat |
+| --- | --- | --- |
+| Left navigation and admin brand | 296px desktop sidebar, blue SLOER monogram, Admin tag | The prototype's geometric logo is illustrative, not a final company vector logo |
+| Clearly separated first/second levels | Native Macaw accordion plus inset neutral child group, blue active state and keyboard focus | Needs browser visual regression in light/dark and mobile |
+| Global search and account at top | Reuse Saleor `/search`, `/` shortcut, and the staff account page in shared Macaw topbar | Do not invent a notifications service or duplicate Saleor page tools |
+| Navigation collapse | Persistent 72px desktop icon rail; click a group icon to re-open that section | Mobile uses native full drawer |
+| Admin color choices | Browser-local blue/slate/teal accent and native Macaw light/dark modes | It changes admin navigation only, not any published storefront theme |
+| Apps & custom pages | Existing Commerce Ops links registered in a standalone file; Saleor extension mount points preserved | Ops remain separate authenticated pages that open in a new tab |
+| Theme overview image, Fleur card & multi-page grid | **Not a live Dashboard implementation.** Real `/ops/themes` is Puck editor for homepage and default product detail template | Any future theme landing page must read real templates and publish status; do not insert static fake cards |
+| Store data / payment / checkout content | Unchanged Saleor pages and existing Ops service | Existing logic and permission checks stay authoritative |
+
+Current acceptance boundary: do not claim 1:1 image fidelity or completion of
+the unified Commerce Ops shell until tested in a running browser with Saleor and
+the separately authenticated Ops service. In particular, the mock Fleur management
+landing page is not currently an implemented management route.
