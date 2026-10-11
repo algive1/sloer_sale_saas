@@ -1,4 +1,5 @@
 import { useUser } from "@dashboard/auth/useUser";
+import { channelsListUrl } from "@dashboard/channels/urls";
 import { categoryListUrl } from "@dashboard/categories/urls";
 import { collectionListUrl } from "@dashboard/collections/urls";
 import { navigationLucideIconProps } from "@dashboard/components/icons";
@@ -49,10 +50,11 @@ import { menuListUrl } from "@dashboard/structures/urls";
 import { languageListUrl } from "@dashboard/translations/urls";
 import { Box, Text } from "@saleor/macaw-ui-next";
 import isEmpty from "lodash/isEmpty";
-import { Search, Star } from "lucide-react";
+import { ChartNoAxesCombined, Globe2, Search, Star } from "lucide-react";
 import { useIntl } from "react-intl";
 
 import { SidebarIconSlot } from "../../SidebarIconSlot";
+import { createOpsHref } from "../commerceOpsLinks";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
 import { type SidebarMenuItem } from "../types";
 import { mapToExtensionsItems } from "../utils";
@@ -138,7 +140,7 @@ export function useMenuStructure() {
     ],
   });
 
-  const menuItems: SidebarMenuItem[] = [
+  const originalMenuItems: SidebarMenuItem[] = [
     {
       icon: renderIcon(<HomeIcon />),
       label: intl.formatMessage(sectionNames.home),
@@ -350,6 +352,157 @@ export function useMenuStructure() {
       type: "item",
     },
   ];
+
+  // Reuse Saleor's routes, permissions, extension slots and pins. Custom /ops
+  // pages remain separately authenticated and open in a distinct browser tab.
+  const localized = (zh: string, en: string) =>
+    intl.locale.toLowerCase().startsWith("zh") ? zh : en;
+  const native = (id: string) => {
+    const item = originalMenuItems.find(candidate => candidate.id === id);
+
+    if (!item) throw new Error(`Missing built-in Dashboard navigation: ${id}`);
+
+    return item;
+  };
+  const opsItem = (
+    id: string,
+    label: string,
+    path: `/ops${string}`,
+    permissions: PermissionEnum[] = [],
+  ): SidebarMenuItem | null => {
+    const externalUrl = createOpsHref(process.env.COMMERCE_OPS_URL, path);
+
+    return externalUrl ? { id, label, externalUrl, permissions, type: "item" } : null;
+  };
+  const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
+    items.filter((item): item is SidebarMenuItem => item !== null);
+
+  const home = native("home");
+  const search = native("search");
+  const baseOrders = native("orders");
+  const baseCatalog = native("products");
+  const baseCustomers = native("customers");
+  const baseDiscounts = native("discounts");
+  const baseModeling = native("modeling");
+  const baseTranslations = native("translations");
+  const baseExtensions = native("installed-extensions");
+  const settings = native("configure");
+
+  const orders: SidebarMenuItem = {
+    ...baseOrders,
+    label: localized("订单", "Orders"),
+    children: [
+      ...(baseOrders.children ?? []),
+      ...available(opsItem(
+        "commerce-payment-reminders",
+        localized("智能催付", "Payment reminders"),
+        "/ops/analytics/reminders",
+        [PermissionEnum.MANAGE_ORDERS],
+      )),
+    ],
+  };
+  const catalog: SidebarMenuItem = {
+    ...baseCatalog,
+    label: localized("商品", "Products"),
+  };
+  const customers: SidebarMenuItem = {
+    ...baseCustomers,
+    label: localized("客户", "Customers"),
+    children: [
+      ...(baseCustomers.children ?? []),
+      ...available(opsItem(
+        "commerce-support",
+        localized("在线客服", "Customer support"),
+        "/ops/support",
+        [PermissionEnum.MANAGE_USERS, PermissionEnum.MANAGE_ORDERS],
+      )),
+    ],
+  };
+  const marketing: SidebarMenuItem = {
+    ...baseDiscounts,
+    label: localized("营销", "Marketing"),
+  };
+
+  const analyticsChildren = available(
+    opsItem("commerce-analytics-overview", localized("经营总览", "Overview"), "/ops/analytics"),
+    opsItem("commerce-analytics-realtime", localized("实时数据", "Realtime"), "/ops/analytics/realtime"),
+    opsItem("commerce-analytics-traffic", localized("流量分析", "Traffic analytics"), "/ops/analytics/traffic"),
+    opsItem("commerce-analytics-checkout", localized("结账分析", "Checkout analytics"), "/ops/analytics/checkout"),
+    opsItem("commerce-analytics-products", localized("商品分析", "Product analytics"), "/ops/analytics/products"),
+  );
+  const analytics: SidebarMenuItem | null = analyticsChildren.length ? {
+    id: "commerce-analytics",
+    icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
+    label: localized("数据分析", "Analytics"),
+    type: "itemGroup",
+    permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_PRODUCTS],
+    children: analyticsChildren,
+  } : null;
+
+  const onlineStore: SidebarMenuItem = {
+    ...baseModeling,
+    label: localized("在线商店", "Online store"),
+    // A translator should still see this section without page/model privileges.
+    permissions: [...(baseModeling.permissions ?? []), PermissionEnum.MANAGE_TRANSLATIONS],
+    children: [
+      ...available(
+        opsItem("commerce-brand-sites", localized("品牌站点", "Brand sites"), "/ops/sites", [PermissionEnum.MANAGE_PAGES]),
+        opsItem("commerce-theme-builder", localized("主题装修", "Theme editor"), "/ops/themes", [PermissionEnum.MANAGE_PAGES]),
+        opsItem("commerce-product-theme", localized("商品详情页模板", "Product detail template"), "/ops/themes?pageType=product", [PermissionEnum.MANAGE_PAGES]),
+      ),
+      ...(baseModeling.children ?? []),
+      { ...baseTranslations, label: localized("语言翻译", "Translations") },
+      ...available(opsItem(
+        "commerce-ai-translations",
+        localized("AI 多语言", "AI translations"),
+        "/ops/translations",
+        [PermissionEnum.MANAGE_TRANSLATIONS],
+      )),
+    ],
+  };
+  const channels: SidebarMenuItem = {
+    id: "commerce-sales-channels",
+    icon: renderIcon(<Globe2 {...navigationLucideIconProps} />),
+    label: localized("销售渠道", "Sales channels"),
+    type: "itemGroup",
+    url: channelsListUrl(),
+    permissions: [PermissionEnum.MANAGE_CHANNELS],
+    children: [{
+      id: "commerce-channel-management",
+      label: localized("渠道管理", "Manage channels"),
+      url: channelsListUrl(),
+      permissions: [PermissionEnum.MANAGE_CHANNELS],
+      type: "item",
+    }],
+  };
+  const apps: SidebarMenuItem = {
+    ...baseExtensions,
+    label: localized("应用", "Apps"),
+    children: [
+      ...(baseExtensions.children ?? []),
+      ...available(opsItem(
+        "commerce-system-apps",
+        localized("自研系统插件", "System extensions"),
+        "/ops/plugins",
+        [PermissionEnum.MANAGE_APPS],
+      )),
+    ],
+  };
+
+  const menuItems: SidebarMenuItem[] = [
+    home,
+    search,
+    orders,
+    catalog,
+    customers,
+    marketing,
+    ...available(analytics),
+    onlineStore,
+    channels,
+    apps,
+    settings,
+  ];
+
   // Pins are injected before filtering, so one whose host section is hidden drops out with it.
   const menuItemsWithPins = injectNavigationPins(menuItems, navigationPins, {
     favoritesLabel: intl.formatMessage(navigationPinMessages.favorites),
