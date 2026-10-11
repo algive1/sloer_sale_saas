@@ -3,7 +3,7 @@ import { PermissionEnum } from "@dashboard/graphql";
 import { type SidebarMenuItem } from "./types";
 import { filterSidebarMenu } from "./filterSidebarMenu";
 
-const allowed = new Set([PermissionEnum.MANAGE_PAGES]);
+const allowed = new Set<PermissionEnum>([PermissionEnum.MANAGE_PAGES]);
 const canSee = (item: SidebarMenuItem) =>
   !item.permissions?.length || item.permissions.some(permission => allowed.has(permission));
 
