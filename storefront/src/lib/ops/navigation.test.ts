@@ -24,6 +24,7 @@ describe("Commerce Ops operator sidebar", () => {
 
   it("only accepts a safe configured Dashboard origin or mount", () => {
     expect(buildDashboardHref("https://admin.example.com/")).toBe("https://admin.example.com/");
+    expect(buildDashboardHref("https://admin.example.com/dashboard")).toBe("https://admin.example.com/dashboard/");
     expect(buildDashboardHref("https://admin.example.com/dashboard/")).toBe(
       "https://admin.example.com/dashboard/",
     );
