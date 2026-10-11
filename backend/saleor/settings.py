@@ -897,6 +897,9 @@ GRAPHQL_PAGINATION_LIMIT = 100
 # A shared Saleor Core has global customer identities, irrespective of Channels.
 # Reject direct customer GraphQL while multi-brand storefronts are guest-only.
 SHARED_CORE_GUEST_ONLY = get_bool_from_env("SALEOR_SHARED_CORE_GUEST_ONLY", False)
+# Only the server-side Paper BFF may read/mutate anonymous shared-Core checkouts.
+# Never expose this key in NEXT_PUBLIC_* or to browsers.
+SHARED_CORE_CHECKOUT_GATEWAY_SECRET = os.environ.get("SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET", "")
 GRAPHQL_MIDDLEWARE: list[str] = (
     ["saleor.graphql.shared_core_guest_guard.GuestOnlySharedCoreMiddleware"]
     if SHARED_CORE_GUEST_ONLY
