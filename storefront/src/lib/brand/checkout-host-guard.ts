@@ -32,7 +32,13 @@ export async function verifyCheckoutHostAtRequestBoundary(
   try {
     const response = await fetcher(api, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        ...(process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET?.length >= 32
+          ? { "x-paper-checkout-gateway-secret": process.env.SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET }
+          : {}),
+      },
       body: JSON.stringify({
         query: CHANNEL_QUERY,
         variables: { id: checkoutId },
