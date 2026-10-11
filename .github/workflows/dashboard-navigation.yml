@@ -1,0 +1,48 @@
+name: Dashboard navigation
+
+on:
+  pull_request:
+    paths:
+      - "dashboard/src/components/Sidebar/**"
+      - "dashboard/vite.config.js"
+      - "dashboard/Dockerfile"
+      - "dashboard/package.json"
+      - "dashboard/pnpm-lock.yaml"
+      - ".github/workflows/dashboard-navigation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/src/components/Sidebar/**"
+      - "dashboard/vite.config.js"
+      - "dashboard/Dockerfile"
+      - "dashboard/package.json"
+      - "dashboard/pnpm-lock.yaml"
+      - ".github/workflows/dashboard-navigation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HUSKY: "0"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.13.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm --dir dashboard install --frozen-lockfile
+      - name: Check Dashboard types
+        run: pnpm --dir dashboard exec tsc --noEmit
+      - name: Validate navigation origins
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts --runInBand
