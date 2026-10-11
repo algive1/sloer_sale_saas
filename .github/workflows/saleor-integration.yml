@@ -493,9 +493,10 @@ jobs:
 
       - name: Two real brand hosts and Checkout boundary E2E
         env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           SALEOR_API_URL: http://127.0.0.1:8000/graphql/
-        run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts --workers=1
+        run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts e2e/sitemap-integrity-live.spec.ts --workers=1
 
       - name: Multi-brand operator scope and no-cache E2E
         env:

@@ -11,7 +11,7 @@
 | 负责人 | 任务 | 负责范围 | 状态 |
 | --- | --- | --- | --- |
 | ChatGPT：AI 图片生成任务 | 在现有装修编辑器内完成图片生成；保留其他 AI 接口 | theme-builder AI、生成素材、编辑器图片入口、相关模型配置 | 用户指定由该任务继续；本助手未代为开发 |
-| Codex：产品审核整改 | A19 单号回填、A23运营审计恢复契约 | ops/sites/tracking、lib/ops/tracking、原生履约回填GraphQL及测试；3表核心运营恢复检查 | 分支 feat/fulfillment-tracking；PR #61 六项CI通过并合并5ebd29b；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
+| Codex：产品审核整改 | A21 Sitemap完整性 | lib/seo/sitemap、核心公开GraphQL完整性选项及原生发现测试 | 分支 feat/sitemap-integrity；A19回填PR #62六项CI通过并合并dce09f2；不改草稿PR #53/#57的原生导航/Ops外壳或AI生成业务 |
 
 ## 给 AI 图片生成任务的交接
 
@@ -73,3 +73,7 @@
 - 2026-10-12：PR #61六项CI全部通过（含真实Saleor联调和Docker/PostgreSQL恢复），已合并5ebd29b。继续A19单号回填：复用原生已付款/实物履约、专用MANAGE_ORDERS凭证、个人管理员及品牌/channel边界；预检5分钟，原子防重，超时/丢回执不自动重发，顾客邮件notifyCustomer=false。原生API无CAS，保留并发人工核对限制，不修改Core。新增 `/ops/sites/{siteId}/tracking`，请导航/Ops外壳任务保留个人管理员入口。3个运营审计表纳入core.operations契约，17个插件表归属未变；不改AI图片或其他任务布局。
 
 - 2026-10-12：PR #62首次五项CI通过，原生联调在测试准备阶段因Node fetch.status被误写为方法失败，尚未合并。修正属性读取，增加两份运营E2E的独立TypeScript闸门并纳入verify，保留原生库存/履约创建/单号回填断言后重跑。本地七个可选模块全部暂停时，回填与核心审计3项HTTP/浏览器流程仍通过。
+
+- 2026-10-12：继续A21 Sitemap，修复下一页缺失/循环、部分GraphQL结果、无界请求及超限XML输出；保持核心SEO不依赖可选插件。开发101商品fixture实际分页/两品牌语言/未知Host404通过，原生CI新增totalCount独立核对。大目录index/分片仍待完成，不把故障拒绝当分片支持；不修改装修/AI/原生导航。
+
+- 2026-10-12：PR #62最终58a85bba六项CI全部通过并合并dce09f2，含实际分配库存/orderFulfill/单号回填重读、重复提交/品牌隔离/375px及Docker/Postgres恢复。Sitemap全量verify通过190文件/1134单元+12品牌保护，0 lint错误/27既有警告，等待原生生产CI。
