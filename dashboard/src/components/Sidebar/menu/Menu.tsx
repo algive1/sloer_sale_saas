@@ -1,4 +1,3 @@
-import { SearchShortcut } from "@dashboard/search/SearchShortcut";
 import { Box, List } from "@saleor/macaw-ui-next";
 import { Search } from "lucide-react";
 import { useLocation } from "react-router";
@@ -125,7 +124,7 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
           <span className={styles.searchPlaceholder}>
             {isZh ? "搜索功能…" : "Search features…"}
           </span>
-          <SearchShortcut />
+          <kbd className={styles.navSearchHint}>/</kbd>
         </Link>
       )}
       <div className={`hide-scrollbar ${styles.menuScroll}`}>
