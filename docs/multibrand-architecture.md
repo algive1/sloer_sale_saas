@@ -1,3 +1,37 @@
+## Server-only Checkout GraphQL gateway (PR #50)
+
+In guest-only shared-Core mode, a Checkout ID **alone is no longer accepted**
+for public Saleor GraphQL checkout queries or mutations. A caller must be a
+Saleor-authorized staff/app principal or present
+`x-paper-checkout-gateway-secret`, a server-only key that the Paper Next.js
+GraphQL clients attach when calling Saleor. The authoritative Host-to-Channel
+checkout checks remain in Paper's server actions and request boundary. Generic
+GraphQL `node { ... on Checkout }` traversals are covered by object field
+checks; aliases or fragments do not bypass the rule. Catalog and shop queries
+remain anonymous. Customer JWTs remain rejected before the checkout gate.
+
+**Deployment (mandatory with `STOREFRONT_SITES_JSON`):** Set a unique strong
+32+ character `SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET` (generate using
+`openssl rand -hex 32`) in the production root `.env`, alongside
+`SALEOR_SHARED_CORE_GUEST_ONLY=true`. Compose passes it to Saleor API and
+Paper server, never to browser-side `NEXT_PUBLIC_*` variables. The deploy
+script rejects missing/short secrets. Restart both API and storefront to
+rotate the key. Keep the API accessible only through the intended ingress;
+**never** forward the gateway key from public client headers, publish it in
+frontend source, return it in GraphQL responses or include it in logs.
+
+The live integration suite covers direct public checkout create/read/update
+rejection, generic Node traversal, authorized server-side checkout calls and
+positive/negative branded Paper URLs. Single-brand installs without the
+shared-Core flag preserve native Saleor GraphQL semantics.
+
+**Remaining risk:** This is a trusted Paper service-to-Saleor access boundary,
+not cryptographic per-brand isolation *within* Saleor. The same gateway key
+can access any checkout, so every Paper action, plugin and async service
+using it must enforce trusted Host/Channel authorization. Staff, apps and
+payment webhooks use other privilege paths that remain to audit. Treat
+leaked gateway keys and excessively privileged staff/app tokens as critical.
+
 ## Staff-safe token verification in shared-Core guest mode (PR #47)
 
 Saleor's public `tokenVerify(token: ...)` receives the JWT as a GraphQL
