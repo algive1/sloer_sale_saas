@@ -11,6 +11,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
 import { rippleGlobalFeedback } from "../ripples/globalFeedback";
+import { AdminAccentPicker } from "./AdminAccentPicker";
 import { FeatureFlagsModal } from "./FeatureFlagsModal";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useFeedbackSurvey } from "./useFeedbackSurvey";
@@ -173,6 +174,7 @@ export const UserControls = ({ compact = false }: { compact?: boolean }) => {
                   </List.Item>
                 </Dropdown.Item>
               </List>
+              <AdminAccentPicker />
             </Box>
           </Dropdown.Content>
         </Dropdown>
