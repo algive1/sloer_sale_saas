@@ -22,6 +22,6 @@
 
 单元回归包括未授权拒绝、全局事件刷新两个市场、明确市场/外部市场限制、规格事件不重建Sitemap、缓存清单与全量清除。
 
-真实CI先读取并缓存Jewelry Sitemap，确认101规格fixture尚未发布，再从品牌后台打开原生批量向导。发布成功后由Saleor worker产生并签名ProductUpdated；事件故意省略市场，验证非默认Jewelry Sitemap出现新商品，全程不发送手动清除请求。随后检查原生CI HTTP receipt (Saleor clears successful EventDeliveryAttempt rows)的200/成功状态及两个市场的缓存标签。错误签名被拒绝。
+真实CI先读取并缓存Jewelry Sitemap，确认101规格fixture尚未发布，再从品牌后台打开原生批量向导。发布成功后由Saleor worker产生并签名ProductUpdated；事件故意省略市场，验证非默认Jewelry Sitemap出现新商品，全程不发送手动清除请求。临时CI接收器原样转发真实worker请求，记录HMAC校验、200/成功状态及两个市场的缓存标签。Saleor会清理成功投递及其EventDeliveryAttempt，不以保留数据库成功记录为验收前提。错误签名被拒绝。
 
 验收与合并状态见对应PR。CI证明该一次性环境的原生投递，不代替生产基础设施、完整事件组合或商业上线证据。
