@@ -3,7 +3,10 @@ query OpsCatalogPreflight($skus: [String!]!) {
     pageInfo { hasNextPage }
     edges { node {
       sku
-      channelListings { channel { slug currencyCode isActive } }
+      channelListings {
+        channel { slug currencyCode isActive }
+        price { currency fractionDigits }
+      }
       product { channelListings { channel { slug currencyCode isActive } } }
     } }
   }

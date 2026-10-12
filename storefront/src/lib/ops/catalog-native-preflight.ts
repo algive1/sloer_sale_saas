@@ -74,6 +74,14 @@ export async function preflightNativeCatalogCsv(
 					)
 						throw new Error("invalid");
 				}
+				for (const listing of node.channelListings) {
+					if (!("price" in listing)) throw new Error("incomplete");
+					if (listing.price != null && (
+						listing.price.currency !== listing.channel.currencyCode ||
+						!Number.isInteger(listing.price.fractionDigits) ||
+						listing.price.fractionDigits < 0 || listing.price.fractionDigits > 6
+					)) throw new Error("invalid");
+				}
 				found.set(node.sku, [...(found.get(node.sku) ?? []), node]);
 			}
 		} catch {
@@ -81,7 +89,7 @@ export async function preflightNativeCatalogCsv(
 		}
 	}
 	const issues: CsvIssue[] = [];
-	rows.forEach(([sku, channel, , currency], index) => {
+	rows.forEach(([sku, channel, price, currency], index) => {
 		const fail = (field: string, reason: string) => issues.push({ row: index + 2, sku, field, reason });
 		const candidates = found.get(sku) ?? [];
 		const listings =
@@ -100,6 +108,15 @@ export async function preflightNativeCatalogCsv(
 			fail("currency", "币种与当前市场的原生配置不一致");
 			return;
 		}
+		const nativePrice = variantListings[0].price;
+		if (!nativePrice) {
+			fail("price", "当前市场尚无原生价格，无法核对币种精度；请先在原生后台设置价格");
+			return;
+		}
+		// Saleor normalizes trailing zeroes before checking currency precision.
+		// Read its fractionDigits instead of maintaining an Intl/Babel currency map.
+		const excess = (price.split(".")[1] ?? "").slice(nativePrice.fractionDigits);
+		if (/[1-9]/.test(excess)) fail("price", `价格超出原生币种的${nativePrice.fractionDigits}位小数精度；不会自动四舍五入`);
 	});
 	return {
 		rows: format.rows,

@@ -53,7 +53,7 @@ export function CatalogCsvValidator({ siteId }: { siteId: string }) {
 		<section className="rounded-xl border border-border bg-card p-5">
 			<h2 className="font-semibold">批量资料 · 导入前校验</h2>
 			<p className="mt-2 text-sm text-muted-foreground">
-				适用于实物商品资料准备。替换模板占位值后，可先检查格式，再核对原生现有SKU、市场归属和币种。两种检查均不写入；创建/更新、库存、重量、价格精度及图片可访问性仍须另外验收。
+				适用于实物商品资料准备。替换模板占位值后，可先检查格式，再核对原生现有SKU、市场归属、币种及价格精度。两种检查均不写入；创建/更新、库存、重量及图片可访问性仍须另外验收。
 			</p>
 			<a
 				className="mt-3 inline-block text-sm underline"
@@ -104,7 +104,7 @@ export function CatalogCsvValidator({ siteId }: { siteId: string }) {
 						{result.rows}行，
 						{result.valid
 							? nativeMode
-								? "SKU与市场币种核对通过，未写入商品"
+								? "SKU与市场币种核对通过，未写入商品（含原生价格精度）"
 								: "格式校验通过，未写入商品"
 							: `${result.issues.length}个问题，未写入商品`}
 					</p>

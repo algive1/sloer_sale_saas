@@ -9,7 +9,7 @@ const csv = (rows: string[]) =>
 const row = (sku = "HAT", currency = "USD", channel = "us") => `${sku},${channel},20.00,${currency}`;
 const variant = (sku: string, channel = "us", currency = "USD", active = true) => ({
 	sku,
-	channelListings: [{ channel: { slug: channel, currencyCode: currency, isActive: active } }],
+	channelListings: [{ channel: { slug: channel, currencyCode: currency, isActive: active }, price: { currency, fractionDigits: 2 } }],
 	product: { channelListings: [{ channel: { slug: channel, currencyCode: currency, isActive: active } }] },
 });
 const response = (nodes: unknown[], next = false) =>
@@ -115,6 +115,33 @@ it("checks more than one SKU batch completely with no duplicated lookup", async 
 	);
 	expect(batches.map((batch) => batch.length)).toEqual([100, 100, 5]);
 	expect(batches.flat()).toEqual(skus);
+});
+it("uses native Money precision for 0/2/3/4-digit currencies, permits trailing zeroes and never silently rounds", async () => {
+	for (const digits of [0, 2, 3, 4]) {
+		const node = variant("HAT");
+		node.channelListings[0].price.fractionDigits = digits;
+		vi.stubGlobal("fetch", vi.fn(async () => response([node])));
+		const price = "20." + "0".repeat(digits) + "1";
+		if (digits < 4) {
+			const result = await preflightNativeCatalogCsv("fashion", admin, csv([row().replace("20.00", price)]));
+			expect(result.issues).toMatchObject([{ field: "price" }]);
+			expect(result.valid).toBe(false);
+		}
+		expect((await preflightNativeCatalogCsv("fashion", admin, csv([row().replace("20.00", "20.0000")]))).valid).toBe(true);
+		if (digits > 0) expect((await preflightNativeCatalogCsv("fashion", admin, csv([row().replace("20.00", "20." + "0".repeat(digits - 1) + "1")]))).valid).toBe(true);
+	}
+	const node = variant("HAT"); node.channelListings[0].price.fractionDigits = 3;
+	vi.stubGlobal("fetch", vi.fn(async () => response([node])));
+	expect((await preflightNativeCatalogCsv("fashion", admin, csv([row().replace("20.00", "20.001")]))).valid).toBe(true);
+});
+it("refuses missing native prices and malformed currency precision metadata instead of declaring complete success", async () => {
+	const node = variant("HAT");
+	vi.stubGlobal("fetch", vi.fn(async () => response([{ ...node, channelListings: [{ ...node.channelListings[0], price: null }] }])));
+	expect((await preflightNativeCatalogCsv("fashion", admin, csv([row()]))).issues).toMatchObject([{ field: "price" }]);
+	for (const price of [undefined, { currency: "EUR", fractionDigits: 2 }, { currency: "USD", fractionDigits: 1.5 }, { currency: "USD", fractionDigits: -1 }, { currency: "USD", fractionDigits: 7 }]) {
+		vi.stubGlobal("fetch", vi.fn(async () => response([{ ...node, channelListings: [{ channel: node.channelListings[0].channel, ...(price !== undefined ? { price } : {}) }] }])));
+		await expect(preflightNativeCatalogCsv("fashion", admin, csv([row()]))).rejects.toThrow("unavailable");
+	}
 });
 it("fails the whole preflight on partial errors, missing pagination, overfull results or unrequested SKUs", async () => {
 	for (const reply of [

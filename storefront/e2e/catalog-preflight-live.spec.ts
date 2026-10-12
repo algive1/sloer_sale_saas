@@ -33,8 +33,8 @@ test.beforeAll(async ({ request }) => {
 		expect(actualSku).toBeTruthy();
 	} else actualSku = "HAT";
 });
-const csv = (sku = actualSku, currency = "USD", channel = "us") =>
-	`sku,channel,price,currency,weight_kg,image_url\n${sku},${channel},20.00,${currency},0.25,https://images.example.test/example.jpg`;
+const csv = (sku = actualSku, currency = "USD", channel = "us", price = "20.00") =>
+	`sku,channel,price,currency,weight_kg,image_url\n${sku},${channel},${price},${currency},0.25,https://images.example.test/example.jpg`;
 test("native preflight checks existing SKU, brand market and currency without updating actual prices", async ({
 	request,
 }) => {
@@ -59,6 +59,13 @@ test("native preflight checks existing SKU, brand market and currency without up
 	expect(good.status()).toBe(200);
 	expect(good.headers()["cache-control"]).toContain("no-store");
 	expect(await good.json()).toMatchObject({ nativeChecked: true, valid: true, rows: 1 });
+	const precision = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "USD", "us", "20.001") });
+	expect(precision.status()).toBe(200);
+	const imprecise = await precision.json();
+	expect(imprecise.valid).toBe(false);
+	expect(imprecise.issues.some((issue: { field: string }) => issue.field === "price")).toBe(true);
+	const zeroes = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "USD", "us", "20.0000") });
+	expect((await zeroes.json()).valid).toBe(true);
 	const mismatch = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "EUR") });
 	const invalid = await mismatch.json();
 	expect(invalid.valid).toBe(false);
@@ -109,6 +116,9 @@ test("mobile operator distinguishes format success from native success and gets 
 		await expect(page.getByRole("status")).toContainText("格式校验通过，未写入商品");
 		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
 		await expect(page.getByRole("status")).toContainText("SKU与市场币种核对通过，未写入商品");
+		await page.getByLabel("选择CSV", { exact: true }).setInputFiles({ name: "precision.csv", mimeType: "text/csv", buffer: Buffer.from(csv(actualSku, "USD", "us", "20.001")) });
+		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
+		await expect(page.getByRole("status")).toContainText("价格超出原生币种的2位小数精度");
 		await page
 			.getByLabel("选择CSV", { exact: true })
 			.setInputFiles({
