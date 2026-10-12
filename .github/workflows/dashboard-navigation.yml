@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/home/**"
       - "dashboard/src/components/AppLayout/**"
       - "dashboard/vite.config.js"
       - "dashboard/Dockerfile"
@@ -14,6 +15,7 @@ on:
     branches: [main]
     paths:
       - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/home/**"
       - "dashboard/src/components/AppLayout/**"
       - "dashboard/vite.config.js"
       - "dashboard/Dockerfile"
@@ -47,7 +49,7 @@ jobs:
       - name: Check Dashboard types
         run: pnpm --dir dashboard exec tsc --noEmit
       - name: Navigation access, routing and link regression tests
-        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts src/components/Sidebar/menu/filterSidebarMenu.test.ts --runInBand
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts src/components/Sidebar/menu/filterSidebarMenu.test.ts src/home/commerceHomeMetrics.test.ts src/home/HomePage.test.tsx --runInBand
       - name: Check Playwright acceptance test types
         run: pnpm --dir dashboard exec tsc --noEmit --project e2e/tsconfig.json
 

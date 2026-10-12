@@ -22,6 +22,29 @@ test.describe("Merchant navigation – desktop admin", () => {
     await expect(page.getByTestId("commerce-admin-topbar")).toBeVisible();
     await expect(page.getByTestId("commerce-admin-search")).toBeVisible();
 
+    // Native Saleor Pulse marketing overlay may cover bottom menu items.
+    // Close it through its real control instead of bypassing pointer events.
+    const dismiss = page.getByTestId("ripple-video-announcement-dismiss");
+    if (await dismiss.isVisible()) await dismiss.click();
+
+    // The Customers label is itself the chat entry point, so the accordion only
+    // opens from its chevron strip at the right edge of the same trigger.
+    const customersTrigger = page.locator(
+      '[data-test-id="menu-item-label-customers"].sidebar-item-group-trigger',
+    );
+    const triggerBox = await customersTrigger.boundingBox();
+    if (!triggerBox) throw new Error("Customers group trigger is not rendered");
+    await customersTrigger.click({ position: { x: triggerBox.width - 14, y: triggerBox.height / 2 } });
+
+    // Customers title navigates directly to the live conversation screen;
+    // Chatwoot connection settings remain a second-level link.
+    await expect(page.getByTestId("customers-chat-primary")).toHaveAttribute(
+      "href", "http://localhost:3000/ops/support",
+    );
+    await expect(
+      page.getByTestId("menu-item-label-commerce-support-settings").locator("a"),
+    ).toHaveAttribute("href", "http://localhost:3000/ops/support/settings");
+
     // The Apps accordion starts closed; expand it before inspecting links.
     // Commerce Ops destinations remain independently authenticated, so the
     // browser checks their anchors but never enters their protected service.

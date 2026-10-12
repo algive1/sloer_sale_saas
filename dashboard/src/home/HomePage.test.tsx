@@ -18,6 +18,10 @@ jest.mock("@dashboard/auth/useUser", () => ({
   }),
 }));
 
+jest.mock("./CommerceHomeOverview", () => ({
+  CommerceHomeOverview: () => <div data-test-id="commerce-home-overview" />,
+}));
+
 jest.mock("./HomeWidgetTabs", () => ({
   HomeWidgetTabs: () => <div data-test-id="home-widget-tabs" />,
 }));
@@ -159,7 +163,7 @@ describe("HomePage states", () => {
     expect(screen.queryByTestId("home-pulse-cta")).not.toBeInTheDocument();
   });
 
-  it("renders the Pulse empty state when loaded with no extensions", () => {
+  it("renders the authenticated commerce overview when no official home app is installed", () => {
     // Arrange
     useExtensionsWithLoadingStateMock.mockReturnValue({
       extensions: { HOMEPAGE_WIDGETS: [] },
@@ -170,12 +174,9 @@ describe("HomePage states", () => {
     renderHomePage();
 
     // Assert
-    expect(screen.getByText("See how your store is doing")).toBeInTheDocument();
-    expect(screen.getByTestId("home-pulse-cta")).toBeInTheDocument();
-    expect(screen.getByTestId("home-create-own-homepage-link")).toHaveAttribute(
-      "href",
-      expect.stringContaining("extending-dashboard-with-apps"),
-    );
+    expect(screen.getByTestId("commerce-home-overview")).toBeInTheDocument();
+    expect(screen.queryByTestId("home-pulse-cta")).not.toBeInTheDocument();
+    expect(screen.queryByText("See how your store is doing")).not.toBeInTheDocument();
   });
 
   it("keeps visited Home iframes mounted when /home redirects to the leftmost tab", () => {

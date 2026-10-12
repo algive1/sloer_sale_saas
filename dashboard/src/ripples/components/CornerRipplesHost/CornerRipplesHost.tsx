@@ -1,3 +1,4 @@
+import { IS_CLOUD_INSTANCE } from "@dashboard/config";
 import { allCornerRipples } from "@dashboard/ripples/cornerRipples/allCornerRipples";
 import { selectActiveCornerRipple } from "@dashboard/ripples/cornerRipples/selectActiveCornerRipple";
 import { useRippleStorage } from "@dashboard/ripples/hooks/useRipplesStorage";
@@ -10,7 +11,9 @@ export const CornerRipplesHost = (): JSX.Element | null => {
   const { getShouldShow } = useRippleStorage();
   const active = selectActiveCornerRipple(allCornerRipples, getShouldShow);
 
-  if (!active) {
+  // On self-hosted installations we show real local commerce figures on Home.
+  // Do not cover business navigation with a Cloud-only Pulse sales video.
+  if (!IS_CLOUD_INSTANCE || !active) {
     return null;
   }
 
