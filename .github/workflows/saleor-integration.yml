@@ -43,6 +43,7 @@ jobs:
       POSTGRES_USER: saleor
       POSTGRES_PASSWORD: ci-saleor-password
       SALEOR_SECRET_KEY: ci-saleor-secret-key-at-least-32-characters-long
+      SALEOR_WEBHOOK_SECRET: ci-native-catalog-webhook-secret-only-for-disposable-testing
       SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ci-checkout-gateway-secret-32-char-minimum-only-tests
       SALEOR_ALLOWED_HOSTS: localhost,127.0.0.1,api
       SALEOR_DEFAULT_CHANNEL: us
@@ -620,6 +621,9 @@ jobs:
             if [ "$attempt" -eq 30 ]; then exit 1; fi
             sleep 2
           done
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
+            -e CI_NATIVE_CACHE_SEED=true -e CI_NATIVE_WEBHOOK_SECRET="$SALEOR_WEBHOOK_SECRET" \
+            api python3 manage.py shell < infra/saleor/bootstrap_cache_ci.py
           fixture=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
             -e CI_NATIVE_BULK_SEED=true api python3 manage.py shell < infra/saleor/bootstrap_bulk_ci.py | tail -n 1)
           FIXTURE_JSON="$fixture" python3 - <<'PY'
@@ -638,7 +642,22 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:9000
           PLAYWRIGHT_NATIVE_DASHBOARD_URL: http://127.0.0.1:9000
           PLAYWRIGHT_NATIVE_BULK_ENTRY_URL: http://127.0.0.1:3101
+          NATIVE_CATALOG_WEBHOOK_REAL: "true"
         run: pnpm --dir storefront exec playwright test e2e/native-bulk-publish-live.spec.ts --workers=1 --retries=0
+
+      - name: Verify native signed catalog delivery receipt
+        shell: bash
+        run: |
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T api python3 manage.py shell -c '
+          import json
+          from saleor.core.models import EventDeliveryAttempt
+          attempt = EventDeliveryAttempt.objects.filter(delivery__webhook__app__identifier="ci-storefront-cache", status="success").first()
+          assert attempt and attempt.response_status_code == 200, "Native cache event was not accepted"
+          body = json.loads(attempt.response)
+          assert body.get("success") is True
+          assert {"sitemap:catalog:us", "sitemap:catalog:jewelry-us", "listing:all:jewelry-us"}.issubset(set(body["tags"]))
+          print("Native signed ProductUpdated receipt and both market tags verified")
+          '
 
       - name: Integration logs on failure
         if: failure()

@@ -1,4 +1,4 @@
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest } from "next/server";
 import { DefaultChannelSlug } from "@/app/config";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
@@ -24,6 +24,7 @@ import {
 	sanitizeLogValue,
 } from "@/lib/webhook-events";
 import { extractBearerToken, verifySecret, verifyWebhookSignature } from "@/lib/api-auth";
+import { catalogWebhookChannels, changesSitemapCatalog } from "@/lib/catalog-webhook-scope";
 
 /**
  * Webhook endpoint for cache invalidation.
@@ -247,7 +248,7 @@ export async function POST(request: NextRequest) {
 		}
 
 		const parsed = parseWebhookPayload(payload);
-		const { slug, channel } = parsed;
+		const { slug } = parsed;
 		// The header is authoritative when present; payload shape is the fallback for
 		// manual POSTs and self-hosted setups that post without Saleor's headers.
 		const type = eventScope?.entity ?? parsed.type;
@@ -351,24 +352,35 @@ export async function POST(request: NextRequest) {
 			const revalidatedTags = await revalidateTags([
 				{ tag: buildTag(profile), profile: profile.cacheProfile },
 			]);
+			if (changesSitemapCatalog(eventHeader, type)) {
+				for (const market of catalogWebhookChannels(payload, storefrontChannels)) {
+					const tag = buildTag(CACHE_PROFILES.sitemap, { channel: market });
+					revalidateTag(tag, { expire: 0 });
+					revalidatedTags.push(tag);
+				}
+			}
 			console.log("[Revalidate] Success:", { type, tags: revalidatedTags });
 			return Response.json({ paths: [], tags: revalidatedTags, success: true });
 		}
 
-		const targetChannel = channel || DefaultChannelSlug;
-		if (!targetChannel) {
-			return Response.json(
-				{ error: "Channel not specified in webhook and NEXT_PUBLIC_DEFAULT_CHANNEL not set" },
-				{ status: 400 },
-			);
+		const targetChannels = catalogWebhookChannels(payload, storefrontChannels);
+		if (!targetChannels.length) {
+			return Response.json({
+				success: true,
+				skipped: true,
+				reason: "unconfigured_channel",
+				paths: [],
+				tags: [],
+			});
 		}
+		const targetChannel = targetChannels[0];
 
 		// Only events that can change a card bust listing tags — stock and metadata churn
 		// would otherwise keep the grids permanently cold. Tags are sharded per surface/slug
 		// (see queueListingTags). No header (manual POST) is treated as listing-affecting,
 		// matching prior behaviour.
 		if (eventScope?.affectsListing ?? true) {
-			queueListingTags(type, parsed, targetChannel, tagEntries);
+			for (const market of targetChannels) queueListingTags(type, parsed, market, tagEntries);
 		}
 
 		switch (type) {
@@ -401,6 +413,15 @@ export async function POST(request: NextRequest) {
 		}
 
 		const revalidatedTags = await revalidateTags(tagEntries);
+		if (changesSitemapCatalog(eventHeader, type)) {
+			for (const market of targetChannels) {
+				const tag = buildTag(CACHE_PROFILES.sitemap, { channel: market });
+				// Manifest and cursor pages must miss together, so a refreshed manifest
+				// cannot be rebuilt from stale child pages under nested SWR.
+				revalidateTag(tag, { expire: 0 });
+				revalidatedTags.push(tag);
+			}
+		}
 
 		const sanitizedSlug = slug?.replace(/[\r\n]/g, "") ?? "";
 		const sanitizedPaths = revalidatedPaths.map((s) => s.replace(/[\r\n]/g, ""));
