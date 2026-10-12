@@ -609,6 +609,36 @@ jobs:
           OPS_PLUGIN_REAL_BACKEND: "true"
         run: pnpm --dir storefront exec playwright test e2e/plugin-pause-live.spec.ts e2e/sitemap-integrity-live.spec.ts --workers=1
 
+      # Seed after sitemap/count acceptance so this publication test cannot change its fixtures.
+      - name: Start native Dashboard and seed isolated bulk workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml up -d --no-deps dashboard
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9000/ > /tmp/native-dashboard.html; then break; fi
+            if [ "$attempt" -eq 30 ]; then exit 1; fi
+            sleep 2
+          done
+          fixture=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
+            -e CI_NATIVE_BULK_SEED=true api python3 manage.py shell < infra/saleor/bootstrap_bulk_ci.py | tail -n 1)
+          FIXTURE_JSON="$fixture" python3 - <<'PY'
+          import json, os
+          fixture = json.loads(os.environ["FIXTURE_JSON"])
+          print("::add-mask::" + fixture["refreshToken"])
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for key, field in [("CI_NATIVE_BULK_REFRESH_TOKEN", "refreshToken"),
+                                 ("CI_NATIVE_BULK_CHANNEL_ID", "channelId"),
+                                 ("CI_NATIVE_BULK_PRODUCT_ID", "productId")]:
+                  output.write(key + "=" + fixture[field] + "\n")
+          PY
+
+      - name: Native Dashboard 101-variant failure and manual retry E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:9000
+          PLAYWRIGHT_NATIVE_DASHBOARD_URL: http://127.0.0.1:9000
+        run: pnpm --dir storefront exec playwright test e2e/native-bulk-publish-live.spec.ts --workers=1 --retries=0
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
