@@ -116,7 +116,7 @@ for (const file of files) {
 	const path = join(rulesDir, file);
 	const raw = readFileSync(path, "utf8");
 
-	if (raw.startsWith("---\n")) {
+	if (/^---\r?\n/.test(raw)) {
 		continue; // already has frontmatter — leave it; hand-edits win
 	}
 
@@ -130,7 +130,10 @@ for (const file of files) {
 
 	if (!checkOnly) {
 		const name = file.replace(/\.md$/, "");
-		const frontmatter = `---\nname: ${name}\ndescription: ${description}\n---\n\n`;
+		// Keep the inserted block on the file's own line endings (CRLF on a
+		// core.autocrlf checkout) so the result stays self-consistent.
+		const eol = raw.includes("\r\n") ? "\r\n" : "\n";
+		const frontmatter = `---${eol}name: ${name}${eol}description: ${description}${eol}---${eol}${eol}`;
 		writeFileSync(path, frontmatter + raw);
 		inserted.push(file);
 	}

@@ -19,6 +19,9 @@ import { ogBrandColors } from "@/lib/seo/og-brand-colors";
  * a fresh cache entry. Inputs are length-capped to bound the per-invocation cost. Nothing
  * in the storefront generates these URLs today — metadata uses real product imagery — so a
  * fork that does not need branded fallback images can delete this route outright.
+ *
+ * Disabled by default (404) because unlimited query combinations make it a CPU/cache
+ * exhaustion vector. Set OG_IMAGE_API_ENABLED=true to opt back in.
  */
 
 const MAX_TITLE_LENGTH = 120;
@@ -30,6 +33,10 @@ function clamp(value: string | null, maxLength: number): string {
 }
 
 export async function GET(request: NextRequest) {
+	if (process.env.OG_IMAGE_API_ENABLED !== "true") {
+		return new Response("Not found", { status: 404 });
+	}
+
 	const { searchParams } = request.nextUrl;
 
 	const title = clamp(searchParams.get("title"), MAX_TITLE_LENGTH) || "Saleor Store";

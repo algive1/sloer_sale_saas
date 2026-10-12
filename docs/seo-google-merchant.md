@@ -52,6 +52,12 @@ The product link deep-links the exact Saleor variant via the `variant` query par
 
 Products and variants are paginated. The export does not silently truncate products with more than 100 variants.
 
+A feed request is served on a CDN cache miss, so the scan is budgeted: `GOOGLE_MERCHANT_FEED_MAX_PAGES`
+(page turns, default 200 at 50 products each) and `GOOGLE_MERCHANT_FEED_BUDGET_MS` (wall clock, default
+60000). A catalog that exceeds either budget returns `503` with `no-store` instead of publishing a partial
+feed, which Merchant Center would reject as an invalid replacement. Raise the two values together with your
+platform's request timeout.
+
 ## Multi-market feeds
 
 Use a separate scheduled feed URL per Saleor market when currency, language, or catalog differs:
