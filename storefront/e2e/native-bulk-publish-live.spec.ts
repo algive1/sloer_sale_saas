@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
+import { publicSitemapLocations } from "./helpers/sitemap";
 
 const dashboard = process.env.PLAYWRIGHT_NATIVE_DASHBOARD_URL;
 test.skip(!dashboard, "Requires the disposable native Dashboard integration stack");
@@ -57,6 +58,17 @@ test("real 101-variant native wizard keeps failed writes unpublished and publish
 	expect(process.env.CI_NATIVE_BULK_REFRESH_TOKEN).toBeTruthy();
 	const channelId = process.env.CI_NATIVE_BULK_CHANNEL_ID!;
 	const initial = await readProduct(request);
+	const liveCache = process.env.NATIVE_CATALOG_WEBHOOK_REAL === "true";
+	const publicOrigin = process.env.PLAYWRIGHT_NATIVE_BULK_ENTRY_URL!;
+	if (liveCache) {
+		const before = await publicSitemapLocations(request, publicOrigin, "jewelry.example.test");
+		expect(before.locations.some((url) => url.endsWith("/products/ci-bulk-safety"))).toBe(false);
+		const invalid = await request.post(publicOrigin + "/api/revalidate", {
+			headers: { "saleor-event": "product_updated", "saleor-signature": "0".repeat(64) },
+			data: { product: { slug: "ci-bulk-safety" } },
+		});
+		expect(invalid.status()).toBe(401);
+	}
 	expect(initial.variants).toHaveLength(101);
 	expect(initial.listings).toHaveLength(1);
 	expect(initial.listings[0]).toMatchObject({ channel: { id: channelId }, isPublished: false });
@@ -155,6 +167,15 @@ test("real 101-variant native wizard keeps failed writes unpublished and publish
 		).toBe(true);
 		expect(chunks).toEqual([100, 100, 1]);
 		expect(variantCursors.filter((cursor) => cursor !== null)).toHaveLength(2);
+		if (liveCache) {
+			// No manual purge: the real worker must deliver Saleor's signed event.
+			await expect(async () => {
+				const after = await publicSitemapLocations(request, publicOrigin, "jewelry.example.test");
+				expect(after.locations).toContain(
+					"https://jewelry.example.test/en/jewelry-us/products/ci-bulk-safety",
+				);
+			}).toPass({ timeout: 90_000, intervals: [1_000, 2_000, 5_000] });
+		}
 	} finally {
 		await context.close();
 	}

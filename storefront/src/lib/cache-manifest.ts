@@ -60,6 +60,14 @@ export type CacheTagParams = {
 };
 
 const profiles = {
+	sitemap: {
+		id: "sitemap",
+		label: "Market Sitemap",
+		cacheProfile: "catalog",
+		tagPattern: "sitemap:catalog:{channel}",
+		pathPattern: null,
+		sharedTag: "sitemaps",
+	},
 	products: {
 		id: "products",
 		label: "Product Pages",
