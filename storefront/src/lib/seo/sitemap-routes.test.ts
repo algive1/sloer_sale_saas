@@ -55,3 +55,12 @@ it("does not advertise a successful empty index when the known brand has no conf
 	expect((await root(request())).status).toBe(503);
 	expect(readSitemapManifest).not.toHaveBeenCalled();
 });
+it("filters legacy single-store pairs against its configured channels before advertising chunks", async () => {
+	config();
+	vi.stubEnv("STOREFRONT_SITES_JSON", "");
+	vi.mocked(getStorefrontChannelSlugs).mockResolvedValue(["us"]);
+	const response = await root(request("localhost"));
+	expect(response.status).toBe(200);
+	expect(vi.mocked(readSitemapManifest).mock.calls.map(([channel]) => channel)).toEqual(Array(6).fill("us"));
+	expect(await response.text()).not.toContain(sitemapPairKey({ locale: "fr", channel: "jewelry-us" }));
+});

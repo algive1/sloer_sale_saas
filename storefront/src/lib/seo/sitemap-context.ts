@@ -11,7 +11,7 @@ export async function resolveSitemapContext(host: string | null): Promise<{ base
 	const configured = getConfiguredLocaleChannelPairs();
 	const channels = site?.channels ?? await getStorefrontChannelSlugs();
 	const pairs = configured
-		? configured.filter((pair) => !site || site.channels.includes(pair.channel))
+		? configured.filter((pair) => channels.includes(pair.channel))
 		: getStorefrontLocaleSlugs().flatMap((locale) => channels.map((channel) => ({ locale, channel })));
 	if (!pairs.length) throw new Error("sitemap_language_market_not_configured");
 	return { baseUrl: site ? `https://${site.domains[0]}` : getBaseUrl().replace(/\/$/, ""), pairs: [...pairs] };
