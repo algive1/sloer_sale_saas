@@ -213,3 +213,11 @@ PR #64 final acceptance: 4a295c2 passed all six workflows including native produ
 - 去重后100 SKU/请求，整批20秒预算；分页未完整、GraphQL部分错误或异常身份拒绝整批。格式失败不读取原生；严格UTF-8/流式1MB上限独立于客户端Content-Length。
 - 管理员上传、两种状态和错误下载复用现有品牌商品页。全量verify及真实Saleor/生产构建以本批PR记录为准；本地Next/API和375px实际操作2项通过，原生响应使用本地fixture，仅CI承担真实后端验收。
 - 本批全部只读，没有创建/更新商品；价格精度/库存/重量/图片、提交时重读、实际bulk写入与恢复、大规格完整分页仍待完成。说明：[商品检查与导入前核对](catalog-publishing-checks.md)。
+
+## A21：Sitemap index 与游标分片（2026-10-12）
+
+- 根地图改为索引，按语言/可信市场/资源/页段分片，每片最多1000URL；索引扫描保存游标范围和摘要，实际分片读取自己的有界页面，不拼接全目录URL矩阵。
+- 保留严格部分错误/分页完整性、原生缓存标签、XML条数/UTF-8大小保护；未知Host/外品牌ID拒绝，目录错误503且不当空结果。原生CI跟随index读取所有分片，再独立核对原生商品总数，不弱化原有双品牌断言。
+- 500页/资源和时间预算继续保留；特别大/高频更新目录的快照导出、原生跨请求一致性与正式Search Console/峰值验收仍未完成。本批验证及合并结论见PR。说明：[Sitemap分片与边界](sitemap-integrity.md)。
+
+PR #65 final acceptance: 68c2479 passed all five applicable CI workflows, including real Saleor native SKU/market/currency preflight and recovery gates; merged5387a86. Actual bulk writes remain pending.

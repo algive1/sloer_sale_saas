@@ -9,7 +9,10 @@
     "e2e/tracking-ops-live.spec.ts",
     "e2e/sitemap-integrity-live.spec.ts",
     "e2e/customer-support-live.spec.ts",
-    "e2e/catalog-preflight-live.spec.ts"
+    "e2e/catalog-preflight-live.spec.ts",
+    "e2e/multibrand-host-live.spec.ts",
+    "e2e/navigation-live.spec.ts",
+    "e2e/localization-live.spec.ts"
   ],
   "exclude": [
     "node_modules"
