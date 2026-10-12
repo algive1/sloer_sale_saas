@@ -11,6 +11,7 @@ const report = async (request: import("@playwright/test").APIRequestContext, sit
 	});
 	expect(res.status()).toBe(200);
 	return (await res.json()) as {
+		channelId: string;
 		products: Array<{
 			inventory: Array<{ sku: string }>;
 			markets: Array<{
@@ -59,12 +60,18 @@ test("native preflight checks existing SKU, brand market and currency without up
 	expect(good.status()).toBe(200);
 	expect(good.headers()["cache-control"]).toContain("no-store");
 	expect(await good.json()).toMatchObject({ nativeChecked: true, valid: true, rows: 1 });
-	const precision = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "USD", "us", "20.001") });
+	const precision = await request.post(base + path + "?native=1", {
+		headers,
+		data: csv(actualSku, "USD", "us", "20.001"),
+	});
 	expect(precision.status()).toBe(200);
 	const imprecise = await precision.json();
 	expect(imprecise.valid).toBe(false);
 	expect(imprecise.issues.some((issue: { field: string }) => issue.field === "price")).toBe(true);
-	const zeroes = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "USD", "us", "20.0000") });
+	const zeroes = await request.post(base + path + "?native=1", {
+		headers,
+		data: csv(actualSku, "USD", "us", "20.0000"),
+	});
 	expect((await zeroes.json()).valid).toBe(true);
 	const mismatch = await request.post(base + path + "?native=1", { headers, data: csv(actualSku, "EUR") });
 	const invalid = await mismatch.json();
@@ -104,6 +111,14 @@ test("mobile operator distinguishes format success from native success and gets 
 	try {
 		const page = await context.newPage();
 		await page.goto("/ops/sites/fashion-ci/catalog");
+		const entry = page.getByRole("link", { name: "在原生后台批量定价、库存与发布 ↗" });
+		const audit = await report(context.request);
+		await expect(entry).toHaveAttribute(
+			"href",
+			new RegExp(`/channels/${encodeURIComponent(audit.channelId)}\\?action=bulk-publish$`),
+		);
+		await expect(entry).toHaveAttribute("target", "_blank");
+		await expect(page.getByText("仓库库存可能供其他品牌/市场共用", { exact: false })).toBeVisible();
 		// Upload only counts once the client has attached its change handler.
 		// Slow first-load hydration must not turn an ignored event into a false failure.
 		await expect(async () => {
@@ -116,21 +131,44 @@ test("mobile operator distinguishes format success from native success and gets 
 		await expect(page.getByRole("status")).toContainText("格式校验通过，未写入商品");
 		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
 		await expect(page.getByRole("status")).toContainText("SKU与市场币种核对通过，未写入商品");
-		await page.getByLabel("选择CSV", { exact: true }).setInputFiles({ name: "precision.csv", mimeType: "text/csv", buffer: Buffer.from(csv(actualSku, "USD", "us", "20.001")) });
-		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
-		await expect(page.getByRole("status")).toContainText("价格超出原生币种的2位小数精度");
 		await page
 			.getByLabel("选择CSV", { exact: true })
 			.setInputFiles({
-				name: "missing.csv",
+				name: "precision.csv",
 				mimeType: "text/csv",
-				buffer: Buffer.from(csv("MISSING-PREFLIGHT-FIXTURE-SKU")),
+				buffer: Buffer.from(csv(actualSku, "USD", "us", "20.001")),
 			});
+		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
+		await expect(page.getByRole("status")).toContainText("价格超出原生币种的2位小数精度");
+		await page.getByLabel("选择CSV", { exact: true }).setInputFiles({
+			name: "missing.csv",
+			mimeType: "text/csv",
+			buffer: Buffer.from(csv("MISSING-PREFLIGHT-FIXTURE-SKU")),
+		});
 		await page.getByRole("button", { name: "核对原生SKU与币种", exact: true }).click();
 		await expect(page.getByRole("status")).toContainText("当前品牌市场找不到唯一现有SKU");
 		const download = page.waitForEvent("download");
 		await page.getByRole("button", { name: "下载全部错误" }).click();
 		expect((await download).suggestedFilename()).toBe("fashion-ci-catalog-errors.csv");
+	} finally {
+		await context.close();
+	}
+});
+
+test("brand readers see catalog checks without native editing or bulk operation links", async ({
+	browser,
+}) => {
+	const context = await browser.newContext({
+		baseURL: base,
+		httpCredentials: { username: "fashion_reader", password: "B".repeat(40) },
+	});
+	try {
+		const page = await context.newPage();
+		await page.goto("/ops/sites/fashion-ci/catalog");
+		await expect(page.getByRole("heading", { name: /商品发布检查/ })).toBeVisible();
+		await expect(page.getByRole("link", { name: "在原生后台批量定价、库存与发布 ↗" })).toHaveCount(0);
+		await expect(page.getByRole("link", { name: "在原生后台编辑 ↗" })).toHaveCount(0);
+		await expect(page.getByRole("button", { name: "核对原生SKU与币种", exact: true })).toHaveCount(0);
 	} finally {
 		await context.close();
 	}

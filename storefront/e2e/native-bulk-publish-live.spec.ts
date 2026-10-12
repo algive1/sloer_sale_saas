@@ -62,6 +62,7 @@ test("real 101-variant native wizard keeps failed writes unpublished and publish
 	expect(initial.listings[0]).toMatchObject({ channel: { id: channelId }, isPublished: false });
 	expect(initial.variants.every((variant) => variant.channelListings[0]?.price?.amount === 19.99)).toBe(true);
 	const context = await browser.newContext({
+		httpCredentials: { username: "ops_owner", password: "A".repeat(40) },
 		storageState: {
 			cookies: [],
 			origins: [
@@ -73,14 +74,14 @@ test("real 101-variant native wizard keeps failed writes unpublished and publish
 		},
 	});
 	try {
-		const page = await context.newPage();
+		let page = await context.newPage();
 		let injectFailure = true;
 		let injected = false;
 		const chunks: number[] = [];
 		const variantCursors: Array<string | null> = [];
 		// Fault injection changes one request value; Saleor still executes the real mutation.
 		// REJECT_FAILED_ROWS can save other rows, so publication and all final prices are reread.
-		await page.route("**/graphql/", async (route) => {
+		await context.route("**/graphql/", async (route) => {
 			const body = route.request().postDataJSON();
 			if (body?.operationName === "BulkPublishProductVariants") variantCursors.push(body.variables.after);
 			if (body?.operationName === "ProductVariantBulkUpdate") {
@@ -95,9 +96,18 @@ test("real 101-variant native wizard keeps failed writes unpublished and publish
 			}
 			await route.continue();
 		});
-		await page.goto(
-			`${dashboard!.replace(/\/$/, "")}/channels/${encodeURIComponent(channelId)}?action=bulk-publish`,
-		);
+		const target = `${dashboard!.replace(/\/$/, "")}/channels/${encodeURIComponent(channelId)}?action=bulk-publish`;
+		if (process.env.PLAYWRIGHT_NATIVE_BULK_ENTRY_URL) {
+			await page.goto(
+				process.env.PLAYWRIGHT_NATIVE_BULK_ENTRY_URL + "/ops/sites/jewelry-ci/catalog?channel=jewelry-us",
+			);
+			const entry = page.getByRole("link", { name: "在原生后台批量定价、库存与发布 ↗" });
+			await expect(entry).toHaveAttribute("href", target);
+			await expect(entry).toHaveAttribute("rel", "noopener noreferrer");
+			const popup = context.waitForEvent("page");
+			await entry.click();
+			page = await popup;
+		} else await page.goto(target);
 		const exclude = page.locator('input[name="excludeListedInChannel"]');
 		await expect(exclude).toBeChecked({ timeout: 30_000 });
 		await exclude.uncheck();
