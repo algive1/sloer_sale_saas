@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -25,6 +26,7 @@ export default function ThemeEditorPage({ searchParams }: PageProps) {
         正在载入品牌装修...
       </main>
     }>
+      <PluginPauseNotice plugin="theme-builder" />
       <ThemeEditorContent searchParams={searchParams} />
     </Suspense>
   );

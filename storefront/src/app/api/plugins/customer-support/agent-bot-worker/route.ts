@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { analyticsDatabaseConfigured } from "@/lib/storage/libsql-http";
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
   const secret = process.env.SUPPORT_AI_WORKER_SECRET?.trim() ?? "";
   if (secret.length < 32) return new NextResponse(null,{status:404});
   if (!authorized(request,secret)) return new NextResponse(null,{status:401});
+  const paused = pluginPauseReason("customer-support");
+  if (paused) return Response.json({ skipped: true, reason: paused }, { status: 503, headers: { "cache-control": "no-store" } });
   if (!analyticsDatabaseConfigured()) return new NextResponse(null,{status:503});
 
   let config: ReturnType<typeof loadAIConfig>;

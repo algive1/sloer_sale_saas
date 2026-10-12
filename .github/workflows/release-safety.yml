@@ -1,0 +1,44 @@
+name: Release backup and recovery gates
+on:
+  pull_request:
+    paths:
+      - "scripts/release.py"
+      - "scripts/test_release.py"
+      - "scripts/plugin_contracts.py"
+      - "scripts/test_plugin_contracts.py"
+      - "storefront/src/plugins/**"
+      - "storefront/src/lib/ops/**"
+      - "scripts/deploy.sh"
+      - "docker-compose*.yml"
+      - ".github/workflows/release-safety.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/release.py"
+      - "scripts/test_release.py"
+      - "scripts/plugin_contracts.py"
+      - "scripts/test_plugin_contracts.py"
+      - "storefront/src/plugins/**"
+      - "storefront/src/lib/ops/**"
+      - "scripts/deploy.sh"
+      - "docker-compose*.yml"
+      - ".github/workflows/release-safety.yml"
+permissions:
+  contents: read
+jobs:
+  release-boundaries-and-restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Release failure boundaries and real isolated PostgreSQL restore
+        env:
+          RELEASE_TEST_DOCKER: "1"
+        run: python3 -m unittest discover -s scripts -p test_release.py -v
+      - name: Restored plugin SQLite contracts and source schema drift
+        run: python3 -m unittest discover -s scripts -p test_plugin_contracts.py -v
+      - name: Validate deploy entry point
+        run: bash -n scripts/deploy.sh

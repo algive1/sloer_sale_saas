@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { publicSitemapLocations } from "./helpers/sitemap";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 const localeChannel = "/en/us";
@@ -45,9 +46,7 @@ test.describe("live storefront navigation and operational pages", () => {
     const collection = await request.get(`${localeChannel}/collections/featured-products`);
     expect(collection.status()).toBe(200);
 
-    const sitemap = await request.get("/sitemap.xml");
-    expect(sitemap.ok()).toBe(true);
-    const locs = Array.from((await sitemap.text()).matchAll(/<loc>([^<]+)<\/loc>/g), match => match[1]);
+    const { locations: locs } = await publicSitemapLocations(request, baseURL);
     const productUrl = locs.find(url => url && url.includes(`${localeChannel}/products/`));
     expect(productUrl, "The live Saleor sitemap should contain a product detail URL").toBeTruthy();
     const product = await request.get(productUrl!);

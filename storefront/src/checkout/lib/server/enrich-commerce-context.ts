@@ -1,4 +1,5 @@
 import "server-only";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 
 import { cookies } from "next/headers";
 import {
@@ -43,6 +44,7 @@ const checkoutMetadataUpdateDocument = toTypedDocument<
  */
 export async function enrichCheckoutCommerceContext(checkoutId: string): Promise<void> {
 	if (!checkoutId) return;
+	if (pluginPauseReason("analytics") && pluginPauseReason("ads-tracking")) return;
 
 	try {
 		const cookieStore = await cookies();

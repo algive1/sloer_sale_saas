@@ -137,6 +137,17 @@ jobs:
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
             python3 manage.py shell < infra/saleor/bootstrap_multibrand_ci.py
 
+      - name: Seed isolated catalog and fulfillment credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          ops_catalog_token=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml run --rm -T api \
+            python3 manage.py shell < infra/saleor/bootstrap_ops_ci.py | tail -n 1)
+          [[ "$ops_catalog_token" =~ ^[A-Za-z0-9]{30}$ ]] || exit 1
+          echo "::add-mask::$ops_catalog_token"
+          echo "OPS_CATALOG_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
+          echo "OPS_FULFILLMENT_SALEOR_TOKEN=$ops_catalog_token" >> "$GITHUB_ENV"
+
       - name: Start vendored Saleor API and worker
         shell: bash
         run: |
@@ -332,7 +343,10 @@ jobs:
           done
 
           curl -fsS http://localhost:3100/sitemap.xml | tee /tmp/sitemap.xml
-          grep -q 'http://localhost:3100/en/us/products/' /tmp/sitemap.xml
+          grep -q '<sitemapindex ' /tmp/sitemap.xml
+          grep -q '/sitemaps/WyJlbiIsInVzIl0-products-0.xml' /tmp/sitemap.xml
+          curl -fsS http://localhost:3100/sitemaps/WyJlbiIsInVzIl0-products-0.xml > /tmp/sitemap-products.xml
+          grep -q 'http://localhost:3100/en/us/products/' /tmp/sitemap-products.xml
           grep -q 'http://localhost:3100/sitemap.xml' /tmp/robots.txt
 
           curl -fsS 'http://localhost:3100/merchant/google.xml?channel=us&locale=en'             | tee /tmp/google-merchant.xml
@@ -360,6 +374,12 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3100
           PLAYWRIGHT_THEME_EDITOR_SECRET: ci-theme-editor-basic-password
         run: pnpm --dir storefront exec playwright test e2e/api-boundaries-live.spec.ts --workers=1
+
+      - name: Native ProductGroup and initial HTML structured data E2E
+        env:
+          PLAYWRIGHT_SEO_BASE_URL: http://127.0.0.1:3100
+          SALEOR_API_URL: http://127.0.0.1:8000/graphql/
+        run: pnpm --dir storefront exec playwright test e2e/product-group-seo-live.spec.ts --workers=1
 
       - name: Storefront theme editor draft and published homepage E2E
         env:
@@ -444,6 +464,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000
           OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
           STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
           STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
@@ -454,6 +475,9 @@ jobs:
           ANALYTICS_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
           RESEND_API_KEY: ""
           PAYMENT_REMINDER_SITES_JSON: ""
+          SUPPORT_CHATWOOT_BASE_URL: https://support.example.test
+          SUPPORT_CHATWOOT_SITES_JSON: '[{"siteId":"fashion-ci","accountId":1,"websiteToken":"fashion_public_token"},{"siteId":"jewelry-ci","accountId":2,"websiteToken":"jewelry_public_token"}]'
+          SUPPORT_WHATSAPP_SITES_JSON: '[{"siteId":"fashion-ci","phone":"12025550101"},{"siteId":"jewelry-ci","phone":"12025550102"}]'
           CONTENT_PROVIDER: saleor
           ALLOW_DUMMY_PAYMENT: "true"
           NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
@@ -475,9 +499,10 @@ jobs:
 
       - name: Two real brand hosts and Checkout boundary E2E
         env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
           SALEOR_API_URL: http://127.0.0.1:8000/graphql/
-        run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts --workers=1
+        run: pnpm --dir storefront exec playwright test e2e/multibrand-host-live.spec.ts e2e/sitemap-integrity-live.spec.ts --workers=1
 
       - name: Multi-brand operator scope and no-cache E2E
         env:
@@ -489,15 +514,139 @@ jobs:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/payment-reminders-live.spec.ts --workers=1
 
+      - name: Brand launch evidence, ownership and scope E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/readiness-live.spec.ts --workers=1
+
+      - name: Brand realtime scope, refresh and ad delivery diagnostics E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_E2E_HRANA_URL: http://127.0.0.1:3789
+          OPS_E2E_HRANA_TOKEN: ci-theme-secret-only-for-testing
+        run: pnpm --dir storefront exec playwright test e2e/brand-growth-live.spec.ts --workers=1
+
+      - name: Native Saleor catalog publishing checks and CSV operator flow E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_CATALOG_REAL_BACKEND: "true"
+        run: pnpm --dir storefront exec playwright test e2e/catalog-ops-live.spec.ts e2e/catalog-preflight-live.spec.ts --workers=1
+
+      - name: Native Saleor fulfillment queue and freight CSV E2E
+        env:
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/fulfillment-ops-live.spec.ts --workers=1
+
+      - name: Native fulfillment tracking preview, writeback, replay and operator E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+          OPS_TRACKING_REAL_BACKEND: "true"
+        run: pnpm --dir storefront exec playwright test e2e/tracking-ops-live.spec.ts --workers=1
+
+      - name: Brand WhatsApp scope and mobile lazy-chat timeout/retry E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3101
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/customer-support-live.spec.ts --workers=1
+
       - name: Multi-brand localized browser, market and SEO E2E
         env:
           PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/localization-live.spec.ts --workers=1
 
+      - name: Start paused optional plugins with the SAME production build
+        shell: bash
+        env:
+          STOREFRONT_SITES_JSON: '[{"id":"fashion-ci","name":"Fashion CI","domains":["fashion.example.test"],"channels":["us"],"defaultChannel":"us","defaultLocale":"en"},{"id":"jewelry-ci","name":"Jewelry CI","domains":["jewelry.example.test"],"channels":["jewelry-us"],"defaultChannel":"jewelry-us","defaultLocale":"en"}]'
+          STOREFRONT_CHANNELS: us,jewelry-us
+          NEXT_PUBLIC_DEFAULT_CHANNEL: us
+          NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
+          NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
+          ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
+          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000
+          OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
+          STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
+          STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
+          GOOGLE_MERCHANT_FEED_ENABLED: "true"
+          THEME_LIBSQL_URL: http://127.0.0.1:3789
+          THEME_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          ANALYTICS_LIBSQL_URL: http://127.0.0.1:3789
+          ANALYTICS_LIBSQL_AUTH_TOKEN: ci-theme-secret-only-for-testing
+          RESEND_API_KEY: ""
+          PAYMENT_REMINDER_SITES_JSON: ""
+          SUPPORT_CHATWOOT_BASE_URL: https://support.example.test
+          SUPPORT_CHATWOOT_SITES_JSON: '[{"siteId":"fashion-ci","accountId":1,"websiteToken":"fashion_public_token"},{"siteId":"jewelry-ci","accountId":2,"websiteToken":"jewelry_public_token"}]'
+          SUPPORT_WHATSAPP_SITES_JSON: '[{"siteId":"fashion-ci","phone":"12025550101"},{"siteId":"jewelry-ci","phone":"12025550102"}]'
+          CONTENT_PROVIDER: saleor
+          ALLOW_DUMMY_PAYMENT: "true"
+          NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT: "true"
+          SYSTEM_PLUGINS_DISABLED: '["theme-builder","payment-reminders","customer-support","ai-translations","analytics","ads-tracking","seo-merchant"]'
+          SUPPORT_AI_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
+          TRANSLATION_WORKER_SECRET: ci-plugin-paused-worker-secret-123456789
+        run: |
+          set -euo pipefail
+          nohup pnpm --dir storefront exec next start -p 3102 > /tmp/paused-plugins-storefront.log 2>&1 &
+          echo "$!" > /tmp/paused-plugins-storefront.pid
+          for attempt in $(seq 1 60); do
+            if curl -fsS -H "Host: fashion.example.test" \
+              http://127.0.0.1:3102/en/us > /tmp/paused-plugins-home.html; then
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              cat /tmp/paused-plugins-storefront.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Runtime plugin pause, worker and authorization E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3102
+          PLAYWRIGHT_MULTIBRAND_BASE_URL: http://127.0.0.1:3102
+          PLAYWRIGHT_PLUGIN_PAUSE_BASE_URL: http://127.0.0.1:3102
+          OPS_PLUGIN_REAL_BACKEND: "true"
+        run: pnpm --dir storefront exec playwright test e2e/plugin-pause-live.spec.ts e2e/sitemap-integrity-live.spec.ts --workers=1
+
+      # Seed after sitemap/count acceptance so this publication test cannot change its fixtures.
+      - name: Start native Dashboard and seed isolated bulk workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml up -d --no-deps dashboard
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9000/ > /tmp/native-dashboard.html; then break; fi
+            if [ "$attempt" -eq 30 ]; then exit 1; fi
+            sleep 2
+          done
+          fixture=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
+            -e CI_NATIVE_BULK_SEED=true api python3 manage.py shell < infra/saleor/bootstrap_bulk_ci.py | tail -n 1)
+          FIXTURE_JSON="$fixture" python3 - <<'PY'
+          import json, os
+          fixture = json.loads(os.environ["FIXTURE_JSON"])
+          print("::add-mask::" + fixture["refreshToken"])
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              for key, field in [("CI_NATIVE_BULK_REFRESH_TOKEN", "refreshToken"),
+                                 ("CI_NATIVE_BULK_CHANNEL_ID", "channelId"),
+                                 ("CI_NATIVE_BULK_PRODUCT_ID", "productId")]:
+                  output.write(key + "=" + fixture[field] + "\n")
+          PY
+
+      - name: Native Dashboard 101-variant failure and manual retry E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:9000
+          PLAYWRIGHT_NATIVE_DASHBOARD_URL: http://127.0.0.1:9000
+          PLAYWRIGHT_NATIVE_BULK_ENTRY_URL: http://127.0.0.1:3101
+        run: pnpm --dir storefront exec playwright test e2e/native-bulk-publish-live.spec.ts --workers=1 --retries=0
+
       - name: Integration logs on failure
         if: failure()
         shell: bash
         run: |
+          if [ -f /tmp/paused-plugins-storefront.log ]; then
+            tail -n 100 /tmp/paused-plugins-storefront.log || true
+          fi
           if [ -f /tmp/multibrand-storefront.log ]; then
             echo "===== Multi-brand storefront ====="
             tail -n 200 /tmp/multibrand-storefront.log || true
@@ -521,6 +670,9 @@ jobs:
         if: always()
         shell: bash
         run: |
+          for process_file in /tmp/paused-plugins-storefront.pid /tmp/multibrand-storefront.pid; do
+            if [ -f "$process_file" ]; then kill "$(cat "$process_file")" || true; fi
+          done
           if [ -f /tmp/storefront.pid ]; then
             kill "$(cat /tmp/storefront.pid)" || true
           fi

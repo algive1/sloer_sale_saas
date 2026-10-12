@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import type { CommerceItem, PaperCommerceEvent } from "@/lib/analytics/catalog";
 import { deliverGa4ServerEvent } from "@/plugins/ads-tracking/server-ads";
 import {
@@ -37,6 +38,8 @@ export async function POST(request: NextRequest) {
 	if (eventType !== "ORDER_REFUNDED" && eventType !== "ORDER_FULLY_REFUNDED") {
 		return NextResponse.json({ skipped: true, reason: "unhandled_event" });
 	}
+	const paused = pluginPauseReason("analytics");
+	if (paused) return NextResponse.json({ skipped: true, reason: paused }, { status: 503, headers: { "cache-control": "private, no-store" } });
 
 	let payload: unknown;
 	try {
@@ -78,7 +81,7 @@ export async function POST(request: NextRequest) {
 
 	await storeFirstPartyCommerceEvent(event, request.headers);
 	if (analyticsEligible(order.metadata)) {
-		await deliverGa4ServerEvent(event, request.headers);
+		await deliverGa4ServerEvent(event, request.headers, order.channel?.slug ?? "");
 	}
 	return NextResponse.json({ success: true, orderId: order.id, refundDelta: delta, currency });
 }

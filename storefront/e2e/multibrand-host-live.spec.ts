@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { publicSitemapLocations } from "./helpers/sitemap";
 
 const origin = process.env.PLAYWRIGHT_MULTIBRAND_BASE_URL ?? "http://127.0.0.1:3101";
 const saleor = process.env.SALEOR_API_URL ?? "http://127.0.0.1:8000/graphql/";
@@ -29,14 +30,12 @@ test.describe("two-brand / two-host real Saleor integration", () => {
     expect(unknownHost.status(), "An unknown domain cannot fall through to the first brand").toBe(404);
 
     const [fashionSite, jewelrySite, robots] = await Promise.all([
-      request.get(origin + "/sitemap.xml", { headers: fashion }),
-      request.get(origin + "/sitemap.xml", { headers: jewelry }),
+      publicSitemapLocations(request, origin, fashion.Host),
+      publicSitemapLocations(request, origin, jewelry.Host),
       request.get(origin + "/robots.txt", { headers: jewelry }),
     ]);
-    expect(fashionSite.status()).toBe(200);
-    expect(jewelrySite.status()).toBe(200);
-    const fashionXml = await fashionSite.text();
-    const jewelryXml = await jewelrySite.text();
+    const fashionXml = fashionSite.locations.map((url) => `<loc>${url}</loc>`).join("");
+    const jewelryXml = jewelrySite.locations.map((url) => `<loc>${url}</loc>`).join("");
     expect(fashionXml).toContain("https://fashion.example.test/en/us/products/");
     expect(jewelryXml).toContain("https://jewelry.example.test/en/jewelry-us/products/");
     expect(fashionXml).not.toContain("jewelry.example.test");

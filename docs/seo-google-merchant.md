@@ -2,7 +2,7 @@
 
 The storefront exposes two production discovery surfaces:
 
-- `/sitemap.xml` — generated from public Saleor catalog data and advertised in `/robots.txt`.
+- `/sitemap.xml` — generated from complete public Saleor catalog pages and advertised in `/robots.txt`. See [pagination, failure handling and remaining partitioning limits](sitemap-integrity.md).
 - `/merchant/google.xml?channel=us&locale=en` — Google Merchant XML feed, disabled by default.
 
 ## Before enabling the Merchant feed

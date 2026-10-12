@@ -51,7 +51,7 @@ export const SYSTEM_PLUGINS = {
     scope: "system",
     availability: "all-stores",
     integration: "storefront-module",
-    capabilities: ["storefront.chat", "ops.customer-support", "support.ai-agent-bot"],
+    capabilities: ["storefront.chat", "storefront.whatsapp", "ops.customer-support", "support.ai-agent-bot"],
   },
   "ai-translations": {
     id: "ai-translations",
@@ -67,7 +67,8 @@ export const SYSTEM_PLUGINS = {
     scope: "system",
     availability: "all-stores",
     integration: "legacy-inline",
-    capabilities: ["storefront.seo", "marketing.merchant-feed"],
+    // Baseline metadata/canonical/sitemap/JSON-LD belong to core, not this switch.
+    capabilities: ["marketing.merchant-feed"],
   },
 } as const satisfies Record<string, SystemPluginDefinition>;
 

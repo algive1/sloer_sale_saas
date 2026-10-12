@@ -10,6 +10,7 @@ const entries = [
   {label:"结账分析", href:"/ops/analytics/checkout", glyph:"◇"},
   {label:"商品分析", href:"/ops/analytics/products", glyph:"▧"},
   {label:"付款提醒", href:"/ops/analytics/reminders", glyph:"✉"},
+  {label:"广告投递", href:"/ops/analytics/destinations", glyph:"↗"},
   {label:"品牌站点", href:"/ops/sites", glyph:"◧"},
   {label:"店铺装修", href:"/ops/themes", glyph:"▤"},
   {label:"在线客服", href:"/ops/support", glyph:"☏"},
@@ -25,7 +26,7 @@ export function AnalyticsNavigation({ allBrands = false }: { allBrands?: boolean
     </div>
     {allBrands ? (
       <p className="mx-4 mt-3 rounded-md border border-white/15 px-3 py-2 text-xs text-white/70" role="status">
-        {pathname==="/ops/analytics/reminders"?"当前视图：按品牌管理催付。以页面选择的品牌为准。":"当前视图：平台全品牌汇总。单品牌筛选尚未开放。"}
+        {pathname==="/ops/analytics/reminders"?"当前视图：按品牌管理催付。以页面选择的品牌为准。":pathname==="/ops/analytics/destinations"?"当前视图：按品牌查看广告接收端及投递记录。":"当前视图：平台全品牌汇总。单品牌筛选尚未开放。"}
       </p>
     ) : null}
     <p className="hidden px-6 pb-2 pt-7 text-[11px] font-semibold uppercase tracking-widest text-white/45 lg:block">Analytics</p>

@@ -7,6 +7,7 @@ import type { TranslatedFields } from "@/plugins/ai-translations/policy";
 type Brand = { id: string; name: string; channels: string[]; localesByChannel: Record<string, string[]> };
 type Coverage = { locale: string; present: number; total: number };
 type Props = {
+	paused?: boolean;
 	brands: Brand[];
 	coverage: Coverage[];
 	storageReady: boolean;
@@ -24,6 +25,7 @@ const FIELDS = [
 const API = "/ops/translations/api";
 
 export function TranslationCenter({
+	paused = false,
 	brands,
 	coverage,
 	storageReady,
@@ -100,6 +102,7 @@ export function TranslationCenter({
 	}
 
 	async function mutate(body: Record<string, unknown>, reloadId?: string) {
+		if (paused) { setMessage("系统已暂停，翻译任务暂不可修改或发布。"); return; }
 		setBusy(true);
 		setMessage("");
 		try {
@@ -254,7 +257,7 @@ export function TranslationCenter({
 				<div className="mt-4 flex flex-wrap gap-2">
 					<button
 						type="button"
-						disabled={!ready || !currentLocale || busy || !workerReady || allPagesQueued}
+						disabled={paused || !ready || !currentLocale || busy || !workerReady || allPagesQueued}
 						onClick={() => void mutate({ action: "create", count: 10 })}
 						className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
 					>
@@ -337,7 +340,7 @@ export function TranslationCenter({
 										) && (
 											<>
 												<button
-													disabled={busy}
+													disabled={paused || busy}
 													type="button"
 													onClick={() =>
 														void mutate(
@@ -355,7 +358,7 @@ export function TranslationCenter({
 													退回
 												</button>
 												<button
-													disabled={busy}
+													disabled={paused || busy}
 													type="button"
 													onClick={() =>
 														void mutate(
@@ -374,7 +377,7 @@ export function TranslationCenter({
 													保存修改
 												</button>
 												<button
-													disabled={busy}
+													disabled={paused || busy}
 													type="button"
 													onClick={() =>
 														void mutate(
@@ -397,7 +400,7 @@ export function TranslationCenter({
 										{item.status === "failed" && (
 											<button
 												type="button"
-												disabled={busy}
+												disabled={paused || busy}
 												onClick={() =>
 													void mutate(
 														{
@@ -417,7 +420,7 @@ export function TranslationCenter({
 										{item.status === "approved" && publisherReady && (
 											<button
 												type="button"
-												disabled={busy}
+												disabled={paused || busy}
 												onClick={() => {
 													if (
 														window.confirm(

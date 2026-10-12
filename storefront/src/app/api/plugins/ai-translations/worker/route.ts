@@ -1,3 +1,4 @@
+import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { timingSafeEqual } from "node:crypto";
 import { runTranslationWorker } from "@/plugins/ai-translations/worker";
 import { translationDatabaseConfigured } from "@/plugins/ai-translations/store";
@@ -10,6 +11,8 @@ export async function POST(request:Request) {
   if(given.length!==secret.length||!timingSafeEqual(Buffer.from(given),Buffer.from(secret))) {
     return new Response(null,{status:401});
   }
+  const paused = pluginPauseReason("ai-translations");
+  if (paused) return Response.json({ skipped: true, reason: paused }, { status: 503, headers: { "cache-control": "no-store" } });
   if(!translationDatabaseConfigured())return new Response(null,{status:503});
   try {
     const result=await runTranslationWorker();

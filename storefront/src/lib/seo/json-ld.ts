@@ -79,6 +79,7 @@ export function buildProductJsonLd(options: {
 		"@context": "https://schema.org",
 		"@type": "Product",
 		name,
+		url: fullUrl,
 		description: description || name,
 		image: images && images.length > 0 ? images : undefined,
 		...(sku && { sku }),

@@ -14,7 +14,7 @@ const labels:Record<string,string>={
 const formatTime=(v:string)=>v?new Date(v).toLocaleTimeString("zh-CN",{hour12:false}):"—";
 const formatMoney=(n:number,c:string)=>{try{return new Intl.NumberFormat("en",{style:"currency",currency:c}).format(n);}catch{return n.toFixed(2)+" "+c;}};
 type EventRow=RealtimeAnalytics["recentEvents"][number];
-export function RealtimeDashboard({initialData}:{initialData:RealtimeAnalytics}){
+export function RealtimeDashboard({initialData,endpoint="/ops/api/analytics/realtime",scopeLabel="全品牌汇总"}:{initialData:RealtimeAnalytics;endpoint?:string;scopeLabel?:string}){
  const [data,setData]=useState(initialData);
  const [paused,setPaused]=useState(false);
  const [error,setError]=useState("");
@@ -25,7 +25,7 @@ export function RealtimeDashboard({initialData}:{initialData:RealtimeAnalytics})
   const controller=new AbortController();
   const refresh=async()=>{
    try{
-    const r=await fetch("/ops/api/analytics/realtime",{cache:"no-store",credentials:"same-origin",signal:controller.signal});
+    const r=await fetch(endpoint,{cache:"no-store",credentials:"same-origin",signal:controller.signal});
     if(!r.ok)throw new Error("HTTP "+r.status);
     const next=await r.json() as RealtimeAnalytics;
     if(active){setData(next);setError("");}
@@ -33,20 +33,20 @@ export function RealtimeDashboard({initialData}:{initialData:RealtimeAnalytics})
   };
   const timer=setInterval(()=>void refresh(),REFRESH_MS);
   return ()=>{active=false;controller.abort();clearInterval(timer);};
- },[paused]);
+ },[paused,endpoint]);
  const maxSource=Math.max(1,...data.sources.map(x=>x.sessions));
  const maxCountry=Math.max(1,...data.countries.map(x=>x.sessions));
  const summary=[
   ["当前活跃",data.summary.activeSessions,"过去5分钟活跃会话"],
   ["近5分钟事件",data.summary.events,"站内记录事件"],
   ["近5分钟加购",data.summary.addToCartSessions,"独立加购会话"],
-  ["近5分钟订单",data.summary.orders,"购买完成事件"],
+  ["近5分钟订单",data.summary.orders,"订单确认事件"],
   ["支付失败",data.summary.paymentFailures,"近5分钟支付失败"],
  ] as const;
  return <main className="mx-auto max-w-[1560px] px-4 py-8 lg:px-8">
   <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
    <div><p className="text-xs font-semibold tracking-wide text-muted-foreground">OPERATIONS / LIVE</p><h1 className="mt-1 text-2xl font-bold"><span className={"mr-2 inline-block h-2.5 w-2.5 rounded-full "+(paused?"bg-gray-400":"bg-emerald-500")}/>实时数据</h1>
-    <p className="mt-1 text-xs text-muted-foreground">在线表示最近 5 分钟产生过事件的会话，不代表持续 WebSocket 连接。</p></div>
+    <p className="mt-1 text-xs text-muted-foreground">范围：{scopeLabel}。在线为最近5分钟产生事件的会话；订单确认事件不等于实际收款，财务以 Saleor 账本为准。</p></div>
    <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{paused?"已暂停":"每10秒更新"} · {formatTime(data.generatedAt)}</span>
     <button type="button" onClick={()=>setPaused(x=>!x)} className="rounded-lg border border-border bg-card px-3 py-2 text-xs">{paused?"继续":"暂停"}</button></div>
   </header>

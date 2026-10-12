@@ -32,9 +32,10 @@ const catalog = await gql(`
       edges {
         node {
           slug
+          productType { isShippingRequired }
           productVariants(first: 25) {
             edges {
-              node { id name }
+              node { id name sku quantityAvailable }
             }
           }
         }
@@ -47,10 +48,11 @@ const candidate = catalog.products.edges
   .flatMap(({ node: product }) =>
     product.productVariants.edges.map(({ node: variant }) => ({ product, variant })),
   )
-  .find(({ variant }) => Boolean(variant.id));
+  .find(({ product, variant }) => product.productType?.isShippingRequired &&
+    Boolean(variant.id && variant.sku?.trim()) && (variant.quantityAvailable ?? 0) > 0);
 
 if (!candidate) {
-  throw new Error("No US product variant found for Transactions API smoke test.");
+  throw new Error("No stocked physical US variant with a SKU found for Transactions API smoke test.");
 }
 
 const address = {

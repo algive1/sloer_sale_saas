@@ -101,8 +101,10 @@ export async function POST(request:NextRequest) {
     const data=acceptAiProposal(pageType as AiPageType,mode as AiEditMode,document,selectedId,proposal);
     return reply({data,message:extractAiMessage(proposal),provider:provider.title,model:provider.model});
   } catch(error) {
-    if(error instanceof ThemeValidationError||error instanceof SyntaxError)
-      return reply({error:error instanceof SyntaxError?"Model did not return valid JSON":error.message},422);
+    if(error instanceof ThemeValidationError||error instanceof SyntaxError) {
+      const message=error.message;
+      return reply({error:error instanceof SyntaxError?"Model did not return valid JSON":message},422);
+    }
     console.error("[theme-ai] AI generation failed");
     return reply({error:"AI generation unavailable; check provider configuration or try another model"},503);
   }

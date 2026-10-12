@@ -1,0 +1,90 @@
+query OpsCatalogAudit($channel: String!, $after: String) {
+	channel(slug: $channel) {
+		id
+		slug
+		isActive
+		currencyCode
+	}
+	products(first: 25, after: $after, channel: $channel, sortBy: { field: NAME, direction: ASC }) {
+		pageInfo {
+			hasNextPage
+			endCursor
+		}
+		edges {
+			node {
+				id
+				name
+				slug
+				description
+				seoTitle
+				seoDescription
+				category {
+					id
+				}
+				weight {
+					value
+					unit
+				}
+				productType {
+					isShippingRequired
+					weight {
+						value
+						unit
+					}
+				}
+				media {
+					type
+					alt
+				}
+				brand: assignedAttribute(slug: "brand") {
+					... on AssignedPlainTextAttribute {
+						text: value
+					}
+					... on AssignedSingleChoiceAttribute {
+						choice: value {
+							name
+						}
+					}
+				}
+				channelListings {
+					channel {
+						slug
+						currencyCode
+						isActive
+					}
+					isPublished
+					visibleInListings
+					isAvailableForPurchase
+					publishedAt
+					availableForPurchaseAt
+				}
+				productVariants(first: 50) {
+					pageInfo {
+						hasNextPage
+					}
+					edges {
+						node {
+							id
+							sku
+							trackInventory
+							quantityAvailable
+							weight {
+								value
+								unit
+							}
+							channelListings {
+								channel {
+									slug
+								}
+								price {
+									amount
+									currency
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}

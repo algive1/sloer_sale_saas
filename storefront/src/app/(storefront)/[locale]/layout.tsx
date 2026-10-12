@@ -17,9 +17,7 @@ import { PersistBrowseLocaleCookie } from "@/ui/components/persist-browse-locale
 import { getRootHtmlFontProps } from "@/lib/fonts";
 import { saleorMediaPreconnectOrigin } from "@/lib/images";
 import { speedInsightsSampleRate } from "@/lib/speed-insights";
-import { webAnalyticsEnabled } from "@/lib/analytics/web-analytics";
 import { AnalyticsMount } from "@/ui/components/analytics-mount";
-import { WebAnalytics } from "@/ui/components/web-analytics";
 import { brandSitesConfigured } from "@/config/brand-sites";
 
 /**
@@ -89,8 +87,8 @@ export default async function LocaleRootLayout({
 					{children}
 					{/* Sampled — unsampled Speed Insights dominates the Vercel bill at scale. */}
 					<SpeedInsights sampleRate={speedInsightsSampleRate()} />
-					{/* Unsampled page views — the denominator; URLs are redacted in beforeSend. */}
-					{webAnalyticsEnabled() && <WebAnalytics />}
+					{/* AnalyticsMount controls runtime tracking policy and redaction. */}
+
 				</NextIntlClientProvider>
 				<AnalyticsMount />
 			</body>

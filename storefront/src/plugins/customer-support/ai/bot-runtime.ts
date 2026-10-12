@@ -1,3 +1,4 @@
+import { assertPluginActive, pluginPauseReason } from "@/plugins/system/runtime.server";
 import "server-only";
 import { analyticsDatabaseConfigured, hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
 import type { AIConfig, BotBinding, PublishedFaq } from "./bot-config";
@@ -22,6 +23,7 @@ async function ensureSchema(): Promise<void> {
 
 /** Webhook fast path: only persist numeric event identifiers; no customer content or model call. */
 export async function enqueueAIBotMessage(bot: BotBinding, event: IncomingBotMessage): Promise<void> {
+  assertPluginActive("customer-support");
   if (event.accountId !== bot.accountId || event.inboxId !== bot.inboxId) {
     throw new Error("support_ai_invalid_bot_scope");
   }
@@ -199,8 +201,10 @@ async function processOne(config: AIConfig, row: PendingRow): Promise<void> {
 
 /** Call from a protected short-polling worker, not the Chatwoot 5-second webhook path. */
 export async function runQueuedAIBot(config: AIConfig,maxItems = 3): Promise<{
-  processed: number; remaining: number;
+  processed: number; remaining: number | null; reason?: string;
 }> {
+  const paused = pluginPauseReason("customer-support");
+  if (paused) return { processed: 0, remaining: null, reason: paused };
   await ensureSchema();
   await libsqlPipeline([{
     sql:"INSERT INTO support_ai_worker_heartbeat (id,seen_at) VALUES(1,?) " +

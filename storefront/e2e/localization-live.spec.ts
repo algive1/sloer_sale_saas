@@ -1,4 +1,5 @@
 import { chromium, devices, expect, test } from "@playwright/test";
+import { publicSitemapLocations } from "./helpers/sitemap";
 
 const origin = process.env.PLAYWRIGHT_MULTIBRAND_BASE_URL ?? "http://127.0.0.1:3101";
 const fashion = { Host: "fashion.example.test" };
@@ -72,12 +73,10 @@ test.describe("localized storefront entry and brand-safe SEO", () => {
   });
 
   test("localized product SEO and sitemaps do not advertise another brand", async ({ request }) => {
-    const fashionSitemap = await request.get(origin + "/sitemap.xml", { headers: fashion });
-    const jewelrySitemap = await request.get(origin + "/sitemap.xml", { headers: jewelry });
-    expect(fashionSitemap.status()).toBe(200);
-    expect(jewelrySitemap.status()).toBe(200);
-    const fXml = await fashionSitemap.text();
-    const jXml = await jewelrySitemap.text();
+    const fashionSitemap = await publicSitemapLocations(request, origin, fashion.Host);
+    const jewelrySitemap = await publicSitemapLocations(request, origin, jewelry.Host);
+    const fXml = fashionSitemap.locations.map(url => `<loc>${url}</loc>`).join("");
+    const jXml = jewelrySitemap.locations.map(url => `<loc>${url}</loc>`).join("");
     expect(fXml).toContain("https://fashion.example.test/de/us/products/");
     expect(jXml).toContain("https://jewelry.example.test/fr/jewelry-us/products/");
     expect(fXml).not.toContain("jewelry.example.test");

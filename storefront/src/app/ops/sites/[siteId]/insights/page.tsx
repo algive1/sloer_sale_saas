@@ -1,3 +1,4 @@
+import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -26,6 +27,7 @@ function formatCount(value: number) {
 export default function BrandInsightsPage({ params, searchParams }: Props) {
   return (
     <Suspense fallback={<main className="mx-auto max-w-6xl p-8 text-sm text-stone-500">正在载入品牌数据...</main>}>
+      <PluginPauseNotice plugin="analytics" />
       <BrandInsightsPageContent params={params} searchParams={searchParams} />
     </Suspense>
   );
@@ -97,7 +99,7 @@ async function BrandInsightsPageContent({ params, searchParams }: Props) {
           ["访问会话", formatCount(reports.traffic.sessions)],
           ["商品浏览会话", formatCount(reports.traffic.quality.productViews)],
           ["加购会话", formatCount(reports.traffic.quality.addToCarts)],
-          ["完成付款订单", formatCount(reports.checkout.summary.orders)],
+          ["订单确认事件", formatCount(reports.checkout.summary.orders)],
         ].map(([label, value]) => <article key={label}
           className="rounded-xl border border-stone-200 bg-white p-5">
           <p className="text-sm text-stone-500">{label}</p>
@@ -135,7 +137,7 @@ async function BrandInsightsPageContent({ params, searchParams }: Props) {
           <div className="mt-4 grid grid-cols-2 gap-3">
             {[
               ["开始结账", reports.checkout.summary.started],
-              ["成功购买会话", reports.checkout.summary.purchaseSessions],
+              ["订单确认会话", reports.checkout.summary.purchaseSessions],
               ["支付失败事件", reports.checkout.summary.paymentFailures],
               ["结账失败事件", reports.checkout.summary.checkoutFailures],
             ].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-stone-100 p-3">

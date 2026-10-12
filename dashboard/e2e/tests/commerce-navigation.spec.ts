@@ -25,6 +25,14 @@ test.describe("Merchant navigation – desktop admin", () => {
     // The Apps accordion starts closed; expand it before inspecting links.
     // Commerce Ops destinations remain independently authenticated, so the
     // browser checks their anchors but never enters their protected service.
+    // The upstream Saleor Pulse announcement may cover the lower navigation.
+    // Dismiss it as an operator would, never force-click through the overlay.
+    const dismissPulse = page.getByTestId("ripple-video-announcement-dismiss");
+
+    if (await dismissPulse.isVisible()) {
+      await dismissPulse.click();
+    }
+
     await page.locator(
       '[data-test-id="menu-item-label-installed-extensions"].sidebar-item-group-trigger',
     ).click();

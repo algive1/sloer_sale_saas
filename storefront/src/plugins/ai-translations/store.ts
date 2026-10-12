@@ -1,3 +1,4 @@
+import { assertPluginActive } from "@/plugins/system/runtime.server";
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { hranaRowsToObjects, libsqlPipeline } from "@/lib/storage/libsql-http";
@@ -80,6 +81,7 @@ export async function getJob(siteId:string,jobId:string):Promise<{job:Translatio
 }
 
 export async function createJob(scope:TranslationScope,count:number):Promise<TranslationJob> {
+  assertPluginActive("ai-translations");
   if (!Number.isInteger(count)||count<1||count>10) throw new TranslationInputError("每批最多 10 件商品");
   await schema();
   // Repeated button clicks/retries return the existing active batch rather than
@@ -114,6 +116,7 @@ export async function createJob(scope:TranslationScope,count:number):Promise<Tra
 
 export async function reviewItem(scope:TranslationScope,jobId:string,itemId:string,revision:number,
   action:"approve"|"reject"|"edit",manual?:unknown):Promise<TranslationItem> {
+  assertPluginActive("ai-translations");
   if (!Number.isSafeInteger(revision)||revision<0) throw new TranslationInputError("需要有效版本号");
   const job=await getJob(scope.siteId,jobId);
   if (!job || job.job.channel!==scope.channel || job.job.locale!==scope.locale) throw new TranslationInputError("任务不存在");
@@ -132,6 +135,7 @@ export async function reviewItem(scope:TranslationScope,jobId:string,itemId:stri
 }
 
 export async function claimNext():Promise<TranslationItem|null> {
+  assertPluginActive("ai-translations");
   await schema();
   // A crashed worker can leave an AI-only processing claim stranded. Two attempts
   // maximum; publishing claims are deliberately NEVER recovered automatically.
@@ -157,6 +161,7 @@ export async function completeGenerated(item:TranslationItem,translation:Transla
      item.jobId,item.itemId,item.revision]);
 }
 export async function retryFailed(scope:TranslationScope,jobId:string,itemId:string,revision:number):Promise<void> {
+  assertPluginActive("ai-translations");
   const data=await getJob(scope.siteId,jobId);
   if(!data||data.job.channel!==scope.channel||data.job.locale!==scope.locale)
     throw new TranslationInputError("任务不存在");
@@ -171,6 +176,7 @@ export async function retryFailed(scope:TranslationScope,jobId:string,itemId:str
 }
 
 export async function publishReviewed(scope:TranslationScope,jobId:string,itemId:string,revision:number):Promise<void> {
+  assertPluginActive("ai-translations");
   mayPublishInScope(scope);
   const job=await getJob(scope.siteId,jobId);
   if(!job||job.job.channel!==scope.channel||job.job.locale!==scope.locale)throw new TranslationInputError("任务不存在");
