@@ -1,6 +1,6 @@
 # System customer-support plugin: Chatwoot CE (phase 1)
 
-This is the **first integration slice**, not a completed multi-channel customer-service or Saleor order-access system.
+The website chat integration is deployed as a system-level plugin. A **native agent inbox** is now provided under Customer → Conversations; advanced Chatwoot and AI configuration remains separate. The Chatwoot service itself is still separately deployed, and live readiness requires real service credentials.
 
 ## Architecture
 
@@ -19,8 +19,13 @@ This is the **first integration slice**, not a completed multi-channel customer-
    - `SUPPORT_CHATWOOT_SITES_JSON=[{"siteId":"fashion","accountId":1,"websiteToken":"public_fashion_token"},{"siteId":"jewelry","accountId":2,"websiteToken":"public_jewelry_token"}]`
    These are illustrative IDs/tokens only. In single-brand deployment, use `STOREFRONT_SITE_ID` or `primary`.
 4. Ensure Chatwoot Website Inbox has the correct allowed storefront domain(s) and CSP `script-src`, `frame-src` and `connect-src` policies allow the chosen self-hosted Chatwoot origin. Configure `wss:` as appropriate.
-5. Open `/ops/support` using the existing operations authentication. This reports **configuration validity**, not a live Chatwoot health check.
-6. On each brand domain, click the help launcher to load `/packs/js/sdk.js`. Send a test message and answer it from the corresponding Chatwoot Account; repeat for every brand.
+5. Configure the server-side Agent API credentials, one unique Chatwoot agent token per brand Account:
+   - `SUPPORT_CHATWOOT_AGENT_TOKENS_JSON=[{"siteId":"fashion","apiToken":"<dedicated_chatwoot_agent_token>"},{"siteId":"jewelry","apiToken":"<dedicated_other_agent_token>"}]`
+   - These credentials must be generated inside the matching Chatwoot Account and must **never** appear in client bundles, webhooks, chat widget configuration, or git commits.
+   - The Chatwoot operator represented by each token must have conversation read/write privileges in its own Account only.
+6. Open **Customers → Live conversations** in Saleor Dashboard (this opens the separate authenticated Commerce Ops tab) or directly `/ops/support`. It loads real conversation lists and messages via a server-only Chatwoot API gateway. Reply, mark resolved and reopen are supported. The first-level Customers label is a direct chat link; the chevron expands native customer management and secondary Chatwoot settings.
+7. Open `/ops/support/settings` to inspect **configuration state** and AI Bot readiness (not an actual Chatwoot health check).
+8. On each brand domain, click the help launcher to load `/packs/js/sdk.js`. Send a test message and answer it from the corresponding Chatwoot Account; repeat for every brand.
 
 When no config is set, there is **no widget button and no Chatwoot network request** on storefront browsing. Configuration errors fail closed without breaking catalog/checkout.
 
@@ -29,9 +34,9 @@ When no config is set, there is **no widget button and no Chatwoot network reque
 - Public Website Tokens are permitted in browser SDK configuration. **Never put Chatwoot API access tokens, HMAC signing keys or Saleor admin tokens in this JSON or browser props.**
 - In phase 1 all conversations are guest-only. Do **not** identify Saleor customers by email or attach orders based on an unverified Chatwoot contact. Authenticated identity mapping will require brand-specific, server-signed HMAC and logout/session reset.
 - Chatwoot Accounts isolate conversation/contact ownership at the application layer. Strict brand operator RBAC and upstream Saleor global customer/checkout boundaries are not solved by this integration.
-- The operations link opens the stock Chatwoot workbench. Embedded order panels, agent SSO, cross-brand staff roles, Webhook handling, business automation and shipping/refund operations are intentionally not part of this phase.
+- The operations area now includes a native Chatwoot API-backed inbox. It is intentionally not an iframe or an attempt to share Saleor/Chatwoot login sessions. **It uses an independent Commerce Ops Basic-auth platform-admin role** and a separate per-brand Chatwoot Agent API identity. Chatwoot messages are attributed to that configured agent identity; individual Saleor staff SSO, agent identity propagation, full multi-channel workflows, order actions, refunds and customer-email-based order joining are not implemented.
 - Do not publish support access on checkout until its mobile overlays and payment return flows pass full browser E2E.
-- Production is blocked until a real self-hosted Chatwoot instance, its CE license dependencies, HTTPS/CSP, two branded domains and guest-chat flow have passed end-to-end tests.
+- Production is blocked until a real self-hosted Chatwoot instance, its CE license dependencies, HTTPS/CSP, two branded domains, guest-chat flow and actual agent API read/write/resolve flows have passed end-to-end tests.
 - If external scripts are subject to consent under the operating privacy/legal policy, gate launch of the chat session accordingly; never silently reuse marketing consent.
 
 ## Verification
@@ -53,7 +58,6 @@ Additional browser acceptance:
 
 Related design: `docs/multibrand-architecture.md`, `docs/system-plugins.md`.
 
-
 ## Brand WhatsApp and chat recovery
 
 Set `SUPPORT_WHATSAPP_SITES_JSON` at runtime with selected configured brands and distinct public international business numbers (8–15 digits, no plus sign/spaces):
@@ -71,3 +75,13 @@ Chatwoot loading times out after 15 seconds if the SDK/ready event never arrives
 Verification: configuration/Host/Channel/pause tests, actual client-component timeout/retry with a simulated SDK, and native production browser checks for both brand links, operator visibility, no pre-click requests and a 375px viewport. Final results are recorded in the PR. No real WhatsApp message or Chatwoot conversation is sent by these tests.
 
 Official references: [WhatsApp click to chat](https://faq.whatsapp.com/5913398998672934), [Chatwoot SDK settings/events](https://www.chatwoot.com/hc/user-guide/articles/1677587234-how-to-send-additional-user-information-to-chatwoot-using-sdk), [Chatwoot widget locales](https://app.chatwoot.com/hc/user-guide/articles/1677695546-languages-supported-in-chatwoot). Verified Saleor order context, staff workflow and message synchronization remain separate unfinished work.
+
+## Agent workbench: endpoint and security
+
+- `GET /api/ops/chatwoot?site=<configured-site-id>&status=open|pending|resolved|all` returns sanitized conversation cards.
+- `GET /api/ops/chatwoot?site=...&view=messages&id=<conversation-id>` returns only text messages without raw contact metadata.
+- `POST /api/ops/chatwoot` accepts explicit `reply` or `status` actions (resolve/reopen) with CSRF-origin and custom-header checks. All endpoints call `currentOpsViewer()` and require **platform_admin**. Brand analysts cannot read or send conversations.
+- The server selects the Chatwoot Account ID and API token exclusively from `SUPPORT_CHATWOOT_SITES_JSON` + `SUPPORT_CHATWOOT_AGENT_TOKENS_JSON`. The browser never chooses an account ID or receives an Agent token.
+- Responses are no-store and bounded; unsupported upstream payload fields are discarded. The Chatwoot API is called on the server with an 8-second timeout and no redirects.
+- Empty/incomplete configuration renders an explicit not-ready screen; no sample conversation is invented.
+- Customer information shown in the inbox is Chatwoot-reported and is NOT a verified Saleor customer identity; do not expose order records based on that email.

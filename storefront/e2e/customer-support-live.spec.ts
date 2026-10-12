@@ -10,7 +10,7 @@ test("support operations show both brand numbers and truthful status on mobile",
 	});
 	try {
 		const page = await context.newPage();
-		await page.goto(base + "/ops/support");
+		await page.goto(base + "/ops/support/settings");
 		await expect(page.getByRole("heading", { name: "WhatsApp 品牌入口", exact: true })).toBeVisible();
 		await expect(page.getByRole("link", { name: "+12025550101 · 打开核对 ↗", exact: true })).toBeVisible();
 		await expect(page.getByRole("link", { name: "+12025550102 · 打开核对 ↗", exact: true })).toBeVisible();
@@ -38,16 +38,16 @@ test("public support links and operations diagnostics remain assigned to the tru
 		expect(html).toContain("https://wa.me/" + brand.phone);
 		expect(html).not.toContain("https://wa.me/" + brand.other);
 	}
-	const ops = await request.get(base + "/ops/support", { headers: { Authorization: owner } });
+	const ops = await request.get(base + "/ops/support/settings", { headers: { Authorization: owner } });
 	expect(ops.status()).toBe(200);
 	const html = await ops.text();
 	expect(html).toContain("WhatsApp 品牌入口");
 	expect(html).toContain("https://wa.me/12025550101");
 	expect(html).toContain("https://wa.me/12025550102");
 	expect(html).not.toContain("未配置；前台不显示 WhatsApp 入口。");
-	expect((await request.get(base + "/ops/support", { headers: { Authorization: reader } })).status()).toBe(
-		403,
-	);
+	for (const path of ["/ops/support", "/ops/support/settings"]) {
+		expect((await request.get(base + path, { headers: { Authorization: reader } })).status()).toBe(403);
+	}
 	const wrong = await request.get(base + "/en/us", { headers: { Host: "jewelry.example.test" } });
 	expect(wrong.status()).toBe(404);
 	expect(await wrong.text()).not.toContain("https://wa.me/");

@@ -420,12 +420,16 @@ export function useMenuStructure() {
     ...baseCatalog,
     label: localized("商品", "Products"),
   };
+  const customerChatUrl = createOpsHref(process.env.COMMERCE_OPS_URL, "/ops/support");
   const customers: SidebarMenuItem = {
     ...baseCustomers,
     label: localized("客户", "Customers"),
+    // The group label is a real chat entry. The separate chevron expands
+    // native customer management and Chatwoot connection settings.
+    ...(customerChatUrl ? { primaryExternalUrl: customerChatUrl } : {}),
     children: [
-      ...(baseCustomers.children ?? []),
       ...opsSection("customers"),
+      ...(baseCustomers.children ?? []),
     ],
   };
   const marketing: SidebarMenuItem = {

@@ -63,6 +63,9 @@ jobs:
       - name: Verify operations identity and brand read permissions
         run: pnpm --dir storefront exec vitest run src/lib/ops/authorization.test.ts
 
+      - name: Verify Chatwoot agent security and brand isolation
+        run: pnpm --dir storefront exec vitest run src/plugins/customer-support/config.test.ts src/plugins/customer-support/agent-api-config.test.ts src/plugins/customer-support/agent-workbench-data.test.ts src/plugins/customer-support/agent-request-security.test.ts src/lib/ops/navigation.test.ts
+
       - name: ESLint source check
         env:
           # Same public Saleor schema endpoint used by upstream Paper lint CI.
