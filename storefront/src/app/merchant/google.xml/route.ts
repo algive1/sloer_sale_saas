@@ -4,7 +4,7 @@ import { getDefaultLocaleSlug, isStorefrontLocaleSlug } from "@/config/locale";
 import { brandSitesConfigured, brandSiteForHost } from "@/config/brand-sites";
 import { getLocalesForChannel, isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
-import { fetchGoogleMerchantProducts } from "@/lib/merchant/google-feed-source";
+import { fetchGoogleMerchantProducts, MerchantFeedBudgetError } from "@/lib/merchant/google-feed-source";
 import { buildGoogleMerchantXml } from "@/lib/merchant/google-feed";
 import { getBaseUrl, seoConfig } from "@/lib/seo/config";
 
@@ -62,7 +62,17 @@ export async function GET(request: Request): Promise<Response> {
 		return textResponse("Locale is not enabled for this storefront channel.", 400);
 	}
 
-	const products = await fetchGoogleMerchantProducts(channel, locale);
+	let products;
+	try {
+		products = await fetchGoogleMerchantProducts(channel, locale);
+	} catch (error) {
+		// A budget/page-limit refusal must never be served or cached as a feed;
+		// 503 + no-store tells Google to retry without ingesting a truncated file.
+		if (error instanceof MerchantFeedBudgetError) {
+			return textResponse("Google Merchant feed is still building.", 503);
+		}
+		throw error;
+	}
 	const xml = buildGoogleMerchantXml(products, {
 		baseUrl: site ? `https://${site.domains[0]}` : getBaseUrl(),
 		channel,

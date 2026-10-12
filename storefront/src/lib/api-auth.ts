@@ -30,7 +30,8 @@ export function verifySecret(provided: string | null | undefined): boolean {
 
 /**
  * Extract the bearer token from the Authorization header.
- * Falls back to x-revalidate-secret header, then query-string `?secret=` (deprecated).
+ * Falls back to x-revalidate-secret header, then query-string `?secret=` only when
+ * REVALIDATE_ALLOW_QUERY_SECRET=true (query strings land in proxy/CDN access logs).
  */
 export function extractBearerToken(request: NextRequest): string | null {
 	const authHeader = request.headers.get("authorization");
@@ -43,8 +44,14 @@ export function extractBearerToken(request: NextRequest): string | null {
 
 	const querySecret = request.nextUrl.searchParams.get("secret");
 	if (querySecret) {
+		if (process.env.REVALIDATE_ALLOW_QUERY_SECRET !== "true") {
+			console.warn(
+				"[Security] Rejecting ?secret= query token; use `Authorization: Bearer <token>` (or set REVALIDATE_ALLOW_QUERY_SECRET=true for legacy callers).",
+			);
+			return null;
+		}
 		console.warn(
-			"[Security] Secret passed via query string is deprecated. Use `Authorization: Bearer <token>` header instead.",
+			"[Security] Secret passed via query string is deprecated and may be logged by upstream proxies.",
 		);
 		return querySecret;
 	}

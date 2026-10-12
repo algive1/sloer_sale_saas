@@ -397,7 +397,7 @@ Catalog entries are **tag-addressable** — `applyCacheProfile` attaches the ent
 
 **Don't** point Saleor webhooks directly at `/api/revalidate` while the app is installed (duplicate deliveries, doubled invalidation cost). Each delivery logs its `saleor-event` and `saleor-api-url`, so duplicates show up as two identical log lines per change — check there first if invalidation looks twice as busy as expected. Direct webhooks remain valid for self-hosted setups without the app (set `SALEOR_WEBHOOK_SECRET`).
 
-**Manual / emergency** (Bearer header, timing-safe; `?secret=` is deprecated):
+**Manual / emergency** (Bearer header, timing-safe; `?secret=` is rejected unless `REVALIDATE_ALLOW_QUERY_SECRET=true`):
 
 ```bash
 # One product

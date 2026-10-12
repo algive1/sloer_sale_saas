@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { fetchOrderByNumberOnServer } from "@/checkout/lib/server/fetch-order-by-number";
 import { fetchOrderOnServer } from "@/checkout/lib/server/fetch-order";
 import { buildOrderStatusPath } from "@paper/session-bridge";
-import { checkRateLimit } from "@/lib/auth/auth-rate-limit";
+import { checkRateLimit, resolveClientIp } from "@/lib/auth/auth-rate-limit";
 import { getCheckoutLocaleSlug } from "@/lib/browse-locale-server";
 import { isStorefrontLocaleSlug } from "@/config/locale";
 import { isChannelAllowedForCurrentHost } from "@/lib/brand/request-scope";
@@ -28,12 +28,9 @@ function genericMiss(): OrderLookupActionResult {
 }
 
 async function clientIp(): Promise<string> {
-	const headerList = await headers();
-	const forwarded = headerList.get("x-forwarded-for");
-	if (forwarded) {
-		return forwarded.split(",")[0]?.trim() || "unknown";
-	}
-	return headerList.get("x-real-ip") ?? "unknown";
+	// Only the last x-forwarded-for entry is appended by our own proxy; the first
+	// one is client-controlled and would let lookups rotate their limiter key.
+	return resolveClientIp(await headers());
 }
 
 function browseLocaleFromForm(formData: FormData): string | null {
