@@ -269,6 +269,7 @@ describe("full purge tag planning", () => {
 
 	it("includes shared catalog tags even when no channels are configured", () => {
 		expect(planFullPurgeTagEntries([]).map((e) => e.tag)).toEqual([
+			"sitemaps",
 			"products",
 			"categories",
 			"collections",
@@ -276,6 +277,15 @@ describe("full purge tag planning", () => {
 			"channels",
 		]);
 	});
+});
+
+it("includes market sitemap caches in the manifest and full purge", () => {
+	expect(buildTag(CACHE_PROFILES.sitemap, { channel: "jewelry-us" })).toBe("sitemap:catalog:jewelry-us");
+	expect(resolveRevalidateProfileForTag("sitemap:catalog:jewelry-us", null)).toBe("catalog");
+	expect(resolveManualRevalidateTag("sitemap", "jewelry-us")).toBe("sitemap:catalog:jewelry-us");
+	expect(planFullPurgeTagEntries(["us", "jewelry-us"]).map((entry) => entry.tag)).toEqual(
+		expect.arrayContaining(["sitemap:catalog:us", "sitemap:catalog:jewelry-us"]),
+	);
 });
 
 describe("shared catalog tags", () => {

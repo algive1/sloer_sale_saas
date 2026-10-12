@@ -43,6 +43,7 @@ jobs:
       POSTGRES_USER: saleor
       POSTGRES_PASSWORD: ci-saleor-password
       SALEOR_SECRET_KEY: ci-saleor-secret-key-at-least-32-characters-long
+      SALEOR_WEBHOOK_SECRET: ci-native-catalog-webhook-secret-only-for-disposable-testing
       SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ci-checkout-gateway-secret-32-char-minimum-only-tests
       SALEOR_ALLOWED_HOSTS: localhost,127.0.0.1,api
       SALEOR_DEFAULT_CHANNEL: us
@@ -614,12 +615,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CI_NATIVE_CACHE_SEED=true nohup python3 infra/saleor/cache_receiver_ci.py > /tmp/native-cache-receiver.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3103/health; then break; fi
+            if [ "$attempt" -eq 30 ]; then cat /tmp/native-cache-receiver.log; exit 1; fi
+            sleep 1
+          done
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml up -d --no-deps dashboard
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:9000/ > /tmp/native-dashboard.html; then break; fi
             if [ "$attempt" -eq 30 ]; then exit 1; fi
             sleep 2
           done
+          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
+            -e CI_NATIVE_CACHE_SEED=true -e CI_NATIVE_WEBHOOK_SECRET="$SALEOR_WEBHOOK_SECRET" \
+            api python3 manage.py shell < infra/saleor/bootstrap_cache_ci.py
           fixture=$(docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T \
             -e CI_NATIVE_BULK_SEED=true api python3 manage.py shell < infra/saleor/bootstrap_bulk_ci.py | tail -n 1)
           FIXTURE_JSON="$fixture" python3 - <<'PY'
@@ -638,7 +648,24 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:9000
           PLAYWRIGHT_NATIVE_DASHBOARD_URL: http://127.0.0.1:9000
           PLAYWRIGHT_NATIVE_BULK_ENTRY_URL: http://127.0.0.1:3101
+          NATIVE_CATALOG_WEBHOOK_REAL: "true"
         run: pnpm --dir storefront exec playwright test e2e/native-bulk-publish-live.spec.ts --workers=1 --retries=0
+
+      - name: Verify native signed catalog delivery receipt
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          # Saleor clears successful deliveries and attempts. Capture the actual
+          # upstream response instead; preserve Core's production lifecycle.
+          with open("/tmp/native-cache-receipts.jsonl") as source:
+              receipts = [json.loads(line) for line in source]
+          required = {"sitemap:catalog:us", "sitemap:catalog:jewelry-us", "listing:all:jewelry-us"}
+          assert any(receipt["signed"] and receipt["event"] == "product_updated"
+                     and receipt["status"] == 200 and receipt["success"] is True
+                     and required.issubset(set(receipt["tags"])) for receipt in receipts), "Native cache event was not accepted"
+          print("Native signed ProductUpdated receipt and both market tags verified")
+          PY
 
       - name: Integration logs on failure
         if: failure()

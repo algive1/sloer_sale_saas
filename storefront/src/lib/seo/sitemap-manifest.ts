@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { cacheLife, cacheTag } from "next/cache";
+import { cacheTag } from "next/cache";
+import { applyCacheProfile, CACHE_PROFILES } from "@/lib/cache-manifest";
 import { readSitemapPage, type SitemapEntity, type SitemapPage } from "./sitemap-page";
 
 export type SitemapChunk = { after: string | null; pages: number; count: number };
@@ -37,15 +38,24 @@ export async function scanSitemapChunks(
 	throw new Error("sitemap_manifest_page_limit_exceeded");
 }
 
-export async function readSitemapManifest(channel: string, locale: string, entity: SitemapEntity): Promise<SitemapChunk[]> {
+export async function readSitemapManifest(
+	channel: string,
+	locale: string,
+	entity: SitemapEntity,
+): Promise<SitemapChunk[]> {
 	"use cache";
-	cacheLife("catalog");
+	applyCacheProfile(CACHE_PROFILES.sitemap, { channel });
 	cacheTag("products", "categories", "collections");
 	return scanSitemapChunks((after) => readSitemapPage(channel, locale, entity, after));
 }
 
 /** Fetch only this chunk's bounded pages; refuse a stale/inconsistent success. */
-export async function readSitemapChunk(channel: string, locale: string, entity: SitemapEntity, chunk: SitemapChunk): Promise<string[]> {
+export async function readSitemapChunk(
+	channel: string,
+	locale: string,
+	entity: SitemapEntity,
+	chunk: SitemapChunk,
+): Promise<string[]> {
 	const slugs: string[] = [];
 	const seen = new Set<string>();
 	let after = chunk.after;
