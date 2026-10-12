@@ -226,22 +226,28 @@ Featured homepage products use tag `collection:featured-products` (same `catalog
 
 **Manual revalidation** (requires `REVALIDATE_SECRET`):
 
+Pass the secret as a header — query strings are rejected by default because they are
+written to proxy and CDN access logs. Set `REVALIDATE_ALLOW_QUERY_SECRET=true` only to
+keep legacy callers working while you migrate them.
+
 ```bash
+AUTH=(-H "Authorization: Bearer $REVALIDATE_SECRET")
+
 # Single product (all locale cache entries for slug)
-curl "https://your-store.com/api/revalidate?secret=xxx&tag=product:blue-hoodie"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?tag=product:blue-hoodie"
 
 # Single product path (one locale; tag still clears all locales)
-curl "https://your-store.com/api/revalidate?secret=xxx&tag=product:blue-hoodie&path=/pl/default-channel/products/blue-hoodie"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?tag=product:blue-hoodie&path=/pl/default-channel/products/blue-hoodie"
 
 # CMS page (tag only — invalidates getPageData across channels)
-curl "https://your-store.com/api/revalidate?secret=xxx&tag=page:about-us"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?tag=page:about-us"
 
 # Navigation for one channel (tag or tag + channel query)
-curl "https://your-store.com/api/revalidate?secret=xxx&tag=navigation:us"
-curl "https://your-store.com/api/revalidate?secret=xxx&tag=navigation&channel=us"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?tag=navigation:us"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?tag=navigation&channel=us"
 
 # All tags for every storefront channel
-curl "https://your-store.com/api/revalidate?secret=xxx&all=1"
+curl "${AUTH[@]}" "https://your-store.com/api/revalidate?all=1"
 ```
 
 Without webhooks? TTL handles it—cached data expires per the `catalog` / `menus` / `channels` profiles above.

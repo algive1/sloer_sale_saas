@@ -236,7 +236,7 @@ type FetchResult = GraphQLSuccess<Response> | GraphQLFailure;
 type RetryOverrides = {
 	maxRetries?: number;
 	timeoutMs?: number;
-	/** When set, session auth honors `timeoutMs` via AbortSignal. Default session fetches stay untimed. */
+	/** Session auth honors `timeoutMs` via AbortSignal by default; pass `false` only for operations that must not be aborted. */
 	abortSession?: boolean;
 };
 
@@ -261,7 +261,9 @@ async function fetchWithRetry(
 			if (auth === "session") {
 				const { getServerAuthClient } = await import("@/lib/auth/server");
 				const client = await getServerAuthClient();
-				if (retry?.abortSession) {
+				if (retry?.abortSession === false) {
+					response = await client.fetchWithAuth(url, input);
+				} else {
 					const controller = new AbortController();
 					const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 					try {
@@ -269,8 +271,6 @@ async function fetchWithRetry(
 					} finally {
 						clearTimeout(timeoutId);
 					}
-				} else {
-					response = await client.fetchWithAuth(url, input);
 				}
 			} else {
 				response = await fetchWithTimeout(url, input, timeoutMs);
@@ -400,7 +400,6 @@ async function executeGraphQL<Result, Variables>(
 		fetchWithRetry(input, auth, operationName, variablesForLog, {
 			maxRetries,
 			timeoutMs,
-			abortSession: timeoutMs !== undefined,
 		}),
 	);
 

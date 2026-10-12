@@ -124,6 +124,12 @@ function anchorId(ruleNum, title) {
 		.replace(/(^-|-$)/g, "")}`;
 }
 
+function readLf(path) {
+	// A core.autocrlf checkout hands Windows CRLF; generation and the drift check
+	// must compare content, not platform line endings.
+	return readFileSync(path, "utf8").replace(/\r\n/g, "\n");
+}
+
 function stripFrontmatter(content) {
 	if (!content.startsWith("---\n")) {
 		return content;
@@ -177,7 +183,7 @@ function buildBody() {
 		parts.push("");
 
 		for (const rule of section.rules) {
-			const raw = readFileSync(join(rulesDir, rule.file), "utf8");
+			const raw = readLf(join(rulesDir, rule.file));
 			parts.push(`### ${rule.num} ${rule.title}`);
 			parts.push("");
 			parts.push(stripRuleTitle(raw).trimEnd());
@@ -262,7 +268,7 @@ ${footer}`;
 if (process.argv.includes("--check")) {
 	let current = "";
 	try {
-		current = readFileSync(outPath, "utf8");
+		current = readLf(outPath);
 	} catch {
 		// missing file → treated as drift below
 	}

@@ -10,6 +10,29 @@ import type {
 const PRODUCT_PAGE_SIZE = 50;
 const VARIANT_PAGE_SIZE = 100;
 
+/**
+ * The feed is served on a CDN cache miss, so an unbounded catalog scan pins a
+ * request thread for as long as Saleor takes. Mirror the sitemap integrity
+ * budget: refuse to emit a partial feed instead of truncating silently.
+ */
+type FeedLimits = { maxPages: number; budgetMs: number };
+
+export class MerchantFeedBudgetError extends Error {
+	constructor(reason: string) {
+		super(`merchant_feed_${reason}`);
+		this.name = "MerchantFeedBudgetError";
+	}
+}
+
+function feedLimits(): FeedLimits {
+	const maxPages = parseInt(process.env.GOOGLE_MERCHANT_FEED_MAX_PAGES || "200", 10);
+	const budgetMs = parseInt(process.env.GOOGLE_MERCHANT_FEED_BUDGET_MS || "60000", 10);
+	return {
+		maxPages: Number.isSafeInteger(maxPages) && maxPages > 0 ? maxPages : 200,
+		budgetMs: Number.isSafeInteger(budgetMs) && budgetMs > 0 ? budgetMs : 60000,
+	};
+}
+
 type PageInfo = {
 	hasNextPage: boolean;
 	endCursor?: string | null;
@@ -154,12 +177,14 @@ async function fetchRemainingVariants(
 	channel: string,
 	languageCode: string,
 	firstPage: VariantConnection,
+	deadline: number,
 ): Promise<RawVariant[]> {
 	const variants = firstPage.edges.map((edge) => edge.node);
 	let after = firstPage.pageInfo.endCursor ?? null;
 	let hasNextPage = firstPage.pageInfo.hasNextPage;
 
 	while (hasNextPage && after) {
+		if (Date.now() >= deadline) throw new MerchantFeedBudgetError("budget_exceeded");
 		const result: GraphQLResult<MerchantVariantPageResponse> = await executeRawGraphQL<MerchantVariantPageResponse>({
 			query: `
 				query GoogleMerchantProductVariants(
@@ -210,10 +235,11 @@ async function mapProduct(
 	product: RawProduct,
 	channel: string,
 	languageCode: string,
+	deadline: number,
 ): Promise<GoogleMerchantProduct> {
 	const variants =
 		product.productVariants.pageInfo.hasNextPage
-			? await fetchRemainingVariants(product.slug, channel, languageCode, product.productVariants)
+			? await fetchRemainingVariants(product.slug, channel, languageCode, product.productVariants, deadline)
 			: product.productVariants.edges.map((edge) => edge.node);
 
 	return {
@@ -237,11 +263,14 @@ export async function fetchGoogleMerchantProducts(
 	localeSlug: string,
 ): Promise<GoogleMerchantProduct[]> {
 	assertPluginActive("seo-merchant");
+	const { maxPages, budgetMs } = feedLimits();
+	const deadline = Date.now() + budgetMs;
 	const languageCode = getGraphqlLanguageCode(localeSlug);
 	const products: GoogleMerchantProduct[] = [];
 	let after: string | null = null;
 
-	for (;;) {
+	for (let pageNumber = 0; pageNumber < maxPages; pageNumber++) {
+		if (Date.now() >= deadline) throw new MerchantFeedBudgetError("budget_exceeded");
 		const result: GraphQLResult<MerchantProductPageResponse> = await executeRawGraphQL<MerchantProductPageResponse>({
 			query: `
 				query GoogleMerchantProducts(
@@ -275,15 +304,15 @@ export async function fetchGoogleMerchantProducts(
 		}
 
 		for (const edge of result.data.products.edges) {
-			products.push(await mapProduct(edge.node, channel, languageCode));
+			products.push(await mapProduct(edge.node, channel, languageCode, deadline));
 		}
 
 		if (!result.data.products.pageInfo.hasNextPage || !result.data.products.pageInfo.endCursor) {
-			break;
+			return products;
 		}
 		after = result.data.products.pageInfo.endCursor;
 	}
 
-	return products;
+	throw new MerchantFeedBudgetError("page_limit_exceeded");
 }
 import { assertPluginActive } from "@/plugins/system/runtime.server";

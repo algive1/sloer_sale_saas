@@ -49,6 +49,11 @@ services:
       DASHBOARD_URL: ${SALEOR_DASHBOARD_URL:-http://localhost:9000/}
       ALLOWED_HOSTS: ${SALEOR_ALLOWED_HOSTS:-localhost,127.0.0.1,api}
       HTTP_IP_FILTER_ENABLED: ${SALEOR_HTTP_IP_FILTER_ENABLED:-False}
+      # Wired in the base file too, so running without docker-compose.prod.yml
+      # cannot silently look like a multi-brand deployment with the shared-Core
+      # customer guard off. Off by default; deploy.sh requires true for multi-brand.
+      SALEOR_SHARED_CORE_GUEST_ONLY: ${SALEOR_SHARED_CORE_GUEST_ONLY:-false}
+      SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ${SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET:-}
     depends_on:
       db:
         condition: service_healthy
@@ -150,6 +155,21 @@ services:
       OPS_FULFILLMENT_SALEOR_TOKEN: ${OPS_FULFILLMENT_SALEOR_TOKEN:-}
       # Only server-side Paper GraphQL calls may access guest Checkout data.
       SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET: ${SALEOR_SHARED_CORE_CHECKOUT_GATEWAY_SECRET:-}
+      # Cache invalidation and guest order lookup. Both endpoints fail closed when unset.
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET:-}
+      SALEOR_WEBHOOK_SECRET: ${SALEOR_WEBHOOK_SECRET:-}
+      ORDER_VIEW_SECRET: ${ORDER_VIEW_SECRET:-}
+      # Keep false: query-string secrets end up in proxy/CDN access logs.
+      REVALIDATE_ALLOW_QUERY_SECRET: ${REVALIDATE_ALLOW_QUERY_SECRET:-false}
+      # Trusted proxy IP header for the customer-login rate limiter; empty = last XFF hop.
+      AUTH_RATE_LIMIT_CLIENT_IP_HEADER: ${AUTH_RATE_LIMIT_CLIENT_IP_HEADER:-}
+      # /api/og renders per-request images, so it stays off unless the store uses it.
+      OG_IMAGE_API_ENABLED: ${OG_IMAGE_API_ENABLED:-false}
+      # Google Merchant XML feed plus its scan budget (50 products per page).
+      GOOGLE_MERCHANT_FEED_ENABLED: ${GOOGLE_MERCHANT_FEED_ENABLED:-false}
+      GOOGLE_MERCHANT_EXCLUDE_SKU_PREFIXES: ${GOOGLE_MERCHANT_EXCLUDE_SKU_PREFIXES:-}
+      GOOGLE_MERCHANT_FEED_MAX_PAGES: ${GOOGLE_MERCHANT_FEED_MAX_PAGES:-200}
+      GOOGLE_MERCHANT_FEED_BUDGET_MS: ${GOOGLE_MERCHANT_FEED_BUDGET_MS:-60000}
       SALEOR_DASHBOARD_URL: ${SALEOR_DASHBOARD_URL:-http://localhost:9000/}
       ANALYTICS_LIBSQL_URL: ${ANALYTICS_LIBSQL_URL:-}
       ANALYTICS_LIBSQL_AUTH_TOKEN: ${ANALYTICS_LIBSQL_AUTH_TOKEN:-}
