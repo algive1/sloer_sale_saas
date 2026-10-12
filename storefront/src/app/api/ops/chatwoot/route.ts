@@ -6,9 +6,6 @@ import {
   sendAgentReply, updateAgentConversationStatus,
 } from "@/plugins/customer-support/agent-workbench.server";
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
 const response = (data: unknown, status = 200) => NextResponse.json(data, {
   status,
   headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
