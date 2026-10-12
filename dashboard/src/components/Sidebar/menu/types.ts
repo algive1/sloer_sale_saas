@@ -8,6 +8,8 @@ export interface SidebarMenuItem {
   url?: string;
   /** External Commerce Ops destination (never passed to React Router). */
   externalUrl?: string;
+  /** Direct destination for main group label; chevron remains expandable. */
+  primaryExternalUrl?: string;
   /** Use exact pathname matching only for summary routes with child pages. */
   exactMatch?: boolean;
   matchUrls?: string[];

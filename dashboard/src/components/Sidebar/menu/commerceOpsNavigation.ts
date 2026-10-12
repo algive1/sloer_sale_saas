@@ -30,9 +30,17 @@ export const commerceOpsNavigation: readonly CommerceOpsEntry[] = [
   {
     id: "commerce-support",
     section: "customers",
-    zh: "在线客服",
-    en: "Customer support",
+    zh: "会话工作台",
+    en: "Live conversations",
     path: "/ops/support",
+    permissions: [PermissionEnum.MANAGE_USERS, PermissionEnum.MANAGE_ORDERS],
+  },
+  {
+    id: "commerce-support-settings",
+    section: "customers",
+    zh: "Chatwoot 设置",
+    en: "Chatwoot settings",
+    path: "/ops/support/settings",
     permissions: [PermissionEnum.MANAGE_USERS, PermissionEnum.MANAGE_ORDERS],
   },
   {

@@ -47,7 +47,8 @@ const PLATFORM_GROUPS: readonly OpsNavigationGroup[] = [
     id: "customers",
     label: "客户",
     children: [
-      { id: "support", label: "在线客服", href: "/ops/support" },
+      { id: "support", label: "会话工作台", href: "/ops/support" },
+      { id: "support-settings", label: "客服设置", href: "/ops/support/settings" },
     ],
   },
   {

@@ -27,11 +27,13 @@ const operationsRoutes = [
   "/ops/analytics/checkout",
   "/ops/analytics/products",
   "/ops/analytics/reminders",
+  "/ops/analytics/destinations",
   "/ops/themes",
   "/ops/sites",
   "/ops/plugins",
   "/ops/translations",
   "/ops/support",
+  "/ops/support/settings",
 ] as const;
 
 test.describe("live storefront navigation and operational pages", () => {
@@ -107,9 +109,12 @@ test.describe("live storefront navigation and operational pages", () => {
       // Actual client-side menu navigation, not only direct URL requests.
       const page = await context.newPage();
       await page.goto("/ops/analytics");
-      await page.getByRole("link", { name: /在线客服/ }).click();
+      await page.getByRole("link", { name: /会话工作台/ }).click();
       await expect(page).toHaveURL(/\/ops\/support$/);
-      await expect(page.getByRole("heading", { name: /在线客服 · Chatwoot/ })).toBeVisible();
+      await expect(page.getByRole("heading", { name: /会话工作台/ })).toBeVisible();
+      await page.getByRole("navigation", { name: "Commerce Ops 功能菜单" }).getByRole("link", { name: "客服设置" }).click();
+      await expect(page).toHaveURL(/\/ops\/support\/settings$/);
+      await expect(page.getByRole("heading", { name: "客服设置 · Chatwoot" })).toBeVisible();
       await page.goto("/ops/analytics");
       await page.getByRole("link", { name: /系统插件/ }).click();
       await expect(page).toHaveURL(/\/ops\/plugins$/);

@@ -51,13 +51,30 @@ export const ItemGroup = ({ menuItem }: Props) => {
         onClick={handleMenuGroupClick}
         className={`sidebar-item-group-trigger ${styles.groupTrigger} ${hasSubmenuActive || isActive ? styles.groupActive : ""}`}
       >
-        <Box display="flex" alignItems="center" gap={3} paddingY={2} borderRadius={3}>
-          {menuItem.icon}
-          <Text size={3} fontWeight="medium">
-            {menuItem.label}
-          </Text>
-          {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
-        </Box>
+        {menuItem.primaryExternalUrl ? (
+          <>
+            <a
+              href={menuItem.primaryExternalUrl}
+              className={styles.groupPrimaryLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open customer conversations in Commerce Ops"
+              onClick={event => event.stopPropagation()}
+              onKeyDown={event => event.stopPropagation()}
+              data-test-id="customers-chat-primary"
+            >
+              {menuItem.icon}
+              <Text size={3} fontWeight="medium">{menuItem.label}</Text>
+            </a>
+            {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
+          </>
+        ) : (
+          <Box display="flex" alignItems="center" gap={3} paddingY={2} borderRadius={3}>
+            {menuItem.icon}
+            <Text size={3} fontWeight="medium">{menuItem.label}</Text>
+            {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
+          </Box>
+        )}
       </List.ItemGroup.Trigger>
       <List.ItemGroup.Content>
         <Box

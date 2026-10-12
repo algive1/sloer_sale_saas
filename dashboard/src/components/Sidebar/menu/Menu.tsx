@@ -27,6 +27,24 @@ const MenuRailItem = ({
   // Some registered extensions do not have an icon. Never show a blank hit target.
   const content = <span className={styles.railIcon} aria-hidden="true">{item.icon ?? <CircleDot size={17} />}</span>;
 
+  if (item.type === "itemGroup" && item.primaryExternalUrl) {
+    return (
+      <li>
+        <a
+          href={item.primaryExternalUrl}
+          className={className}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={label}
+          title={label}
+          data-test-id={`commerce-rail-${item.id}`}
+        >
+          {content}
+        </a>
+      </li>
+    );
+  }
+
   if (item.type === "itemGroup") {
     return (
       <li>

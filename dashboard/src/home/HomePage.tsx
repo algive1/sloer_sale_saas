@@ -7,7 +7,7 @@ import { useParams, useRouteMatch } from "react-router";
 import { Redirect } from "react-router-dom";
 
 import { filterHomeExtensions, HOMEPAGE_WIDGETS_MOUNT } from "./filterHomeExtensions";
-import { HomeEmptyState } from "./HomeEmptyState";
+import { CommerceHomeOverview } from "./CommerceHomeOverview";
 import { HomeTabPanels } from "./HomeTabPanels";
 import { type HomeActiveTab } from "./HomeWidgetTabs";
 import { homeWidgetsUrl, homeWidgetUrl } from "./urls";
@@ -106,13 +106,13 @@ export const HomePage = () => {
   }
 
   if (fullscreen.length === 0 && widgets.length === 0) {
-    return <HomeEmptyState />;
+    return <CommerceHomeOverview />;
   }
 
   const leftmostUrl = resolveLeftmostTabUrl(fullscreen, widgets);
 
   if (!leftmostUrl) {
-    return <HomeEmptyState />;
+    return <CommerceHomeOverview />;
   }
 
   const { activeTab, redirectTo } = resolveHomeTab({
