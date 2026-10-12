@@ -221,3 +221,9 @@ PR #64 final acceptance: 4a295c2 passed all six workflows including native produ
 - 500页/资源和时间预算继续保留；特别大/高频更新目录的快照导出、原生跨请求一致性与正式Search Console/峰值验收仍未完成。本批验证及合并结论见PR。说明：[Sitemap分片与边界](sitemap-integrity.md)。
 
 PR #65 final acceptance: 68c2479 passed all five applicable CI workflows, including real Saleor native SKU/market/currency preflight and recovery gates; merged5387a86. Actual bulk writes remain pending.
+
+## A11：原生 Money 价格精度核对（2026-10-12）
+
+- 直接读取Saleor规格市场价格的`Money.fractionDigits`，与Core的Decimal.normalize校验一致，保留尾随零并拒绝超精度非零小数；不使用浮点数四舍五入或另建币种映射。
+- 原生价格未设置时提示补齐；金额币种或精度字段异常不宣称核对成功。没有读取/返回价格金额，没有写入或货币转换。
+- 0/2/3/4位精度、尾随零、缺价格/字段/币种异常负例通过；本地实际Next/API与375px精度错误展示2项通过。完整verify和真实Saleor价格精度/价格未变验收以本批PR为准。实际bulk写入、库存/重量/图片与恢复仍待后续。
