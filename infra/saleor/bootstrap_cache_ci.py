@@ -19,7 +19,7 @@ label, codename = ProductPermissions.MANAGE_PRODUCTS.value.split(".")
 app.permissions.set([Permission.objects.get(content_type__app_label=label, codename=codename)])
 webhook = Webhook.objects.create(
     app=app, name="CI ProductUpdated cache", identifier="ci-catalog-published",
-    target_url="http://host.docker.internal:3101/api/revalidate", secret_key=secret,
+    target_url="http://host.docker.internal:3103/api/revalidate", secret_key=secret,
     # Deliberately omit channel context, like native global events. The actual
     # Saleor producer must refresh jewelry as well as the default US market.
     subscription_query="subscription { event { ... on ProductUpdated { product { slug } } } }",

@@ -615,6 +615,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CI_NATIVE_CACHE_SEED=true nohup python3 infra/saleor/cache_receiver_ci.py > /tmp/native-cache-receiver.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3103/health; then break; fi
+            if [ "$attempt" -eq 30 ]; then cat /tmp/native-cache-receiver.log; exit 1; fi
+            sleep 1
+          done
           docker compose -f docker-compose.yml -f /tmp/ci-compose.yml up -d --no-deps dashboard
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:9000/ > /tmp/native-dashboard.html; then break; fi
@@ -648,16 +654,18 @@ jobs:
       - name: Verify native signed catalog delivery receipt
         shell: bash
         run: |
-          docker compose -f docker-compose.yml -f /tmp/ci-compose.yml exec -T api python3 manage.py shell -c '
+          python3 - <<'PY'
           import json
-          from saleor.core.models import EventDeliveryAttempt
-          attempt = EventDeliveryAttempt.objects.filter(delivery__webhook__app__identifier="ci-storefront-cache", status="success").first()
-          assert attempt and attempt.response_status_code == 200, "Native cache event was not accepted"
-          body = json.loads(attempt.response)
-          assert body.get("success") is True
-          assert {"sitemap:catalog:us", "sitemap:catalog:jewelry-us", "listing:all:jewelry-us"}.issubset(set(body["tags"]))
+          # Saleor clears successful deliveries and attempts. Capture the actual
+          # upstream response instead; preserve Core's production lifecycle.
+          with open("/tmp/native-cache-receipts.jsonl") as source:
+              receipts = [json.loads(line) for line in source]
+          required = {"sitemap:catalog:us", "sitemap:catalog:jewelry-us", "listing:all:jewelry-us"}
+          assert any(receipt["signed"] and receipt["event"] == "product_updated"
+                     and receipt["status"] == 200 and receipt["success"] is True
+                     and required.issubset(set(receipt["tags"])) for receipt in receipts), "Native cache event was not accepted"
           print("Native signed ProductUpdated receipt and both market tags verified")
-          '
+          PY
 
       - name: Integration logs on failure
         if: failure()
