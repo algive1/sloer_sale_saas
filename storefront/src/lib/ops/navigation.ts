@@ -30,6 +30,7 @@ const PLATFORM_GROUPS: readonly OpsNavigationGroup[] = [
       { id: "checkout", label: "结账分析", href: "/ops/analytics/checkout" },
       { id: "products", label: "商品分析", href: "/ops/analytics/products" },
       { id: "reminders", label: "智能催付", href: "/ops/analytics/reminders" },
+      { id: "destinations", label: "广告投递", href: "/ops/analytics/destinations" },
     ],
   },
   {

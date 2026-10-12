@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { buildDashboardHref, opsNavigationForRole } from "./navigation";
+
+function staticOpsRoutes(): string[] {
+  const root = fileURLToPath(new URL("../../app/ops", import.meta.url));
+  const walk = (dir: string, prefix: string): string[] => readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      if (entry.isDirectory()) return walk(`${dir}/${entry.name}`, `${prefix}/${entry.name}`);
+      return entry.name === "page.tsx" ? [prefix] : [];
+    });
+  return walk(root, "/ops").filter(route => !route.includes("["));
+}
 
 describe("Commerce Ops operator sidebar", () => {
   it("shows only authorized brand landing pages to brand analysts", () => {
@@ -20,6 +32,13 @@ describe("Commerce Ops operator sidebar", () => {
     expect(uniqueIds.size).toBe(items.length);
     expect(items.map(item => item.href)).toContain("/ops/themes?pageType=product");
     expect(items.every(item => item.href.startsWith("/ops/"))).toBe(true);
+  });
+
+  it("links every static Ops page so a real route can never lose its entry", () => {
+    const hrefs = new Set(opsNavigationForRole("platform_admin")
+      .flatMap(group => group.children.map(item => item.href.split("?")[0])));
+
+    expect(staticOpsRoutes().filter(route => !hrefs.has(route))).toEqual([]);
   });
 
   it("only accepts a safe configured Dashboard origin or mount", () => {

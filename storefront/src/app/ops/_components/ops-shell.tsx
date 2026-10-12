@@ -37,9 +37,11 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileViewport, setMobileViewport] = useState(false);
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    analytics: true, store: true,
-  });
+  // Every group starts expanded: an operator must reach each real page without
+  // first guessing which accordion hides it.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(groups.map(group => [group.id, true])),
+  );
   const [accent, setAccent] = useState<Accent>("blue");
 
   useEffect(() => {
