@@ -32,8 +32,10 @@ describe("configurator seed sync", () => {
 	it("storefront-content.snapshot.json matches config YAML", () => {
 		const yamlSource = readFileSync(CONFIG_PATH, "utf8");
 		const expected = buildStorefrontContentSnapshotFromYaml(yamlSource);
-		const actual = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")) as typeof expected;
-		expect(actual).toEqual(expected);
-		expect(readFileSync(SNAPSHOT_PATH, "utf8")).toBe(formatStorefrontContentSnapshotJson(expected));
+		// `core.autocrlf` can hand us CRLF on Windows; this asserts the formatter's
+		// content, not the platform's line endings.
+		const snapshot = readFileSync(SNAPSHOT_PATH, "utf8").replace(/\r\n/g, "\n");
+		expect(JSON.parse(snapshot) as typeof expected).toEqual(expected);
+		expect(snapshot).toBe(formatStorefrontContentSnapshotJson(expected));
 	});
 });

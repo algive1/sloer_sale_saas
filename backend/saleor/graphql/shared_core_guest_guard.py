@@ -10,6 +10,7 @@ checkout bearer IDs, payment integrations and webhooks need separate controls.
 from hmac import compare_digest
 
 from django.conf import settings
+from graphene import Node
 from graphql import GraphQLError
 from jwt import InvalidTokenError
 
@@ -61,19 +62,37 @@ CHECKOUT_ROOT_MUTATIONS = frozenset({
     "transactionProcess",
     "transactionRequestAction",
 })
+# PUBLIC_META_PERMISSION_MAP grants anonymous metadata writes on Checkout and
+# CheckoutLine; a leaked Checkout UUID must not bypass the gateway through them.
+CHECKOUT_META_MUTATIONS = frozenset({"updateMetadata", "deleteMetadata"})
 CHECKOUT_GATEWAY_ERROR_CODE = "SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED"
 
 
-def checkout_gateway_required(info) -> bool:
+def _targets_checkout_object(kwargs) -> bool:
+    global_id = kwargs.get("id")
+    if not isinstance(global_id, str):
+        return False
+    try:
+        type_name, _ = Node.from_global_id(global_id)
+    except Exception:  # noqa: BLE001 - malformed ids fail upstream validation anyway
+        return False
+    return type_name in CHECKOUT_OBJECT_TYPES
+
+
+def checkout_gateway_required(info, **kwargs) -> bool:
     parent = info.parent_type.name
     field = info.field_name
-    return (
+    if (
         parent in CHECKOUT_OBJECT_TYPES
         or parent == "Query" and field in CHECKOUT_ROOT_QUERIES
         or parent == "Mutation" and (
             field.startswith("checkout") or field in CHECKOUT_ROOT_MUTATIONS
         )
-    )
+    ):
+        return True
+    if parent == "Mutation" and field in CHECKOUT_META_MUTATIONS:
+        return _targets_checkout_object(kwargs)
+    return False
 
 
 def checkout_gateway_allowed(context) -> bool:
@@ -133,7 +152,7 @@ class GuestOnlySharedCoreMiddleware:
         # Direct public GraphQL cannot bypass the Host+Channel checks in Paper
         # just by presenting a leaked Checkout ID. A wrong/missing key fails
         # closed, including when this request is a node/fragment traversal.
-        if checkout_gateway_required(info) and not checkout_gateway_allowed(context):
+        if checkout_gateway_required(info, **kwargs) and not checkout_gateway_allowed(context):
             raise GraphQLError(
                 "Checkout operations require the trusted storefront gateway.",
                 extensions={"code": CHECKOUT_GATEWAY_ERROR_CODE},

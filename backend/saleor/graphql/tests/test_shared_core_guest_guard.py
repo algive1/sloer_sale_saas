@@ -1,3 +1,4 @@
+import base64
 from types import SimpleNamespace
 
 import pytest
@@ -90,6 +91,39 @@ def test_checkout_fails_closed_if_gateway_key_is_missing():
     with pytest.raises(GraphQLError) as error:
         GuestOnlySharedCoreMiddleware().resolve(resolve, None, info(request(), field="checkoutCreate"))
     assert error.value.extensions["code"] == CHECKOUT_GATEWAY_ERROR_CODE
+
+
+def global_id(type_name, pk):
+    return base64.b64encode(f"{type_name}:{pk}".encode()).decode()
+
+
+@override_settings(
+    SHARED_CORE_GUEST_ONLY=True,
+    SHARED_CORE_CHECKOUT_GATEWAY_SECRET="ci-checkout-gateway-secret-long-enough-123",
+)
+@pytest.mark.parametrize("field", ["updateMetadata", "deleteMetadata"])
+@pytest.mark.parametrize("type_name", ["Checkout", "CheckoutLine"])
+def test_checkout_metadata_mutations_require_gateway_key(field, type_name):
+    middleware = GuestOnlySharedCoreMiddleware()
+    expected_key = "ci-checkout-gateway-secret-long-enough-123"
+    target_id = global_id(type_name, "00000000-0000-0000-0000-000000000001")
+    for unauthorized in (request(), request(checkout_key="wrong")):
+        with pytest.raises(GraphQLError) as error:
+            middleware.resolve(resolve, None, info(unauthorized, field=field), id=target_id)
+        assert error.value.extensions["code"] == CHECKOUT_GATEWAY_ERROR_CODE
+    trusted = request(checkout_key=expected_key)
+    assert middleware.resolve(resolve, None, info(trusted, field=field), id=target_id) == "allowed"
+
+
+@override_settings(
+    SHARED_CORE_GUEST_ONLY=True,
+    SHARED_CORE_CHECKOUT_GATEWAY_SECRET="ci-checkout-gateway-secret-long-enough-123",
+)
+def test_metadata_mutations_on_other_types_stay_outside_checkout_gateway():
+    middleware = GuestOnlySharedCoreMiddleware()
+    product_id = global_id("Product", "1")
+    assert middleware.resolve(resolve, None, info(request(), field="updateMetadata"), id=product_id) == "allowed"
+    assert middleware.resolve(resolve, None, info(request(), field="deleteMetadata"), id="not-a-global-id") == "allowed"
 
 
 @override_settings(SHARED_CORE_GUEST_ONLY=True)
