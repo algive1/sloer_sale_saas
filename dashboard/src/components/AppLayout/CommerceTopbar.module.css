@@ -1,0 +1,75 @@
+/* Global administration chrome: deliberately not imported into Paper. */
+.topbar {
+  height: 62px;
+  min-height: 62px;
+  box-sizing: border-box;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 9%, transparent);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  gap: 20px;
+}
+.globalSearch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  background: color-mix(in srgb, currentColor 2%, transparent);
+  width: min(530px, 64%);
+  min-width: 0;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.globalSearch > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  opacity: .75;
+  font-size: 13px;
+}
+.globalSearch:hover,
+.globalSearch:focus-visible {
+  border-color: var(--commerce-admin-preference-accent, #2563eb);
+}
+.globalSearch:focus-visible,
+.accountLink:focus-visible {
+  outline: 2px solid var(--commerce-admin-preference-accent, #2563eb);
+  outline-offset: 2px;
+}
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, currentColor 17%, transparent);
+  border-radius: 5px;
+  padding: 1px 6px;
+  font-size: 12px;
+  line-height: 18px;
+  font-family: inherit;
+  opacity: .75;
+}
+.spacer { flex: 1; }
+.accountLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 9px;
+  padding: 5px 7px;
+  text-decoration: none;
+  font-size: 13px;
+  color: inherit;
+  white-space: nowrap;
+}
+.accountLink:hover { background: color-mix(in srgb, currentColor 5%, transparent); }
+.accountName { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 767px) {
+  .topbar { padding: 0 15px; gap: 10px; height: 54px; min-height: 54px; }
+  .globalSearch { width: auto; flex: 1; }
+  .accountName { display: none; }
+}

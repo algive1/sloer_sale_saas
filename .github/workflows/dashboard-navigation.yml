@@ -1,0 +1,93 @@
+name: Dashboard navigation
+
+on:
+  pull_request:
+    paths:
+      - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/components/AppLayout/**"
+      - "dashboard/vite.config.js"
+      - "dashboard/Dockerfile"
+      - "dashboard/package.json"
+      - "dashboard/pnpm-lock.yaml"
+      - ".github/workflows/dashboard-navigation.yml"
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/src/components/Sidebar/**"
+      - "dashboard/src/components/AppLayout/**"
+      - "dashboard/vite.config.js"
+      - "dashboard/Dockerfile"
+      - "dashboard/package.json"
+      - "dashboard/pnpm-lock.yaml"
+      - ".github/workflows/dashboard-navigation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dashboard-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      HUSKY: "0"
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm --dir dashboard install --frozen-lockfile
+      - name: Check Dashboard types
+        run: pnpm --dir dashboard exec tsc --noEmit
+      - name: Navigation access, routing and link regression tests
+        run: pnpm --dir dashboard exec jest src/components/Sidebar/menu/commerceOpsLinks.test.ts src/components/Sidebar/menu/commerceOpsNavigation.test.ts src/components/Sidebar/menu/navigationAccess.test.ts src/components/Sidebar/menu/utils.test.ts src/components/Sidebar/menu/filterSidebarMenu.test.ts --runInBand
+      - name: Check Playwright acceptance test types
+        run: pnpm --dir dashboard exec tsc --noEmit --project e2e/tsconfig.json
+
+  # This is a real browser check against an isolated Saleor 3.23 image seeded by
+  # the repository's existing E2E harness. Never use a production database.
+  dashboard-browser-acceptance:
+    needs: dashboard-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      HUSKY: "0"
+      CI: "true"
+      E2E_TARGET: stable
+      # Build-time URL for navigation verification only. Ops authorization
+      # remains independently enforced; this test never opens that service.
+      COMMERCE_OPS_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - name: Install frozen Dashboard dependencies
+        run: pnpm --dir dashboard install --frozen-lockfile
+      - name: Install Chromium for browser acceptance
+        run: pnpm --dir dashboard exec playwright install --with-deps chromium
+      - name: Exercise Saleor sidebar in an isolated browser
+        run: pnpm --dir dashboard run e2e tests/commerce-navigation.spec.ts --project=stable
+      - name: Upload browser report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: merchant-navigation-browser
+          path: |
+            dashboard/playwright-report/
+            dashboard/e2e/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

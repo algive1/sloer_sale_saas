@@ -28,6 +28,9 @@ const fingerprint = (config: E2eConfig) => {
       POSTHOG_HOST: process.env.POSTHOG_HOST,
       POSTHOG_KEY: process.env.POSTHOG_KEY,
       POSTHOG_EXCLUDED_DOMAINS: process.env.POSTHOG_EXCLUDED_DOMAINS,
+      // The Ops origin is embedded by Vite. Changing destinations must
+      // invalidate the cached browser build, not silently reuse stale links.
+      COMMERCE_OPS_URL: process.env.COMMERCE_OPS_URL,
     }),
   );
 

@@ -6,31 +6,34 @@ import { useSidebarBreakpointContext } from "./SidebarContext";
 import { SidebarDrawerTrigger } from "./SidebarDrawerTrigger";
 
 export const Sidebar = () => {
-  const { breakpoint } = useSidebarBreakpointContext();
+  const { breakpoint, collapsed } = useSidebarBreakpointContext();
+  const desktopWidth = collapsed ? "72px" : "296px";
+  const drawer = (
+    <Drawer>
+      <Drawer.Trigger>
+        <SidebarDrawerTrigger />
+      </Drawer.Trigger>
+      <Drawer.Content
+        backgroundColor="default2"
+        data-test-id="sidebar-drawer-content"
+        paddingTop={0}
+        __width="296px"
+      >
+        {/* Compact navigation is desktop-only. Mobile keeps the full drawer. */}
+        <SidebarContent />
+      </Drawer.Content>
+    </Drawer>
+  );
 
   if (breakpoint === "wide") {
     return (
       <>
         <div className={classes.fullSidebarWide}>
-          <Box __width="260px" height="100%">
-            <SidebarContent />
+          <Box __width={desktopWidth} height="100%">
+            <SidebarContent collapsible />
           </Box>
         </div>
-        <div className={classes.drawerWide}>
-          <Drawer>
-            <Drawer.Trigger>
-              <SidebarDrawerTrigger />
-            </Drawer.Trigger>
-            <Drawer.Content
-              backgroundColor="default2"
-              data-test-id="sidebar-drawer-content"
-              paddingTop={0}
-              __width="260px"
-            >
-              <SidebarContent />
-            </Drawer.Content>
-          </Drawer>
-        </div>
+        <div className={classes.drawerWide}>{drawer}</div>
       </>
     );
   }
@@ -38,26 +41,14 @@ export const Sidebar = () => {
   return (
     <>
       <Box
-        __width="260px"
+        __width={desktopWidth}
         display={{ mobile: "none", tablet: "none", desktop: "block" }}
         height="100%"
       >
-        <SidebarContent />
+        <SidebarContent collapsible />
       </Box>
       <Box display={{ mobile: "block", tablet: "block", desktop: "none" }}>
-        <Drawer>
-          <Drawer.Trigger>
-            <SidebarDrawerTrigger />
-          </Drawer.Trigger>
-          <Drawer.Content
-            backgroundColor="default2"
-            data-test-id="sidebar-drawer-content"
-            paddingTop={0}
-            __width="260px"
-          >
-            <SidebarContent />
-          </Drawer.Content>
-        </Drawer>
+        {drawer}
       </Box>
     </>
   );
