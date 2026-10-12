@@ -464,7 +464,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
-          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000/dashboard
+          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000
           OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
           STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
           STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
@@ -565,7 +565,7 @@ jobs:
           NEXT_PUBLIC_STOREFRONT_LOCALES: en,de,fr
           NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS: en:us,de:us,en:jewelry-us,fr:jewelry-us
           ANALYTICS_DASHBOARD_SECRET: ci-theme-editor-basic-password
-          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000/dashboard
+          SALEOR_DASHBOARD_URL: http://127.0.0.1:9000
           OPS_OPERATORS_JSON: '[{"username":"ops_owner","password":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA","role":"platform_admin"},{"username":"fashion_reader","password":"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB","role":"brand_analyst","siteIds":["fashion-ci"]}]'
           STOREFRONT_GEO_COUNTRY_HEADER: x-storefront-visitor-country
           STOREFRONT_COUNTRY_CHANNELS: DE:us,FR:jewelry-us
@@ -637,6 +637,7 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:9000
           PLAYWRIGHT_NATIVE_DASHBOARD_URL: http://127.0.0.1:9000
+          PLAYWRIGHT_NATIVE_BULK_ENTRY_URL: http://127.0.0.1:3101
         run: pnpm --dir storefront exec playwright test e2e/native-bulk-publish-live.spec.ts --workers=1 --retries=0
 
       - name: Integration logs on failure
