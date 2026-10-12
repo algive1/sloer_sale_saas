@@ -17,6 +17,12 @@ from jwt import InvalidTokenError
 from ..core.auth import get_token_from_request
 
 ERROR_CODE = "SHARED_CORE_CUSTOMER_ACCOUNTS_DISABLED"
+CUSTOMER_IDENTITY_ERROR_MESSAGE = (
+    "Customer accounts are unavailable in shared-Core multi-brand mode."
+)
+BLOCKED_ACCOUNT_ERROR_MESSAGE = (
+    "Customer account operations are unavailable in shared-Core multi-brand mode."
+)
 
 # Do not permit anonymous callers to register, reset or change global Saleor
 # customer identities via direct GraphQL. GraphQL field names, not operation
@@ -55,17 +61,22 @@ BLOCKED_MUTATIONS = frozenset(
 # aliases/fragments are covered by checking the actual GraphQL parent type.
 CHECKOUT_ROOT_QUERIES = frozenset({"checkout"})
 CHECKOUT_OBJECT_TYPES = frozenset({"Checkout", "CheckoutLine"})
-CHECKOUT_ROOT_MUTATIONS = frozenset({
-    "orderCreateFromCheckout",
-    "paymentGatewayInitialize",
-    "transactionInitialize",
-    "transactionProcess",
-    "transactionRequestAction",
-})
+CHECKOUT_ROOT_MUTATIONS = frozenset(
+    {
+        "orderCreateFromCheckout",
+        "paymentGatewayInitialize",
+        "transactionInitialize",
+        "transactionProcess",
+        "transactionRequestAction",
+    }
+)
 # PUBLIC_META_PERMISSION_MAP grants anonymous metadata writes on Checkout and
 # CheckoutLine; a leaked Checkout UUID must not bypass the gateway through them.
 CHECKOUT_META_MUTATIONS = frozenset({"updateMetadata", "deleteMetadata"})
 CHECKOUT_GATEWAY_ERROR_CODE = "SHARED_CORE_CHECKOUT_GATEWAY_REQUIRED"
+CHECKOUT_GATEWAY_ERROR_MESSAGE = (
+    "Checkout operations require the trusted storefront gateway."
+)
 
 
 def _targets_checkout_object(kwargs) -> bool:
@@ -84,10 +95,10 @@ def checkout_gateway_required(info, **kwargs) -> bool:
     field = info.field_name
     if (
         parent in CHECKOUT_OBJECT_TYPES
-        or parent == "Query" and field in CHECKOUT_ROOT_QUERIES
-        or parent == "Mutation" and (
-            field.startswith("checkout") or field in CHECKOUT_ROOT_MUTATIONS
-        )
+        or parent == "Query"
+        and field in CHECKOUT_ROOT_QUERIES
+        or parent == "Mutation"
+        and (field.startswith("checkout") or field in CHECKOUT_ROOT_MUTATIONS)
     ):
         return True
     if parent == "Mutation" and field in CHECKOUT_META_MUTATIONS:
@@ -145,31 +156,40 @@ class GuestOnlySharedCoreMiddleware:
         context = info.context
         if customer_identity_blocked(context):
             raise GraphQLError(
-                "Customer accounts are unavailable in shared-Core multi-brand mode.",
+                CUSTOMER_IDENTITY_ERROR_MESSAGE,
                 extensions={"code": ERROR_CODE},
             )
 
-        # Direct public GraphQL cannot bypass the Host+Channel checks in Paper
-        # just by presenting a leaked Checkout ID. A wrong/missing key fails
-        # closed, including when this request is a node/fragment traversal.
-        if checkout_gateway_required(info, **kwargs) and not checkout_gateway_allowed(context):
-            raise GraphQLError(
-                "Checkout operations require the trusted storefront gateway.",
-                extensions={"code": CHECKOUT_GATEWAY_ERROR_CODE},
-            )
-
-        # Staff/app requests retain their original permissions. TokenCreate and
-        # TokenRefresh and TokenVerify have staff-only guards in their mutations.
+        # Identity mutations deny with the account code first, so a global
+        # customer write such as checkoutCustomerAttach reports the reason it is
+        # forbidden in shared-Core mode instead of the checkout-gateway code it
+        # would also trip. Staff and app callers keep their original access.
         if (
             info.parent_type.name == "Mutation"
             and info.field_name in BLOCKED_MUTATIONS
             and not context.app
         ):
             # No JWT => anonymous and certainly not staff.
-            if not get_token_from_request(context) or not context.user or not context.user.is_staff:
+            if (
+                not get_token_from_request(context)
+                or not context.user
+                or not context.user.is_staff
+            ):
                 raise GraphQLError(
-                    "Customer account operations are unavailable in shared-Core multi-brand mode.",
+                    BLOCKED_ACCOUNT_ERROR_MESSAGE,
                     extensions={"code": ERROR_CODE},
                 )
 
+        # Direct public GraphQL cannot bypass the Host+Channel checks in Paper
+        # just by presenting a leaked Checkout ID. A wrong/missing key fails
+        # closed, including when this request is a node/fragment traversal.
+        if checkout_gateway_required(info, **kwargs) and not checkout_gateway_allowed(
+            context
+        ):
+            raise GraphQLError(
+                CHECKOUT_GATEWAY_ERROR_MESSAGE,
+                extensions={"code": CHECKOUT_GATEWAY_ERROR_CODE},
+            )
+
+        # TokenCreate and TokenRefresh and TokenVerify have staff-only guards in their mutations.
         return next(root, info, **kwargs)
