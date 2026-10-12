@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 vi.mock("next/cache", () => ({
 	cacheLife: vi.fn(),
@@ -16,11 +16,15 @@ vi.mock("@/lib/api-auth", () => ({
 }));
 import { revalidateTag } from "next/cache";
 import { verifyWebhookSignature } from "@/lib/api-auth";
+import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import { POST } from "./route";
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.mocked(verifyWebhookSignature).mockReturnValue(true);
+	vi.stubEnv("STOREFRONT_SITES_JSON", "");
+	vi.mocked(getStorefrontChannelSlugs).mockResolvedValue(["us", "jewelry-us"]);
 });
+afterEach(() => vi.unstubAllEnvs());
 const request = (payload: unknown, event = "product_updated") =>
 	new NextRequest("http://localhost/api/revalidate", {
 		method: "POST",
@@ -63,4 +67,32 @@ it("refreshes variant price listings without expiring sitemap cursors on that ch
 	await POST(request({ productVariant: { product: { slug: "hat" } } }, "product_variant_updated"));
 	expect(revalidateTag).toHaveBeenCalledWith("listing:all:jewelry-us", "catalog");
 	expect(vi.mocked(revalidateTag).mock.calls.some(([tag]) => tag.startsWith("sitemap:"))).toBe(false);
+});
+
+it("uses owned brand markets even when the legacy channel helper omits one or includes an internal market", async () => {
+	vi.stubEnv(
+		"STOREFRONT_SITES_JSON",
+		JSON.stringify([
+			{ id: "fashion", name: "Fashion", domains: ["fashion.test"], channels: ["us"], defaultChannel: "us" },
+			{
+				id: "jewelry",
+				name: "Jewelry",
+				domains: ["jewelry.test"],
+				channels: ["jewelry-us"],
+				defaultChannel: "jewelry-us",
+			},
+		]),
+	);
+	vi.mocked(getStorefrontChannelSlugs).mockResolvedValue(["us", "internal"]);
+	await POST(request({ product: { slug: "shared" } }));
+	expect(revalidateTag).toHaveBeenCalledWith("sitemap:catalog:jewelry-us", { expire: 0 });
+	expect(vi.mocked(revalidateTag).mock.calls.some(([tag]) => tag.includes("internal"))).toBe(false);
+	expect(getStorefrontChannelSlugs).not.toHaveBeenCalled();
+});
+
+it("rejects malformed brand configuration without using a global fallback", async () => {
+	vi.stubEnv("STOREFRONT_SITES_JSON", "invalid");
+	expect((await POST(request({ product: { slug: "shared" } }))).status).toBe(400);
+	expect(revalidateTag).not.toHaveBeenCalled();
+	expect(getStorefrontChannelSlugs).not.toHaveBeenCalled();
 });

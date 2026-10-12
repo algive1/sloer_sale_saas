@@ -1,6 +1,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextRequest } from "next/server";
 import { DefaultChannelSlug } from "@/app/config";
+import { getBrandSites } from "@/config/brand-sites";
 import { getStorefrontChannelSlugs } from "@/lib/channel-slugs";
 import {
 	CACHE_PROFILES,
@@ -266,9 +267,13 @@ export async function POST(request: NextRequest) {
 
 		const revalidatedPaths: string[] = [];
 		const tagEntries: TagEntry[] = [];
+		const brands = getBrandSites();
+		const storefrontChannels = brands
+			? [...new Set(brands.flatMap((site) => [...site.channels]))]
+			: await getStorefrontChannelSlugs();
 
 		if (type === "menu") {
-			const plan = planMenuRevalidation(slug, await getStorefrontChannelSlugs());
+			const plan = planMenuRevalidation(slug, storefrontChannels);
 
 			if (plan.action === "error") {
 				console.warn(
@@ -297,8 +302,6 @@ export async function POST(request: NextRequest) {
 			});
 			return Response.json({ paths: revalidatedPaths, tags: revalidatedTags, success: true });
 		}
-
-		const storefrontChannels = await getStorefrontChannelSlugs();
 
 		if (type === "page") {
 			const plan = planPageRevalidation(slug, storefrontChannels, DefaultChannelSlug);
