@@ -1,4 +1,5 @@
 import { useUser } from "@dashboard/auth/useUser";
+import { channelsListUrl } from "@dashboard/channels/urls";
 import { categoryListUrl } from "@dashboard/categories/urls";
 import { collectionListUrl } from "@dashboard/collections/urls";
 import { navigationLucideIconProps } from "@dashboard/components/icons";
@@ -40,7 +41,12 @@ import { pageTypeListUrl } from "@dashboard/modelTypes/urls";
 import { messages as navigationPinMessages } from "@dashboard/navigationPins/constants";
 import { useResolvedNavigationPins } from "@dashboard/navigationPins/hooks/useResolvedNavigationPins";
 import { injectNavigationPins } from "@dashboard/navigationPins/injectNavigationPins";
-import { orderDraftListUrl, orderListUrl } from "@dashboard/orders/urls";
+import { orderDraftListUrl, orderListUrl, orderSettingsPath } from "@dashboard/orders/urls";
+import { permissionGroupListUrl } from "@dashboard/permissionGroups/urls";
+import { shippingZonesListUrl } from "@dashboard/shipping/urls";
+import { siteSettingsUrl } from "@dashboard/siteSettings/urls";
+import { staffListUrl } from "@dashboard/staff/urls";
+import { taxConfigurationListUrl } from "@dashboard/taxes/urls";
 import { productListUrl } from "@dashboard/products/urls";
 import { productTypeListUrl } from "@dashboard/productTypes/urls";
 import { Ripple } from "@dashboard/ripples/components/Ripple";
@@ -49,10 +55,14 @@ import { menuListUrl } from "@dashboard/structures/urls";
 import { languageListUrl } from "@dashboard/translations/urls";
 import { Box, Text } from "@saleor/macaw-ui-next";
 import isEmpty from "lodash/isEmpty";
-import { Search, Star } from "lucide-react";
+import { ChartNoAxesCombined, Globe2, Search, Star } from "lucide-react";
 import { useIntl } from "react-intl";
 
 import { SidebarIconSlot } from "../../SidebarIconSlot";
+import { createOpsHref } from "../commerceOpsLinks";
+import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
+import { filterSidebarMenu } from "../filterSidebarMenu";
+import { DASHBOARD_SEARCH_PERMISSIONS } from "../navigationAccess";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
 import { type SidebarMenuItem } from "../types";
 import { mapToExtensionsItems } from "../utils";
@@ -138,7 +148,7 @@ export function useMenuStructure() {
     ],
   });
 
-  const menuItems: SidebarMenuItem[] = [
+  const originalMenuItems: SidebarMenuItem[] = [
     {
       icon: renderIcon(<HomeIcon />),
       label: intl.formatMessage(sectionNames.home),
@@ -162,12 +172,7 @@ export function useMenuStructure() {
       ),
       id: "search",
       url: "/search",
-      permissions: [
-        PermissionEnum.MANAGE_PRODUCTS,
-        PermissionEnum.MANAGE_PAGES,
-        PermissionEnum.MANAGE_PAGE_TYPES_AND_ATTRIBUTES,
-        PermissionEnum.MANAGE_ORDERS,
-      ],
+      permissions: [...DASHBOARD_SEARCH_PERMISSIONS],
       type: "item",
     },
     {
@@ -350,6 +355,174 @@ export function useMenuStructure() {
       type: "item",
     },
   ];
+
+  // Reuse Saleor's routes, permissions, extension slots and pins. Custom /ops
+  // pages remain separately authenticated and open in a distinct browser tab.
+  const localized = (zh: string, en: string) =>
+    intl.locale.toLowerCase().startsWith("zh") ? zh : en;
+  const native = (id: string) => {
+    const item = originalMenuItems.find(candidate => candidate.id === id);
+
+    if (!item) throw new Error(`Missing built-in Dashboard navigation: ${id}`);
+
+    return item;
+  };
+  const opsSection = (section: CommerceOpsSection): SidebarMenuItem[] =>
+    commerceOpsNavigation
+      .filter(entry => entry.section === section)
+      .flatMap(entry => {
+        const externalUrl = createOpsHref(process.env.COMMERCE_OPS_URL, entry.path);
+
+        return externalUrl ? [{
+          id: entry.id,
+          label: localized(entry.zh, entry.en),
+          externalUrl,
+          permissions: entry.permissions,
+          type: "item" as const,
+        }] : [];
+      });
+
+  const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
+    items.filter((item): item is SidebarMenuItem => item !== null);
+
+  const baseHome = native("home");
+  // When home widgets are pinned, Home becomes an accordion in upstream Saleor.
+  // Keep the actual /home destination visible now that group headings only toggle.
+  const home: SidebarMenuItem = baseHome.type === "itemGroup" ? {
+    ...baseHome,
+    children: [{
+      id: "commerce-dashboard-home",
+      label: localized("首页概览", "Home overview"),
+      url: "/home",
+      type: "item",
+    }, ...(baseHome.children ?? [])],
+  } : baseHome;
+  const search = native("search");
+  const baseOrders = native("orders");
+  const baseCatalog = native("products");
+  const baseCustomers = native("customers");
+  const baseDiscounts = native("discounts");
+  const baseModeling = native("modeling");
+  const baseTranslations = native("translations");
+  const baseExtensions = native("installed-extensions");
+  const baseSettings = native("configure");
+
+  const orders: SidebarMenuItem = {
+    ...baseOrders,
+    label: localized("订单", "Orders"),
+    defaultExpanded: true,
+    children: [
+      ...(baseOrders.children ?? []),
+      ...opsSection("orders"),
+    ],
+  };
+  const catalog: SidebarMenuItem = {
+    ...baseCatalog,
+    label: localized("商品", "Products"),
+  };
+  const customers: SidebarMenuItem = {
+    ...baseCustomers,
+    label: localized("客户", "Customers"),
+    children: [
+      ...(baseCustomers.children ?? []),
+      ...opsSection("customers"),
+    ],
+  };
+  const marketing: SidebarMenuItem = {
+    ...baseDiscounts,
+    label: localized("营销", "Marketing"),
+  };
+
+  const analyticsChildren = opsSection("analytics");
+  const analytics: SidebarMenuItem | null = analyticsChildren.length ? {
+    id: "commerce-analytics",
+    icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
+    label: localized("数据分析", "Analytics"),
+    type: "itemGroup",
+    defaultExpanded: true,
+    permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_PRODUCTS],
+    children: analyticsChildren,
+  } : null;
+
+  const onlineStore: SidebarMenuItem = {
+    ...baseModeling,
+    label: localized("在线商店", "Online store"),
+    defaultExpanded: true,
+    // A translator should still see this section without page/model privileges.
+    permissions: [...(baseModeling.permissions ?? []), PermissionEnum.MANAGE_TRANSLATIONS],
+    children: [
+      ...opsSection("store"),
+      ...(baseModeling.children ?? []),
+      { ...baseTranslations, label: localized("语言翻译", "Translations") },
+    ],
+  };
+  const channels: SidebarMenuItem = {
+    id: "commerce-sales-channels",
+    icon: renderIcon(<Globe2 {...navigationLucideIconProps} />),
+    label: localized("销售渠道", "Sales channels"),
+    type: "itemGroup",
+    url: channelsListUrl(),
+    permissions: [PermissionEnum.MANAGE_CHANNELS],
+    children: [{
+      id: "commerce-channel-management",
+      label: localized("渠道管理", "Manage channels"),
+      url: channelsListUrl(),
+      permissions: [PermissionEnum.MANAGE_CHANNELS],
+      type: "item",
+    }],
+  };
+  const apps: SidebarMenuItem = {
+    ...baseExtensions,
+    label: localized("应用", "Apps"),
+    children: [
+      ...(baseExtensions.children ?? []),
+      ...opsSection("apps"),
+    ],
+  };
+
+  // Surface common Saleor settings as actual child routes, not fake settings pages.
+  // The complete Saleor Configuration landing page remains available.
+  const settings: SidebarMenuItem = {
+    ...baseSettings,
+    label: localized("设置", "Settings"),
+    type: "itemGroup",
+    children: [
+      { id: "commerce-settings-home", label: localized("设置总览", "All settings"),
+        url: configurationMenuUrl, type: "item", exactMatch: true },
+      { id: "commerce-settings-store", label: localized("店铺信息", "Store details"),
+        url: siteSettingsUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_SETTINGS] },
+      { id: "commerce-settings-shipping", label: localized("配送运费", "Shipping"),
+        url: shippingZonesListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_SHIPPING] },
+      { id: "commerce-settings-order", label: localized("订单设置", "Order settings"),
+        url: orderSettingsPath, type: "item",
+        permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_SETTINGS] },
+      { id: "commerce-settings-tax", label: localized("税费设置", "Taxes"),
+        url: taxConfigurationListUrl(), type: "item" },
+      { id: "commerce-settings-staff", label: localized("员工管理", "Staff"),
+        url: staffListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF] },
+      { id: "commerce-settings-permissions", label: localized("权限组", "Permission groups"),
+        url: permissionGroupListUrl(), type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF] },
+    ],
+  };
+
+  const menuItems: SidebarMenuItem[] = [
+    home,
+    search,
+    orders,
+    catalog,
+    customers,
+    marketing,
+    ...available(analytics),
+    onlineStore,
+    channels,
+    apps,
+    settings,
+  ];
+
   // Pins are injected before filtering, so one whose host section is hidden drops out with it.
   const menuItemsWithPins = injectNavigationPins(menuItems, navigationPins, {
     favoritesLabel: intl.formatMessage(navigationPinMessages.favorites),
@@ -364,19 +537,7 @@ export function useMenuStructure() {
 
     return menuItem.permissions.some(permission => userPermissions.includes(permission));
   };
-  const getFilteredMenuItems = (menuItems: SidebarMenuItem[]) =>
-    menuItems.filter(isMenuItemPermitted);
-
-  return menuItemsWithPins.reduce((resultItems: SidebarMenuItem[], menuItem: SidebarMenuItem) => {
-    if (!isMenuItemPermitted(menuItem)) {
-      return resultItems;
-    }
-
-    const { children } = menuItem;
-    const filteredChildren = children ? getFilteredMenuItems(children) : undefined;
-
-    return [...resultItems, { ...menuItem, children: filteredChildren }];
-  }, []);
+  return filterSidebarMenu(menuItemsWithPins, isMenuItemPermitted);
 }
 
 function renderIcon(icon: React.ReactNode) {

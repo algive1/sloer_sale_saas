@@ -10,6 +10,7 @@ import NavigatorSearch from "../NavigatorSearch/NavigatorSearch";
 import { useSavebarRef } from "../Savebar/SavebarRefContext";
 import { Sidebar } from "../Sidebar/Sidebar";
 import { SidebarProvider } from "../Sidebar/SidebarContext";
+import { CommerceTopbar } from "./CommerceTopbar";
 import { borderHeight, savebarHeight } from "./consts";
 import { useStyles } from "./styles";
 
@@ -45,6 +46,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <Sidebar />
         </Box>
         <Box height="100%" width="100%" overflow="hidden">
+          <CommerceTopbar />
           <AnnouncementsContainer margin={4} />
           <Box as="main" width="100%" height="100%">
             {children}

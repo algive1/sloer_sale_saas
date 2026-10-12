@@ -92,6 +92,7 @@ services:
       context: ./dashboard
       args:
         API_URL: ${DASHBOARD_API_URL:-http://localhost:8000/graphql/}
+        COMMERCE_OPS_URL: ${COMMERCE_OPS_URL:-http://localhost:3000}
         APP_MOUNT_URI: ${DASHBOARD_MOUNT_URI:-/}
         STATIC_URL: ${DASHBOARD_STATIC_URL:-/}
         SKIP_SOURCEMAPS: "true"

@@ -106,6 +106,20 @@ describe("mapToExtensionsItems", () => {
   });
 });
 
+describe("exact-match navigation summaries", () => {
+  const section = { id: "settings-overview", type: "item", url: "/configuration", exactMatch: true } as const;
+
+  it("selects summary only on the summary route", () => {
+    expect(isMenuActive("/configuration", section)).toBe(true);
+    expect(isMenuActive("/configuration?tab=all", section)).toBe(true);
+    expect(isMenuActive("/configuration/permissions", section)).toBe(false);
+  });
+
+  it("retains the original prefix behavior for ordinary catalog sections", () => {
+    expect(isMenuActive("/products/123", { id: "products", type: "item", url: "/products" })).toBe(true);
+  });
+});
+
 describe("isMenuActive", () => {
   const mockMenuItem: SidebarMenuItem = {
     id: "test-item",

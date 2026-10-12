@@ -11,6 +11,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { Link } from "react-router-dom";
 
 import { rippleGlobalFeedback } from "../ripples/globalFeedback";
+import { AdminAccentPicker } from "./AdminAccentPicker";
 import { FeatureFlagsModal } from "./FeatureFlagsModal";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useFeedbackSurvey } from "./useFeedbackSurvey";
@@ -84,7 +85,7 @@ const FeedbackButton = () => {
   );
 };
 
-export const UserControls = () => {
+export const UserControls = ({ compact = false }: { compact?: boolean }) => {
   const { user, logout } = useUser();
   const { changeTheme, theme } = useLegacyThemeHandler();
   const [open, setOpen] = useState(false);
@@ -93,7 +94,7 @@ export const UserControls = () => {
   return (
     <>
       <Box display="flex" alignItems="center" gap={1} flexShrink="0">
-        <FeedbackButton />
+        {!compact && <FeedbackButton />}
         <Dropdown
           open={open}
           onOpenChange={value => {
@@ -173,6 +174,7 @@ export const UserControls = () => {
                   </List.Item>
                 </Dropdown.Item>
               </List>
+              <AdminAccentPicker />
             </Box>
           </Dropdown.Content>
         </Dropdown>
