@@ -46,6 +46,7 @@ type BulkPublishProductNode = {
   id: string;
   name: string;
   category: { id: string } | null;
+  channelListings: Array<{ channel: { id: string } }> | null;
 };
 
 type MutationErrorLike = {
@@ -69,6 +70,7 @@ const getBulkPublishMutationErrorMessage = (
 
 const hasVariantBulkUpdateErrors = (
   variantResult: FetchResult<ProductVariantBulkUpdateMutation>,
+  expectedRows: number,
 ): boolean => {
   if (variantResult.errors?.length) {
     return true;
@@ -76,7 +78,7 @@ const hasVariantBulkUpdateErrors = (
 
   const payload = variantResult.data?.productVariantBulkUpdate;
 
-  if (!payload) {
+  if (!payload || payload.results?.length !== expectedRows) {
     return true;
   }
 
@@ -251,10 +253,15 @@ export const useBulkPublishToChannelSubmit = ({
       });
 
       try {
-        const { data } = await fetchProductsData({
+        const { data, errors, error } = await fetchProductsData({
           ids: draftsToPublish.map(draft => draft.productId),
           first: BULK_PUBLISH_MAX_PRODUCTS,
         });
+
+        if (errors?.length || error || !data?.products) {
+          throw new Error("Incomplete bulk publish product response");
+        }
+
         const products = mapEdgesToItems(data?.products) as BulkPublishProductNode[];
         const productsById = new Map(products.map(product => [product.id, product]));
 
@@ -293,48 +300,43 @@ export const useBulkPublishToChannelSubmit = ({
               continue;
             }
 
-            const channelListingResult = await updateChannelListing({
-              variables: {
-                id: product.id,
-                input: {
-                  updateChannels: [
-                    {
-                      channelId: channel.id,
-                      isPublished: defaults.isPublished,
-                      visibleInListings: defaults.visibleInListings,
-                      isAvailableForPurchase: defaults.isAvailableForPurchase,
-                    },
-                  ],
-                },
-              },
-            });
-
-            const channelListing = channelListingResult.data?.productChannelListingUpdate;
-            const channelListingErrors = (channelListing?.errors ?? []) as MutationErrorLike[];
-
-            if (
-              channelListingResult.errors?.length ||
-              !channelListing ||
-              channelListingErrors.length > 0
-            ) {
-              failedProductIds.push(draft.productId);
-              progress[index] = {
-                ...progress[index],
-                status: "error",
-                errorMessage:
-                  getBulkPublishMutationErrorMessage(channelListingErrors, intl) ??
-                  channelListingResult.errors?.[0]?.message ??
-                  intl.formatMessage(messages.publishFailed),
-              };
-              onProgressChange([...progress]);
-              continue;
-            }
-
-            // Refetch after the product channel update so we don't attempt channelListings.create
-            // when listings were already created (e.g. by a prior failed publish attempt).
-            // Also loads stocks so we can create missing rows and update existing ones.
+            // Load the complete, fresh variant list before changing any publication state.
             const variants = await fetchAllBulkPublishProductVariants(client, product.id);
             const price = hasBulkPublishPrice(draft.price) ? draft.price : undefined;
+            const alreadyAssigned = product.channelListings?.some(
+              listing => listing.channel.id === channel.id,
+            );
+
+            if (price === undefined && !alreadyAssigned) {
+              throw new Error("The product needs a price for its new channel assignment");
+            }
+
+            // Saleor requires the product to be assigned before variant listings can be created.
+            // New assignments stay hidden and unavailable until every variant chunk succeeds.
+            // Existing listings keep their current publication state during price/stock writes.
+            if (!alreadyAssigned) {
+              const assignmentResult = await updateChannelListing({
+                variables: {
+                  id: product.id,
+                  input: {
+                    updateChannels: [
+                      {
+                        channelId: channel.id,
+                        isPublished: false,
+                        visibleInListings: false,
+                        isAvailableForPurchase: false,
+                      },
+                    ],
+                  },
+                },
+              });
+              const assignment = assignmentResult.data?.productChannelListingUpdate;
+
+              if (assignmentResult.errors?.length || !assignment || assignment.errors.length > 0) {
+                throw new Error("Unable to prepare an unpublished channel assignment");
+              }
+            }
+
             const costPrice = hasBulkPublishCostPrice(draft.costPrice)
               ? draft.costPrice
               : undefined;
@@ -371,7 +373,7 @@ export const useBulkPublishToChannelSubmit = ({
                   },
                 });
 
-                if (hasVariantBulkUpdateErrors(variantResult)) {
+                if (hasVariantBulkUpdateErrors(variantResult, variantInputChunk.length)) {
                   failedProductIds.push(draft.productId);
                   progress[index] = {
                     ...progress[index],
@@ -389,6 +391,43 @@ export const useBulkPublishToChannelSubmit = ({
               if (failedProductIds.includes(draft.productId)) {
                 continue;
               }
+            }
+
+            // Publication is the last write. Failed/partial variant batches never enable it.
+            const channelListingResult = await updateChannelListing({
+              variables: {
+                id: product.id,
+                input: {
+                  updateChannels: [
+                    {
+                      channelId: channel.id,
+                      isPublished: defaults.isPublished,
+                      visibleInListings: defaults.visibleInListings,
+                      isAvailableForPurchase: defaults.isAvailableForPurchase,
+                    },
+                  ],
+                },
+              },
+            });
+            const channelListing = channelListingResult.data?.productChannelListingUpdate;
+            const channelListingErrors = (channelListing?.errors ?? []) as MutationErrorLike[];
+
+            if (
+              channelListingResult.errors?.length ||
+              !channelListing ||
+              channelListingErrors.length > 0
+            ) {
+              failedProductIds.push(draft.productId);
+              progress[index] = {
+                ...progress[index],
+                status: "error",
+                errorMessage:
+                  getBulkPublishMutationErrorMessage(channelListingErrors, intl) ??
+                  channelListingResult.errors?.[0]?.message ??
+                  intl.formatMessage(messages.publishFailed),
+              };
+              onProgressChange([...progress]);
+              continue;
             }
 
             progress[index] = {

@@ -1,0 +1,39 @@
+name: Dashboard source
+
+on:
+  pull_request:
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard-source.yml"
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/**"
+      - ".github/workflows/dashboard-source.yml"
+
+jobs:
+  bulk-publication-safety:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      HUSKY: "0"
+      NODE_OPTIONS: --max-old-space-size=8192
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: dashboard/package.json
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: pnpm
+          cache-dependency-path: dashboard/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run generate
+      - run: pnpm run check-types:src
+      - run: pnpm exec eslint src/channels/components/BulkPublishToChannelDialog/fetchBulkPublishProductVariants.ts src/channels/components/BulkPublishToChannelDialog/fetchBulkPublishProductVariants.test.ts src/channels/components/BulkPublishToChannelDialog/useBulkPublishToChannelSubmit.ts src/channels/components/BulkPublishToChannelDialog/useBulkPublishToChannelSubmit.safety.test.ts
+      - run: pnpm run test:quiet src/channels/components/BulkPublishToChannelDialog --runInBand
