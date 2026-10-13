@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import useLocalStorage from "@dashboard/hooks/useLocalStorage";
-import { createContext, type ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, type ReactNode, useEffect, useState } from "react";
 import { IntlProvider, ReactIntlErrorCode } from "react-intl";
 
 export enum Locale {
@@ -114,8 +114,8 @@ function getKeyValueJson(messages: LocaleMessages): Record<string, string> {
   }
 }
 
-const localeCode = process.env.LOCALE_CODE || "EN";
-const defaultLocale = Locale[localeCode];
+const localeCode = window.__SALEOR_CONFIG__?.LOCALE_CODE || process.env.LOCALE_CODE || "EN";
+const defaultLocale = Locale[localeCode] || Locale.EN;
 
 interface LocaleContextType {
   locale: Locale;
@@ -130,26 +130,30 @@ const { Consumer: LocaleConsumer, Provider: RawLocaleProvider } = LocaleContext;
 const LocaleProvider = ({ children }: { children: ReactNode }) => {
   const [locale, setLocale] = useLocalStorage("locale", defaultLocale);
   const [messages, setMessages] = useState(undefined);
-  const loaded = useRef(false);
 
-  useEffect(() => {
-    async function changeLocale() {
-      if (locale !== Locale.EN && !loaded.current) {
-        // It seems like Webpack is unable to use aliases for lazy imports
-        const mod = await import(`../../../locale/${locale}.json`);
+  useEffect(
+    function syncLocaleMessages() {
+      let cancelled = false;
 
-        setMessages(mod.default);
+      async function changeLocale() {
+        if (locale !== Locale.EN) {
+          // It seems like Webpack is unable to use aliases for lazy imports
+          const mod = await import(`../../../locale/${locale}.json`);
 
-        if (!loaded.current) {
-          loaded.current = true;
+          if (!cancelled) setMessages(mod.default);
+        } else {
+          setMessages(undefined);
         }
-      } else {
-        setMessages(undefined);
       }
-    }
 
-    changeLocale();
-  }, [locale]);
+      changeLocale();
+
+      return () => {
+        cancelled = true;
+      };
+    },
+    [locale],
+  );
 
   return (
     <IntlProvider

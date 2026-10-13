@@ -100,6 +100,7 @@ services:
         COMMERCE_OPS_URL: ${COMMERCE_OPS_URL:-http://localhost:3000}
         APP_MOUNT_URI: ${DASHBOARD_MOUNT_URI:-/}
         STATIC_URL: ${DASHBOARD_STATIC_URL:-/}
+        LOCALE_CODE: ${DASHBOARD_LOCALE_CODE:-ZH_HANS}
         SKIP_SOURCEMAPS: "true"
     restart: unless-stopped
     ports:
