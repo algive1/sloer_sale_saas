@@ -39,7 +39,7 @@ cp .env.example .env
 bash scripts/bootstrap-local.sh
 ```
 
-The first start builds Saleor Core, Dashboard and Storefront from the source directories in this repository.
+The first start builds Saleor Core, Dashboard and Storefront from the source directories in this repository. The bootstrap starts the API before building the Storefront so its GraphQL types and operations can be generated from the live schema during the image build.
 
 Local endpoints:
 

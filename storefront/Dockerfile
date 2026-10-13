@@ -60,10 +60,9 @@ ENV NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS=${NEXT_PUBLIC_ENABLE_STRIPE_PAYMENTS:-fal
 ARG NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT
 ENV NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT=${NEXT_PUBLIC_ALLOW_DUMMY_PAYMENT:-false}
 
-# Use checked-in generated GraphQL artifacts during an image build.
-# Running the package "build" script would trigger prebuild -> generate:all and
-# require a live Saleor API before the first backend container exists.
-RUN NEXT_OUTPUT=standalone pnpm exec next build
+# Generate GraphQL artifacts from the already-running Saleor API. The local and
+# production deploy flows start the API before building the storefront image.
+RUN pnpm run generate:all && NEXT_OUTPUT=standalone pnpm exec next build
 
 FROM base AS runner
 WORKDIR /app
