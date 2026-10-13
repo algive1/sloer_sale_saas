@@ -54,6 +54,48 @@ and fragments in the configured base are rejected.
 After changing this variable, **rebuild** the Dashboard container because Vite
 embeds the public (non-secret) origin in its JS bundle.
 
+### Browser access and language (13 October 2026)
+
+Local Compose defaults Dashboard to Simplified Chinese (`DASHBOARD_LOCALE_CODE=ZH_HANS`).
+The top bar language selector updates the existing browser preference. Locale packs
+reload on every switch, including switching back to Chinese; runtime `LOCALE_CODE`
+from the served HTML takes precedence over the build fallback.
+
+Commerce Ops retains separate operator authorization. Browser page requests now
+open `/ops/login` with a Chinese login form instead of stopping at a Basic Auth
+challenge. Use the existing `OPS_OPERATORS_JSON` account, or legacy username
+`analytics` with `ANALYTICS_DASHBOARD_SECRET`. Successful login returns to the chosen
+page and sets an eight-hour HttpOnly, SameSite=Strict signed cookie (Secure on HTTPS).
+Credentials and roles stay server-side. Changing passwords or operator scopes revokes
+existing cookies. API callers can continue using Basic Auth. No Host-based auth
+bypass is enabled.
+
+The session cookie uses Path=/ because the existing Chatwoot gateway lives at
+`/api/ops/chatwoot`; that endpoint still checks the current operator and its
+mutation origin guard. Operators can clear the cookie with the header logout button.
+Login redirects and mutation checks resolve the public origin from deployment
+configuration and a verified Host, because standalone Next.js can expose its Docker
+hostname in `request.url`. Unconfigured Host values remain rejected.
+The Chinese pack includes 441 corrected common labels; upstream advanced dialogs
+and third-party extension content may still fall back to English.
+
+Validation: Dashboard source typecheck (including 4,221 strict files), language
+switching and navigation tests; Storefront docs, dependency policy, typechecks and
+lint; 1,225 unit tests plus 12 brand safety tests. In container checks, unset
+deployment-only public market variables and mount the real backend Schema, so the
+test fixtures can select their own locale/channel configuration.
+
+The deployed HTTP checks passed login redirect, incorrect password handling,
+cross-origin rejection, session cookie, logout, all 12 registered Ops page routes,
+the Dashboard Chinese bootstrap config and live Saleor GraphQL. The Chatwoot
+gateway correctly reports its missing external configuration after authentication.
+Browser click/visual acceptance could not run because browser access to the local
+Dashboard was denied; no visual pass is claimed. External Chatwoot and AI services
+remain configuration-dependent and have not been actually integrated here.
+
+Continue in a new window: open this repository and ask “继续处理本地后台功能，先阅读
+docs/admin-navigation.md，保留现有部署和认证配置”。
+
 ## Visual themes and storefront isolation
 
 - Saleor already supports light/dark switching in the account menu.
