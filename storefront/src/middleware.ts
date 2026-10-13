@@ -10,6 +10,8 @@ import { channelForExplicitLocale, localeForChannel, resolveEntryLocalization, v
 import { isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { opsMutationPlugin, parseSystemPluginPolicy, systemPluginPauseReason } from "@/plugins/system/policy";
 import { authorizeOpsRequest } from "@/lib/ops/authorization";
+import { OPS_SESSION_COOKIE, opsSessionAuthorization } from "@/lib/ops/session";
+import { opsPublicRequestUrl } from "@/lib/ops/request-url";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
@@ -65,27 +67,40 @@ export async function middleware(request: NextRequest) {
   }
 
 	if (pathname === "/ops" || pathname.startsWith("/ops/")) {
+		if (pathname === "/ops/login") return NextResponse.next();
 		let decision: ReturnType<typeof authorizeOpsRequest>;
 		try {
 			// Brand IDs come from trusted deployment config, not a query, cookie
 			// or client-supplied operator/brand header.
 			const operatorConfig = process.env.OPS_OPERATORS_JSON;
-			decision = authorizeOpsRequest({
-				authorization: request.headers.get("authorization"),
-				pathname,
-				method: request.method,
+			const config = {
 				operatorsJson: operatorConfig,
 				legacySecret: process.env.ANALYTICS_DASHBOARD_SECRET,
 				trustedSiteIds: operatorConfig?.trim() ? (getBrandSites()?.map((site) => site.id) ?? []) : [],
-			});
+			};
+			const authorization =
+				request.headers.get("authorization") ??
+				(await opsSessionAuthorization(request.cookies.get(OPS_SESSION_COOKIE)?.value, config));
+			decision = authorizeOpsRequest({ ...config, authorization, pathname, method: request.method });
 		} catch (error) {
-			console.error("[ops-auth] Invalid operator configuration", error instanceof Error ? error.message : "unknown");
+			console.error(
+				"[ops-auth] Invalid operator configuration",
+				error instanceof Error ? error.message : "unknown",
+			);
 			return new NextResponse("Operations configuration unavailable", {
-				status: 503, headers: { "Cache-Control": "private, no-store" },
+				status: 503,
+				headers: { "Cache-Control": "private, no-store" },
 			});
 		}
 		if (decision === "disabled") return new NextResponse("Not found", { status: 404 });
 		if (decision === "unauthenticated") {
+			if (request.method === "GET" && request.headers.get("accept")?.includes("text/html")) {
+				const publicUrl = opsPublicRequestUrl(request.url, request.headers.get("host"));
+				if (!publicUrl) return new NextResponse("Operations origin unavailable", { status: 503 });
+				const login = new URL("/ops/login", publicUrl);
+				login.searchParams.set("next", pathname + request.nextUrl.search);
+				return NextResponse.redirect(login, { headers: { "Cache-Control": "private, no-store" } });
+			}
 			return new NextResponse("Authentication required", {
 				status: 401,
 				headers: {
@@ -96,19 +111,25 @@ export async function middleware(request: NextRequest) {
 		}
 		if (decision === "forbidden") {
 			return new NextResponse("Insufficient operator permissions", {
-				status: 403, headers: { "Cache-Control": "private, no-store" },
+				status: 403,
+				headers: { "Cache-Control": "private, no-store" },
 			});
 		}
 		const plugin = opsMutationPlugin(pathname, request.method);
-		const pause = plugin && systemPluginPauseReason(plugin, parseSystemPluginPolicy(process.env.SYSTEM_PLUGINS_DISABLED));
-		if (pause) return NextResponse.json({ error: pause }, {
-			status: 503, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
-		});
+		const pause =
+			plugin && systemPluginPauseReason(plugin, parseSystemPluginPolicy(process.env.SYSTEM_PLUGINS_DISABLED));
+		if (pause)
+			return NextResponse.json(
+				{ error: pause },
+				{
+					status: 503,
+					headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+				},
+			);
 		return NextResponse.next({
 			headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
 		});
 	}
-
 
 	if (
 		pathname.startsWith("/_next") ||

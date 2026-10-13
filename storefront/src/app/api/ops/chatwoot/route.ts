@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
+import { opsPublicRequestUrl } from "@/lib/ops/request-url";
 import { isTrustedAgentMutation } from "@/plugins/customer-support/agent-request-security";
 import {
   AgentWorkbenchError, listAgentConversations, listAgentMessages,
@@ -45,11 +46,12 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!(await isPlatformOperator())) return response({ error: "没有客服回复权限" }, 403);
-  // Basic-auth sessions are ambient browser credentials. Require a same-origin
+  // Basic Auth and signed cookies are ambient credentials. Require a same-origin
   // programmatic request, and reject cross-site form posts (CSRF).
-  if (!isTrustedAgentMutation({
+  const publicUrl = opsPublicRequestUrl(request.url, request.headers.get("host"));
+  if (!publicUrl || !isTrustedAgentMutation({
     origin: request.headers.get("origin"),
-    requestUrl: request.url,
+    requestUrl: publicUrl.href,
     fetchSite: request.headers.get("sec-fetch-site"),
     actionHeader: request.headers.get("x-ops-chat-action"),
   })) {

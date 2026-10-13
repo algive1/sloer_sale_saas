@@ -224,7 +224,10 @@ export function OpsShell({ children, groups, username, role, dashboardHref }: Pr
             <Menu size={20} />
           </button>
           <span className={styles.topbarTitle}>运营管理</span>
-          <span className={styles.topbarRole}>{role === "platform_admin" ? "Platform Admin" : "Brand Analyst"}</span>
+          <span className={styles.topbarRole}>{role === "platform_admin" ? "平台管理员" : "品牌分析员"}</span>
+          <form method="post" action="/ops/login?action=logout">
+            <button type="submit" className={styles.dashboardLink}>退出登录</button>
+          </form>
           {dashboardHref && role === "platform_admin" && (
             <a
               className={styles.dashboardLink}
