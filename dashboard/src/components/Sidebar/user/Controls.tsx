@@ -16,7 +16,7 @@ import { FeatureFlagsModal } from "./FeatureFlagsModal";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 import { useFeedbackSurvey } from "./useFeedbackSurvey";
 
-export const useLegacyThemeHandler = () => {
+const useLegacyThemeHandler = () => {
   const { theme, setTheme } = useTheme();
   const { setTheme: setLegacyTheme } = useLegacyTheme();
   const changeTheme = () => {

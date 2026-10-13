@@ -22,8 +22,27 @@ function login(password: string, origin = "http://localhost:3000", next = "/ops/
 }
 
 describe("Ops login HTTP boundary", () => {
+	it("shows English according to the browser and honors the embedded language", async () => {
+		expect(
+			await GET(
+				new NextRequest("http://localhost:3000/ops/login", { headers: { "accept-language": "en-US" } }),
+			).text(),
+		).toContain("Operations sign-in");
+		const next = encodeURIComponent("/ops/themes?uiLocale=zh-Hans");
+		expect(
+			await GET(
+				new NextRequest(`http://localhost:3000/ops/login?next=${next}`, {
+					headers: { "accept-language": "en-US" },
+				}),
+			).text(),
+		).toContain("运营后台登录");
+	});
 	it("shows Chinese login copy without rendering a protected shell", async () => {
-		const response = GET(new NextRequest("http://localhost:3000/ops/login?next=//evil.example"));
+		const response = GET(
+			new NextRequest("http://localhost:3000/ops/login?next=//evil.example", {
+				headers: { "accept-language": "zh-CN" },
+			}),
+		);
 		expect(response.status).toBe(200);
 		expect(await response.text()).toContain("运营后台登录");
 		expect(response.headers.get("cache-control")).toContain("no-store");

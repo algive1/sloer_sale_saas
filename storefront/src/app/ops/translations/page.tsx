@@ -1,3 +1,4 @@
+import { getOpsI18n } from "@/lib/ops/i18n.server";
 import { pluginPauseReason } from "@/plugins/system/runtime.server";
 import { PluginPauseNotice } from "@/plugins/system/pause-notice.server";
 import type { Metadata } from "next";
@@ -28,88 +29,129 @@ import msg_ko from "../../../../messages/ko.json";
 
 // Explicit imports avoid Next server dynamic-import contexts during PPR replay.
 const UI_CATALOGS: Record<string, unknown> = {
-  en: msg_en,
-  de: msg_de,
-  fr: msg_fr,
-  nl: msg_nl,
-  da: msg_da,
-  sv: msg_sv,
-  es: msg_es,
-  it: msg_it,
-  pl: msg_pl,
-  pt: msg_pt,
-  cs: msg_cs,
-  ja: msg_ja,
-  fi: msg_fi,
-  nb: msg_nb,
-  ko: msg_ko,
+	en: msg_en,
+	de: msg_de,
+	fr: msg_fr,
+	nl: msg_nl,
+	da: msg_da,
+	sv: msg_sv,
+	es: msg_es,
+	it: msg_it,
+	pl: msg_pl,
+	pt: msg_pt,
+	cs: msg_cs,
+	ja: msg_ja,
+	fi: msg_fi,
+	nb: msg_nb,
+	ko: msg_ko,
 };
 
-export const metadata:Metadata={
-  title:"多语言管理中心 | Commerce Ops",robots:{index:false,follow:false},
+export async function generateMetadata(): Promise<Metadata> {
+	const { t } = await getOpsI18n();
+	return {
+		title: t("多语言管理中心 | Commerce Ops"),
+		robots: { index: false, follow: false },
+	};
+}
+const flatten = (value: unknown, prefix = "", out: Record<string, string> = {}) => {
+	if (typeof value === "string") out[prefix] = value;
+	else if (value && typeof value === "object" && !Array.isArray(value)) {
+		for (const [key, child] of Object.entries(value)) flatten(child, prefix ? prefix + "." + key : key, out);
+	}
+	return out;
 };
-const flatten=(value:unknown,prefix="",out:Record<string,string>={})=>{
-  if(typeof value==="string")out[prefix]=value;
-  else if(value&&typeof value==="object"&&!Array.isArray(value)) {
-    for(const [key,child] of Object.entries(value))flatten(child,prefix?prefix+"."+key:key,out);
-  }
-  return out;
-};
-export default function TranslationCenterPage() {
-  return (
-    <Suspense fallback={
-      <main className="min-h-screen bg-[#f6f7f9] px-4 py-6 text-[#171717] md:px-10 md:py-8">
-        <p role="status" className="mx-auto max-w-7xl text-sm text-stone-600">正在加载多语言管理中心…</p>
-      </main>
-    }>
-      <TranslationCenterRuntime />
-    </Suspense>
-  );
+export default async function TranslationCenterPage() {
+	const i18n = await getOpsI18n();
+	const { t } = i18n;
+
+	return (
+		<Suspense
+			fallback={
+				<main className="min-h-screen bg-[#f6f7f9] px-4 py-6 text-[#171717] md:px-10 md:py-8">
+					<p role="status" className="mx-auto max-w-7xl text-sm text-stone-600">
+						{t("正在加载多语言管理中心…")}
+					</p>
+				</main>
+			}
+		>
+			<TranslationCenterRuntime />
+		</Suspense>
+	);
 }
 
 async function TranslationCenterRuntime() {
-  // Runtime secrets and feature flags must not be frozen during static build.
-  await connection();
-  const channels=getStaticStorefrontChannelSlugs();
-  const sites=getBrandSites()??[{
-    id:siteIdForChannel(channels[0]??""),
-    name:"默认店铺",channels,defaultChannel:channels[0]??"",
-  }];
-  const pairs=getConfiguredLocaleChannelPairs();
-  const locales=getStorefrontLocaleSlugs();
-  const base=flatten(msg_en),keys=Object.keys(base);
-  const coverage=locales.map(locale=>{
-    const catalog=UI_CATALOGS[locale];
-    const values=catalog?flatten(catalog):{};
-    const present=keys.filter(key=>typeof values[key]==="string"&&values[key].trim()).length;
-    return {locale,present,total:keys.length};
-  });
-  const brands=sites.map(site=>({
-    id:site.id,name:site.name,channels:site.channels.filter(c=>channels.includes(c)),
-    localesByChannel:Object.fromEntries(site.channels.map(c=>[c,locales.filter(l=>
-      !pairs||pairs.some(p=>p.channel===c&&p.locale===l))])),
-  }));
-  return (
-    <main className="min-h-screen bg-[#f6f7f9] px-4 py-6 text-[#171717] md:px-10 md:py-8">
-      <div className="mx-auto max-w-7xl">
-        <Link href="/ops/plugins" className="text-sm text-stone-500 hover:text-stone-900">← 系统插件</Link>
-        <header className="mt-5 mb-7">
-          <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">Localization / Operations</p>
-          <h1 className="mt-2 text-2xl font-semibold">多语言管理中心</h1>
-          <p className="mt-2 max-w-3xl text-sm text-stone-600">
-            查看前台文案覆盖率，按品牌与销售市场创建 AI 商品翻译任务，逐条审核后受控发布。
-          </p>
-        </header>
-        <PluginPauseNotice plugin="ai-translations" />
-        <TranslationCenter paused={Boolean(pluginPauseReason("ai-translations"))} brands={brands} coverage={coverage}
-          storageReady={translationDatabaseConfigured()}
-          workerReady={(process.env.TRANSLATION_WORKER_SECRET?.trim().length??0)>=32 &&
-            Boolean(process.env.TRANSLATION_AI_BASE_URL&&process.env.TRANSLATION_AI_API_KEY&&process.env.TRANSLATION_AI_MODEL)}
-          publisherReady={process.env.TRANSLATION_PUBLISH_ENABLED==="1"&&
-            Boolean(process.env.TRANSLATION_SALEOR_TOKEN)&&sites.length===1}
-          saleorReady={Boolean(process.env.TRANSLATION_SALEOR_TOKEN)}
-        />
-      </div>
-    </main>
-  );
+	const i18n = await getOpsI18n();
+	const { t } = i18n;
+
+	// Runtime secrets and feature flags must not be frozen during static build.
+	await connection();
+	const channels = getStaticStorefrontChannelSlugs();
+	const sites = getBrandSites() ?? [
+		{
+			id: siteIdForChannel(channels[0] ?? ""),
+			name: t("默认店铺"),
+			channels,
+			defaultChannel: channels[0] ?? "",
+		},
+	];
+	const pairs = getConfiguredLocaleChannelPairs();
+	const locales = getStorefrontLocaleSlugs();
+	const base = flatten(msg_en),
+		keys = Object.keys(base);
+	const coverage = locales.map((locale) => {
+		const catalog = UI_CATALOGS[locale];
+		const values = catalog ? flatten(catalog) : {};
+		const present = keys.filter((key) => typeof values[key] === "string" && values[key].trim()).length;
+		return { locale, present, total: keys.length };
+	});
+	const brands = sites.map((site) => ({
+		id: site.id,
+		name: site.name,
+		channels: site.channels.filter((c) => channels.includes(c)),
+		localesByChannel: Object.fromEntries(
+			site.channels.map((c) => [
+				c,
+				locales.filter((l) => !pairs || pairs.some((p) => p.channel === c && p.locale === l)),
+			]),
+		),
+	}));
+	return (
+		<main className="min-h-screen bg-[#f6f7f9] px-4 py-6 text-[#171717] md:px-10 md:py-8">
+			<div className="mx-auto max-w-7xl">
+				<Link href="/ops/plugins" className="text-sm text-stone-500 hover:text-stone-900">
+					{t("← 系统插件")}
+				</Link>
+				<header className="mb-7 mt-5">
+					<p className="text-xs font-semibold uppercase tracking-widest text-stone-500">
+						{t("本地化 / 运营管理")}
+					</p>
+					<h1 className="mt-2 text-2xl font-semibold">{t("多语言管理中心")}</h1>
+					<p className="mt-2 max-w-3xl text-sm text-stone-600">
+						{t("查看前台文案覆盖率，按品牌与销售市场创建 AI 商品翻译任务，逐条审核后受控发布。")}
+					</p>
+				</header>
+				<PluginPauseNotice plugin="ai-translations" />
+				<TranslationCenter
+					paused={Boolean(pluginPauseReason("ai-translations"))}
+					brands={brands}
+					coverage={coverage}
+					storageReady={translationDatabaseConfigured()}
+					workerReady={
+						(process.env.TRANSLATION_WORKER_SECRET?.trim().length ?? 0) >= 32 &&
+						Boolean(
+							process.env.TRANSLATION_AI_BASE_URL &&
+							process.env.TRANSLATION_AI_API_KEY &&
+							process.env.TRANSLATION_AI_MODEL,
+						)
+					}
+					publisherReady={
+						process.env.TRANSLATION_PUBLISH_ENABLED === "1" &&
+						Boolean(process.env.TRANSLATION_SALEOR_TOKEN) &&
+						sites.length === 1
+					}
+					saleorReady={Boolean(process.env.TRANSLATION_SALEOR_TOKEN)}
+				/>
+			</div>
+		</main>
+	);
 }

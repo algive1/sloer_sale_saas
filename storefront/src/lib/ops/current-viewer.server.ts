@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { getBrandSites } from "@/config/brand-sites";
 import { resolveOpsViewer, type OpsViewer } from "./authorization";
 import { OPS_SESSION_COOKIE, opsSessionAuthorization } from "./session";
+import { getSaleorOpsSessionSecret, SALEOR_OPS_SESSION_COOKIE, saleorOpsSessionViewer } from "./saleor-session";
 
 /**
  * Use inside a dynamic Ops route or API handler. Handlers outside /ops must
@@ -19,6 +20,11 @@ export async function currentOpsViewer(): Promise<OpsViewer | null> {
 		legacySecret: process.env.ANALYTICS_DASHBOARD_SECRET,
 		trustedSiteIds: getBrandSites()?.map((site) => site.id) ?? [],
 	};
+	const saleorViewer = await saleorOpsSessionViewer(
+		(await cookies()).get(SALEOR_OPS_SESSION_COOKIE)?.value,
+		getSaleorOpsSessionSecret(),
+	);
+	if (saleorViewer) return saleorViewer;
 	const authorization =
 		requestHeaders.get("authorization") ??
 		(await opsSessionAuthorization((await cookies()).get(OPS_SESSION_COOKIE)?.value, config));

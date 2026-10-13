@@ -9,7 +9,7 @@ import { PermissionEnum } from "@dashboard/graphql";
  */
 export type CommerceOpsSection = "orders" | "customers" | "analytics" | "store" | "apps";
 
-export interface CommerceOpsEntry {
+interface CommerceOpsEntry {
   id: string;
   section: CommerceOpsSection;
   zh: string;
@@ -116,11 +116,19 @@ export const commerceOpsNavigation: readonly CommerceOpsEntry[] = [
     permissions: [PermissionEnum.MANAGE_TRANSLATIONS],
   },
   {
-    id: "commerce-system-apps",
+    id: "commerce-ads-tracking",
     section: "apps",
-    zh: "自研系统插件",
-    en: "System extensions",
-    path: "/ops/plugins",
-    permissions: [PermissionEnum.MANAGE_APPS],
+    zh: "广告投递",
+    en: "Ad delivery",
+    path: "/ops/analytics/destinations",
+    permissions: [PermissionEnum.MANAGE_APPS, PermissionEnum.MANAGE_SETTINGS],
+  },
+  {
+    id: "commerce-merchant-feed",
+    section: "apps",
+    zh: "SEO 与 Merchant Feed",
+    en: "SEO and Merchant Feed",
+    path: "/ops/merchant",
+    permissions: [PermissionEnum.MANAGE_PRODUCTS, PermissionEnum.MANAGE_SETTINGS],
   },
 ];

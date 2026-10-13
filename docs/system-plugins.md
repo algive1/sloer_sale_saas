@@ -9,21 +9,40 @@
 
 ## Current extensions
 
-| ID | Scope | Integration |
-| --- | --- | --- |
-| theme-builder | system/all stores | `storefront-module`: schema/editor/storage moved to `storefront/src/plugins/theme-builder` and published renderer loaded on demand |
-| analytics | system/all stores | `partial`: first-party ingest/storage, dashboard report calculations moved to `storefront/src/plugins/analytics`, while storefront event emitters, app routes and UI remain in Paper |
-| ads-tracking | system/all stores | `partial`: browser/server delivery logic, pixel and GA4 config live in `storefront/src/plugins/ads-tracking`; consent state, event projections, browser mount and routes remain integrated with Paper |
-| payment-reminders | system/all stores | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved |
-| customer-support | system/all stores | `storefront-module`: optional per-brand Chatwoot CE website SDK mounted on click; no Saleor order/customer API access in phase 1 |
-| ai-translations | system/all stores | `partial`: operator-only AI draft generator and create-only Saleor fixture export; no shopper path or live admin UI |
-| analytics | Stops new first-party/browser/Vercel collection and refund ingestion before event SQL; reports remain readable with pause notices | Historical events/brand scopes retained; signed refund webhook still verifies signature and responds 503 for retry; its GA4 refund delivery depends on this ingestion |
-| ads-tracking | Stops new GA4/Meta/TikTok/Google Ads browser loaders/calls and server delivery/claims | Stored receipts readable; already in-flight receipt finalization retained; independent first-party analytics may stay enabled |
-| seo-merchant | Feed route returns 503/no-store and direct feed source rejects before native queries | Core SEO/JSON-LD/sitemap remain; Google/third-party stored feed copies are outside this switch; purge existing CDN feed entries during rollout |
+| ID                | Scope                                                                                                                             | Integration                                                                                                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| theme-builder     | system/all stores                                                                                                                 | `storefront-module`: schema/editor/storage moved to `storefront/src/plugins/theme-builder` and published renderer loaded on demand                                                                    |
+| analytics         | system/all stores                                                                                                                 | `partial`: first-party ingest/storage, dashboard report calculations moved to `storefront/src/plugins/analytics`, while storefront event emitters, app routes and UI remain in Paper                  |
+| ads-tracking      | system/all stores                                                                                                                 | `partial`: browser/server delivery logic, pixel and GA4 config live in `storefront/src/plugins/ads-tracking`; consent state, event projections, browser mount and routes remain integrated with Paper |
+| payment-reminders | system/all stores                                                                                                                 | `storefront-module`: rule/send logic under `storefront/src/plugins/payment-reminders`, existing API routes preserved                                                                                  |
+| customer-support  | system/all stores                                                                                                                 | `storefront-module`: optional per-brand Chatwoot CE website SDK mounted on click; no Saleor order/customer API access in phase 1                                                                      |
+| ai-translations   | system/all stores                                                                                                                 | `partial`: operator-only AI draft generator and create-only Saleor fixture export; `/ops/translations` is the live operator UI, available work depends on server credentials; no shopper path         |
+| analytics         | Stops new first-party/browser/Vercel collection and refund ingestion before event SQL; reports remain readable with pause notices | Historical events/brand scopes retained; signed refund webhook still verifies signature and responds 503 for retry; its GA4 refund delivery depends on this ingestion                                 |
+| ads-tracking      | Stops new GA4/Meta/TikTok/Google Ads browser loaders/calls and server delivery/claims                                             | Stored receipts readable; already in-flight receipt finalization retained; independent first-party analytics may stay enabled                                                                         |
+| seo-merchant      | Feed route returns 503/no-store and direct feed source rejects before native queries                                              | Core SEO/JSON-LD/sitemap remain; Google/third-party stored feed copies are outside this switch; purge existing CDN feed entries during rollout                                                        |
 
 | seo-merchant | system/all stores | `legacy-inline`: original SEO and feed routes remain operational |
 
 Registry: `storefront/src/plugins/system/registry.ts`. Operations can inspect the system-wide catalog at `/ops/plugins` (read-only; no store-specific activation or customer-page I/O). `partial` means server-side business logic was extracted but other code still lives in Paper. `legacy-inline` means the feature is **not yet extracted**. Existing endpoints, schemas and reporting SQL remain unchanged.
+
+The official self-hosted Saleor App Manifest is served at `/api/manifest`. Its
+seven `APP_PAGE` entries open the existing module pages directly in Saleor's
+navigation. The App's configuration view opens `/ops/plugins` for status and
+links. This does not convert the typed system registry into Saleor Core Plugins,
+and App install/uninstall does not change runtime module pause policy. In
+particular, `SYSTEM_PLUGINS_DISABLED` remains a deployment-level global switch;
+the Apps configuration view is read-only and must not claim to edit runtime
+environment variables. See [plugin-placement.md](plugin-placement.md) for
+Manifest URL, App Bridge authentication, installation, and validation boundaries.
+Custom Dashboard sidebar items for system modules link directly to feature pages;
+the `/ops/plugins` status/configuration view is intentionally not a feature link.
+
+Local acceptance (13 October 2026): `sloer.commerce-operations` is installed and
+active in the local Saleor instance. All seven Manifest entries and the official
+configuration route opened in Chrome using the current staff session; the 11
+visible custom sidebar links also opened their corresponding feature pages. The
+configuration view accurately reports deployment-controlled status and does not
+edit `SYSTEM_PLUGINS_DISABLED`.
 
 ## Performance and reliability
 
@@ -90,12 +109,12 @@ The native integration workflow starts a second process using the same productio
 build with all seven modules paused, then verifies authentication, worker responses,
 historical rule reads and native catalog rendering.
 
-| Module | Paused behavior | Retained data / boundaries |
-| --- | --- | --- |
-| theme-builder | Published homepage/PDP extensions fall back to Paper; Ops mutations including AI requests/uploads are rejected after authentication; direct theme/template saves/deletes reject before SQL | Editor/history GET remains available; existing documents/assets remain; no changes to AI provider or image generation business code |
-| payment-reminders | Rule changes and manual/automatic sending stop before Saleor, SQL or email provider I/O | Existing rules and delivery history remain readable; no automatic replay of uncertain sends |
-| customer-support | New widget mounts stop; signed bot webhooks reject pause before queue insertion; bearer worker endpoint and direct worker stop before heartbeat, claims, SQL/model/Chatwoot calls | Existing conversations remain in Chatwoot and queues remain stored; Chatwoot's independently running native agents are outside this switch |
-| ai-translations | Create/review/retry/publish and queue claims stop before SQL/Saleor/model; bearer worker explicitly reports pause | Existing jobs/drafts and exports remain readable; published Saleor translations are retained; standalone offline scripts are outside this server runtime |
+| Module            | Paused behavior                                                                                                                                                                            | Retained data / boundaries                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| theme-builder     | Published homepage/PDP extensions fall back to Paper; Ops mutations including AI requests/uploads are rejected after authentication; direct theme/template saves/deletes reject before SQL | Editor/history GET remains available; existing documents/assets remain; no changes to AI provider or image generation business code                      |
+| payment-reminders | Rule changes and manual/automatic sending stop before Saleor, SQL or email provider I/O                                                                                                    | Existing rules and delivery history remain readable; no automatic replay of uncertain sends                                                              |
+| customer-support  | New widget mounts stop; signed bot webhooks reject pause before queue insertion; bearer worker endpoint and direct worker stop before heartbeat, claims, SQL/model/Chatwoot calls          | Existing conversations remain in Chatwoot and queues remain stored; Chatwoot's independently running native agents are outside this switch               |
+| ai-translations   | Create/review/retry/publish and queue claims stop before SQL/Saleor/model; bearer worker explicitly reports pause                                                                          | Existing jobs/drafts and exports remain readable; published Saleor translations are retained; standalone offline scripts are outside this server runtime |
 
 The four feature pages include a request-time pause notice; reminder and translation mutation controls are disabled while historical browsing stays available. Theme editor may still display a local unsaved draft, but all server saves/publishes and generation/uploads are blocked.
 
@@ -134,7 +153,6 @@ and tested rollback acceptance. The existing release-recovery gate protects whol
 stack releases; it does not establish independent plugin schema downgrade safety.
 This static registry is not an official Saleor App installation manifest.
 
-
 ## Versioned storage declaration and release gate
 
 `src/plugins/system/storage-contracts.json` declares API/storage contract v1 for
@@ -150,3 +168,9 @@ final backup and target-version rollback validation. Real recovery/keys/provider
 acceptance and destructive downgrade plans remain necessary.
 
 Core operations separately declares three audit tables in `core.operations`: freight exports, tracking previews and tracking attempts. They are not analytics plugin data and remain required for operations when collection is paused. Snapshot preflight also rejects future tracking states, duplicate active claims and incompatible claim indexes; missing safe indexes are reported for runtime creation without modifying the source snapshot. See [tracking writeback](tracking-writeback.md). Source paths in this contract are relative to `storefront/src`.
+
+## Ops language and release acceptance (13 October 2026)
+
+Ops feature pages and known deployment/pause diagnostics now support English and Simplified Chinese using the browser or Dashboard locale. All 22 routes were checked in both languages, independently and through a real Saleor staff session in the new Dashboard image. This changes interface copy only, and preserves system-wide pause, site/channel authorization and provider state.
+
+Both final images were rebuilt from Dockerfiles and lockfiles with pinned Node 24 / Nginx base digests. The shopper footer hydration defect is fixed and covered by real production browser regression tests; Knip passes after making two file-local declarations private. Local image acceptance is complete. Production URLs, secrets, deployment configuration and real provider acceptance remain outstanding. See [ops-language-release.md](ops-language-release.md) for exact image IDs, commands, evidence and new-window continuation.

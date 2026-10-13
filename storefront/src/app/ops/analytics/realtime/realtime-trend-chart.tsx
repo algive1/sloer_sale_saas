@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -11,11 +13,14 @@ export type RealtimeTrendPoint = {
 
 type MetricKey = "activeSessions" | "events" | "purchases";
 
-const SERIES: Array<{ key: MetricKey; label: string; className: string }> = [
-	{ key: "activeSessions", label: "Active sessions", className: "text-foreground" },
-	{ key: "events", label: "Events", className: "text-blue-600 dark:text-blue-400" },
-	{ key: "purchases", label: "Purchases", className: "text-emerald-600 dark:text-emerald-400" },
-];
+const SERIES = (i18n: OpsI18n): Array<{ key: MetricKey; label: string; className: string }> => {
+	const { t } = i18n;
+	return [
+		{ key: "activeSessions", label: t("活跃会话"), className: "text-foreground" },
+		{ key: "events", label: t("事件数"), className: "text-blue-600 dark:text-blue-400" },
+		{ key: "purchases", label: t("购买数"), className: "text-emerald-600 dark:text-emerald-400" },
+	];
+};
 
 const WIDTH = 1000;
 const HEIGHT = 300;
@@ -26,6 +31,9 @@ const PLOT_WIDTH = WIDTH - PAD_X * 2;
 const PLOT_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 
 export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] }) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
@@ -39,12 +47,12 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 	const maxValue = useMemo(() => {
 		let max = 1;
 		for (const point of points) {
-			for (const series of SERIES) {
+			for (const series of SERIES(i18n)) {
 				if (visible[series.key]) max = Math.max(max, point[series.key]);
 			}
 		}
 		return max;
-	}, [points, visible]);
+	}, [points, visible, i18n]);
 
 	const activeIndex = pinnedIndex ?? hoverIndex;
 	const selected = activeIndex === null ? null : points[activeIndex];
@@ -60,7 +68,9 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 
 	function pathFor(key: MetricKey): string {
 		return points
-			.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`)
+			.map(
+				(point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`,
+			)
 			.join(" ");
 	}
 
@@ -100,7 +110,7 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 	return (
 		<div>
 			<div className="flex flex-wrap gap-2">
-				{SERIES.map((series) => (
+				{SERIES(i18n).map((series) => (
 					<button
 						key={series.key}
 						type="button"
@@ -126,7 +136,7 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 				}}
 				onPointerDown={pointerDown}
 				role="img"
-				aria-label="Realtime analytics trend. Move or tap to inspect a minute."
+				aria-label={t("实时分析趋势图。移动鼠标或点击即可查看每分钟数据。")}
 			>
 				<svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="block h-auto w-full" aria-hidden="true">
 					{[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
@@ -141,7 +151,7 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 							</g>
 						);
 					})}
-					{SERIES.map((series) =>
+					{SERIES(i18n).map((series) =>
 						visible[series.key] ? (
 							<path
 								key={series.key}
@@ -165,7 +175,7 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 								className="stroke-muted-foreground/50"
 								strokeDasharray="4 4"
 							/>
-							{SERIES.map((series) =>
+							{SERIES(i18n).map((series) =>
 								visible[series.key] ? (
 									<circle
 										key={series.key}
@@ -180,7 +190,13 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 						</>
 					) : null}
 					{xLabels(points).map(({ index, label }) => (
-						<text key={index} x={xAt(index)} y={HEIGHT - 12} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+						<text
+							key={index}
+							x={xAt(index)}
+							y={HEIGHT - 12}
+							textAnchor="middle"
+							className="fill-muted-foreground text-[11px]"
+						>
 							{label}
 						</text>
 					))}
@@ -197,13 +213,13 @@ export function RealtimeTrendChart({ points }: { points: RealtimeTrendPoint[] })
 						<div className="mb-2 flex items-center justify-between gap-4">
 							<strong>{formatMinute(selected.bucket)}</strong>
 							<span className="text-[10px] text-muted-foreground">
-								{pinnedIndex !== null ? "Pinned" : "Click to pin"}
+								{pinnedIndex !== null ? t("已固定") : t("点击固定")}
 							</span>
 						</div>
 						<div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums">
-							<Row label="Active sessions" value={selected.activeSessions} />
-							<Row label="Events" value={selected.events} />
-							<Row label="Purchases" value={selected.purchases} />
+							<Row label={t("活跃会话")} value={selected.activeSessions} />
+							<Row label={t("事件数")} value={selected.events} />
+							<Row label={t("购买数")} value={selected.purchases} />
 						</div>
 					</div>
 				) : null}
@@ -251,8 +267,10 @@ function xLabels(points: RealtimeTrendPoint[]): Array<{ index: number; label: st
 	const step = Math.max(1, Math.ceil((points.length - 1) / 6));
 	const indices = new Set<number>([0, points.length - 1]);
 	for (let index = 0; index < points.length; index += step) indices.add(index);
-	return [...indices].sort((a, b) => a - b).map((index) => ({
-		index,
-		label: (points[index]?.bucket ?? "").slice(11, 16),
-	}));
+	return [...indices]
+		.sort((a, b) => a - b)
+		.map((index) => ({
+			index,
+			label: (points[index]?.bucket ?? "").slice(11, 16),
+		}));
 }

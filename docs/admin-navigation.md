@@ -19,13 +19,39 @@ accordion trigger, and makes the two hit targets unambiguous.
   collections, gift cards, customers, promotions, vouchers, CMS models, menus,
   translations, installed extensions, channel configuration and settings continue
   to resolve to the original Saleor Dashboard routes.
-- Commerce Ops links only appear after a safe, publicly reachable
-  `COMMERCE_OPS_URL` is configured at **Dashboard build time**. They open in
-  a new tab with `noopener noreferrer`; this is intentional until a trusted
-  unified auth/session model and app shell have been implemented.
-- The `/ops` service has **separate authorization**. A visible link must never
-  be interpreted as a grant of data, brand or role access. Saleor sidebar permissions
-  are merely a navigation filter and cannot replace Commerce Ops route authorization.
+- Commerce Ops links only appear after a safe `COMMERCE_OPS_URL` is configured
+  at **Dashboard build time**. They open `/commerce-ops` inside the Dashboard
+  shell; the page embeds only a known `/ops` route and does not open a new tab.
+- In Compose, Dashboard's `:9000` Nginx proxies `/ops`, `/commerce-admin`,
+  `/api/admin-sso`, `/api/ops`, and `/_next` to Storefront over the private
+  Compose network. Vite development uses the same paths as a same-origin proxy.
+- The embedded Ops view reuses the current Saleor Dashboard session. Dashboard
+  sends its access token only to the same-origin iframe using `postMessage`;
+  Storefront verifies `me`, staff status, Saleor permission codes and accessible
+  channels against Saleor GraphQL before issuing a five-minute HttpOnly cookie.
+  The signed cookie contains no access token and is refreshed while the Dashboard
+  session remains active. Dashboard logout clears it.
+- The Ops request boundary remains authoritative. Saleor permissions are checked
+  on each `/ops` request; channel-restricted staff are limited to configured sites
+  matching their accessible Saleor channels and cannot perform mutations. The
+  Dashboard route gate and Ops navigation are presentation filters only.
+- Existing Ops modules are also exposed as a self-hosted official Saleor App at
+  `/api/manifest`. Its seven `APP_PAGE` entries route straight to the existing
+  analytics, ads, reminders, support, theme, translation, and SEO/Merchant
+  feature pages. App Bridge passes the current Dashboard staff token through a
+  same-origin message; Storefront verifies staff, permissions, and channel scope
+  before issuing its short-lived Ops session. The App's
+  `/commerce-admin/configuration` view opens system-plugin status and feature
+  links. Add `SALEOR_OPS_APP_PUBLIC_URL` for the browser-visible Dashboard origin
+  (local Compose example: `http://localhost:9000/`). Install the API-reachable
+  Manifest URL from Saleor Apps; local Compose uses `http://dashboard/api/manifest`
+  because Saleor Core fetches it server-to-server. The App is installed and active
+  in the local Saleor instance; the seven extensions and configuration route were
+  opened through a real Saleor staff session on `:9000`. Production deployment and
+  permission-revocation/logout checks remain outstanding.
+- Custom system-plugin items in the Dashboard sidebar open their feature pages
+  directly (ads delivery and Merchant Feed included). Plugin status and
+  deployment configuration remain in the official App's Apps configuration view.
 - No unimplemented Google/Meta/TikTok management screen is invented. Saleor
   channels are provided under Sales channels; existing official Apps remain
   under Apps.
@@ -38,11 +64,13 @@ The plugin registry of Paper remains distinct from Saleor's official Apps.
 ## Local and production configuration
 
 Local Compose:
+
 ```dotenv
 COMMERCE_OPS_URL=http://localhost:3000
 ```
 
 Production:
+
 ```dotenv
 COMMERCE_OPS_URL=https://www.example.com
 ```
@@ -54,47 +82,40 @@ and fragments in the configured base are rejected.
 After changing this variable, **rebuild** the Dashboard container because Vite
 embeds the public (non-secret) origin in its JS bundle.
 
-### Browser access and language (13 October 2026)
+### Browser access, language and translations (13 October 2026)
 
-Local Compose defaults Dashboard to Simplified Chinese (`DASHBOARD_LOCALE_CODE=ZH_HANS`).
-The top bar language selector updates the existing browser preference. Locale packs
-reload on every switch, including switching back to Chinese; runtime `LOCALE_CODE`
-from the served HTML takes precedence over the build fallback.
+Dashboard chooses the first browser language supported by Saleor when the user
+has not selected a language manually. Existing manual selections remain in place;
+the language selector switches to manual mode. In automatic mode, a browser
+`languagechange` event updates the Dashboard locale. Simplified and Traditional
+Chinese language tags map to `zh-Hans` and `zh-Hant` respectively.
 
-Commerce Ops retains separate operator authorization. Browser page requests now
-open `/ops/login` with a Chinese login form instead of stopping at a Basic Auth
-challenge. Use the existing `OPS_OPERATORS_JSON` account, or legacy username
-`analytics` with `ANALYTICS_DASHBOARD_SECRET`. Successful login returns to the chosen
-page and sets an eight-hour HttpOnly, SameSite=Strict signed cookie (Secure on HTTPS).
-Credentials and roles stay server-side. Changing passwords or operator scopes revokes
-existing cookies. API callers can continue using Basic Auth. No Host-based auth
-bypass is enabled.
+Commerce Ops now supports English and Simplified Chinese independently of the shopper locale allowlist. Dashboard passes its selected locale; standalone Ops reads browser Accept-Language. An HttpOnly locale cookie preserves explicit choices through links and forms. Server pages, client controls, charts, known service diagnostics and Puck editor chrome use the existing next-intl library. Merchant content and unknown provider errors retain their original text. Same-origin system App sidebar labels reuse the operations registry; other Apps own their labels.
 
-The session cookie uses Path=/ because the existing Chatwoot gateway lives at
-`/api/ops/chatwoot`; that endpoint still checks the current operator and its
-mutation origin guard. Operators can clear the cookie with the header logout button.
-Login redirects and mutation checks resolve the public origin from deployment
-configuration and a verified Host, because standalone Next.js can expose its Docker
-hostname in `request.url`. Unconfigured Host values remain rejected.
-The Chinese pack includes 441 corrected common labels; upstream advanced dialogs
-and third-party extension content may still fall back to English.
+The inner Ops sidebar and toolbar remain hidden in embedded views. Saleor staff session, permission and channel boundaries remain authoritative. Language selection does not grant access. See [ops-language-release.md](ops-language-release.md) for the two-language, 22-route browser checks, real staff SSO, image IDs and the failed production gates.
 
-Validation: Dashboard source typecheck (including 4,221 strict files), language
-switching and navigation tests; Storefront docs, dependency policy, typechecks and
-lint; 1,225 unit tests plus 12 brand safety tests. In container checks, unset
-deployment-only public market variables and mount the real backend Schema, so the
-test fixtures can select their own locale/channel configuration.
+The integrated route inventory contains 22 pages:
 
-The deployed HTTP checks passed login redirect, incorrect password handling,
-cross-origin rejection, session cookie, logout, all 12 registered Ops page routes,
-the Dashboard Chinese bootstrap config and live Saleor GraphQL. The Chatwoot
-gateway correctly reports its missing external configuration after authentication.
-Browser click/visual acceptance could not run because browser access to the local
-Dashboard was denied; no visual pass is claimed. External Chatwoot and AI services
-remain configuration-dependent and have not been actually integrated here.
+- `/ops/analytics` and its checkout, destinations, products, realtime, reminders,
+  and traffic subpages;
+- `/ops/plugins`, `/ops/merchant`, `/ops/sites`, and `/ops/sites/[siteId]` with catalog,
+  fulfillment, insights, readiness, realtime, and tracking subpages;
+- `/ops/support`, `/ops/support/settings`, `/ops/themes`, and `/ops/translations`.
 
-Continue in a new window: open this repository and ask “继续处理本地后台功能，先阅读
-docs/admin-navigation.md，保留现有部署和认证配置”。
+**Chinese translation coverage is not yet complete for Saleor's native Dashboard.**
+The checked-in `zh-Hans` pack has 2,333 message IDs while the default pack has
+4,667, leaving 2,334 default messages without Chinese text; missing messages show
+their English default. Existing Commerce Ops pages are authored in Chinese, but
+the upstream Dashboard and extension copy can still display English. Do not claim
+full Chinese coverage until every message and extension surface is translated and
+audited. External plugin content is controlled by each plugin.
+
+Validation status for this integration is recorded with the task's final report;
+do not treat route allowlist tests as proof that a live page and its backing data
+service work. Chatwoot, AI providers, analytics storage and other optional services
+remain dependent on their deployment configuration.
+
+Continue in a new window: open this repository, read [ops-language-release.md](ops-language-release.md), preserve all uncommitted changes and follow its continuation prompt.
 
 ## Visual themes and storefront isolation
 
@@ -118,9 +139,9 @@ then add its route, name, section and navigation permissions to
 Saleor module for each additional custom page. Custom Saleor Apps should continue
 to use upstream extension mount points instead of direct core changes.
 
-Future work, not included here: a single-session, same-shell Commerce Ops
-integration; fine-grained data scopes for analytics per brand; full browser E2E
-coverage with both services running.
+Follow-up: complete and audit the native Dashboard Chinese locale and external
+extension copy; add browser E2E checks against Dashboard :9000 and the Storefront
+upstream; validate every permission mapping against a configured Saleor instance.
 
 ## Review checklist
 
@@ -148,18 +169,18 @@ Design language: Macaw UI-based **modern minimal SaaS commerce administration**,
 with merchant-oriented information architecture inspired by Shoplazza.
 Do not mistake the generated reference graphic for a screenshot of the running app.
 
-| Reference feature | Implemented in PR #53 | Follow-up / caveat |
-| --- | --- | --- |
-| Left navigation and admin brand | 296px desktop sidebar, blue SLOER monogram, Admin tag | The prototype's geometric logo is illustrative, not a final company vector logo |
-| Clearly separated first/second levels | Native Macaw accordion plus inset neutral child group, blue active state and keyboard focus | Needs browser visual regression in light/dark and mobile |
-| Global search and account at top | Reuse Saleor `/search`, `/` shortcut, and the staff account page in shared Macaw topbar | Do not invent a notifications service or duplicate Saleor page tools |
-| Navigation collapse | Persistent 72px desktop icon rail; click a group icon to re-open that section | Mobile uses native full drawer |
-| Admin color choices | Browser-local blue/slate/teal accent and native Macaw light/dark modes | It changes admin navigation only, not any published storefront theme |
-| Apps & custom pages | Existing Commerce Ops links registered in a standalone file; Saleor extension mount points preserved | Ops remain separate authenticated pages that open in a new tab |
-| Theme overview image, Fleur card & multi-page grid | **Not a live Dashboard implementation.** Real `/ops/themes` is Puck editor for homepage and default product detail template | Any future theme landing page must read real templates and publish status; do not insert static fake cards |
-| Store data / payment / checkout content | Unchanged Saleor pages and existing Ops service | Existing logic and permission checks stay authoritative |
+| Reference feature                                  | Implemented in PR #53                                                                                                                                            | Follow-up / caveat                                                                                         |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Left navigation and admin brand                    | 296px desktop sidebar, blue SLOER monogram, Admin tag                                                                                                            | The prototype's geometric logo is illustrative, not a final company vector logo                            |
+| Clearly separated first/second levels              | Native Macaw accordion plus inset neutral child group, blue active state and keyboard focus                                                                      | Needs browser visual regression in light/dark and mobile                                                   |
+| Global search and account at top                   | Reuse Saleor `/search`, `/` shortcut, and the staff account page in shared Macaw topbar                                                                          | Do not invent a notifications service or duplicate Saleor page tools                                       |
+| Navigation collapse                                | Persistent 72px desktop icon rail; click a group icon to re-open that section                                                                                    | Mobile uses native full drawer                                                                             |
+| Admin color choices                                | Browser-local blue/slate/teal accent and native Macaw light/dark modes                                                                                           | It changes admin navigation only, not any published storefront theme                                       |
+| Apps & custom pages                                | Existing Commerce Ops links registered in a standalone file; Ops routes render inside the Dashboard shell through a same-origin iframe and Saleor-backed session | Verify permissions and each configured service against a live Saleor deployment                            |
+| Theme overview image, Fleur card & multi-page grid | **Not a live Dashboard implementation.** Real `/ops/themes` is Puck editor for homepage and default product detail template                                      | Any future theme landing page must read real templates and publish status; do not insert static fake cards |
+| Store data / payment / checkout content            | Unchanged Saleor pages and existing Ops service                                                                                                                  | Existing logic and permission checks stay authoritative                                                    |
 
-Current acceptance boundary: do not claim 1:1 image fidelity or completion of
-the unified Commerce Ops shell until tested in a running browser with Saleor and
-the separately authenticated Ops service. In particular, the mock Fleur management
-landing page is not currently an implemented management route.
+Current acceptance boundary: local Saleor SSO and route opening are verified, but
+do not claim complete Chinese coverage. The checked-in `zh-Hans` resource still
+has 2,334 fewer message IDs than the Dashboard default resource, and full native translation coverage remains outstanding. Ops itself now has English and Chinese copy; production release is still blocked by the findings in [ops-language-release.md](ops-language-release.md). The mock Fleur management landing page
+is not an implemented management route.

@@ -11,13 +11,20 @@ import { isAllowedLocaleChannelPair } from "@/config/locale-channel";
 import { opsMutationPlugin, parseSystemPluginPolicy, systemPluginPauseReason } from "@/plugins/system/policy";
 import { authorizeOpsRequest } from "@/lib/ops/authorization";
 import { OPS_SESSION_COOKIE, opsSessionAuthorization } from "@/lib/ops/session";
+import {
+	getSaleorOpsSessionSecret,
+	SALEOR_OPS_SESSION_COOKIE,
+	saleorOpsSessionViewer,
+} from "@/lib/ops/saleor-session";
 import { opsPublicRequestUrl } from "@/lib/ops/request-url";
+import { OPS_LOCALE_COOKIE, OPS_LOCALE_HEADER, resolveOpsUiLocale } from "@/lib/ops/locale";
 
 const RESERVED_ROOT_SEGMENTS = new Set([
 	"api",
 	"checkout",
 	"order",
 	"ops",
+	"commerce-admin",
 	"_next",
 	"favicon.ico",
 	"robots.txt",
@@ -69,19 +76,26 @@ export async function middleware(request: NextRequest) {
 	if (pathname === "/ops" || pathname.startsWith("/ops/")) {
 		if (pathname === "/ops/login") return NextResponse.next();
 		let decision: ReturnType<typeof authorizeOpsRequest>;
+		let saleorSsoEnabled = false;
 		try {
 			// Brand IDs come from trusted deployment config, not a query, cookie
 			// or client-supplied operator/brand header.
 			const operatorConfig = process.env.OPS_OPERATORS_JSON;
+			saleorSsoEnabled = Boolean(getSaleorOpsSessionSecret());
 			const config = {
 				operatorsJson: operatorConfig,
 				legacySecret: process.env.ANALYTICS_DASHBOARD_SECRET,
 				trustedSiteIds: operatorConfig?.trim() ? (getBrandSites()?.map((site) => site.id) ?? []) : [],
+				saleorSsoEnabled,
 			};
+			const saleorViewer = await saleorOpsSessionViewer(
+				request.cookies.get(SALEOR_OPS_SESSION_COOKIE)?.value,
+				getSaleorOpsSessionSecret(),
+			);
 			const authorization =
 				request.headers.get("authorization") ??
 				(await opsSessionAuthorization(request.cookies.get(OPS_SESSION_COOKIE)?.value, config));
-			decision = authorizeOpsRequest({ ...config, authorization, pathname, method: request.method });
+			decision = authorizeOpsRequest({ ...config, authorization, saleorViewer, pathname, method: request.method });
 		} catch (error) {
 			console.error(
 				"[ops-auth] Invalid operator configuration",
@@ -97,6 +111,14 @@ export async function middleware(request: NextRequest) {
 			if (request.method === "GET" && request.headers.get("accept")?.includes("text/html")) {
 				const publicUrl = opsPublicRequestUrl(request.url, request.headers.get("host"));
 				if (!publicUrl) return new NextResponse("Operations origin unavailable", { status: 503 });
+				const isEmbedded =
+					request.nextUrl.searchParams.get("embedded") === "1" ||
+					request.headers.get("sec-fetch-dest") === "iframe";
+				if (saleorSsoEnabled && isEmbedded) {
+					const bridge = new URL("/commerce-admin/sso", publicUrl);
+					bridge.searchParams.set("next", pathname + request.nextUrl.search);
+					return NextResponse.redirect(bridge, { headers: { "Cache-Control": "private, no-store" } });
+				}
 				const login = new URL("/ops/login", publicUrl);
 				login.searchParams.set("next", pathname + request.nextUrl.search);
 				return NextResponse.redirect(login, { headers: { "Cache-Control": "private, no-store" } });
@@ -115,6 +137,18 @@ export async function middleware(request: NextRequest) {
 				headers: { "Cache-Control": "private, no-store" },
 			});
 		}
+		if (
+			decision === "allowed" &&
+			request.method === "GET" &&
+			request.headers.get("sec-fetch-dest") === "iframe" &&
+			request.nextUrl.searchParams.get("embedded") !== "1"
+		) {
+			const publicUrl = opsPublicRequestUrl(request.url, request.headers.get("host"));
+			if (!publicUrl) return new NextResponse("Operations origin unavailable", { status: 503 });
+			const embedded = new URL(pathname + request.nextUrl.search, publicUrl);
+			embedded.searchParams.set("embedded", "1");
+			return NextResponse.redirect(embedded, { headers: { "Cache-Control": "private, no-store" } });
+		}
 		const plugin = opsMutationPlugin(pathname, request.method);
 		const pause =
 			plugin && systemPluginPauseReason(plugin, parseSystemPluginPolicy(process.env.SYSTEM_PLUGINS_DISABLED));
@@ -126,9 +160,18 @@ export async function middleware(request: NextRequest) {
 					headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
 				},
 			);
-		return NextResponse.next({
+		const requestedLocale = request.nextUrl.searchParams.get("uiLocale");
+		const locale = resolveOpsUiLocale(requestedLocale || request.cookies.get(OPS_LOCALE_COOKIE)?.value, request.headers.get("accept-language"));
+		const requestHeaders = new Headers(request.headers);
+		requestHeaders.set(OPS_LOCALE_HEADER, locale);
+		const response = NextResponse.next({
+			request: { headers: requestHeaders },
 			headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
 		});
+		if (requestedLocale && request.cookies.get(OPS_LOCALE_COOKIE)?.value !== locale) {
+			response.cookies.set(OPS_LOCALE_COOKIE, locale, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/ops" });
+		}
+		return response;
 	}
 
 	if (

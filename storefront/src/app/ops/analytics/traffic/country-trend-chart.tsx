@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -35,6 +37,9 @@ export function CountryTrendChart({
 	countries: string[];
 	bucket: "hour" | "day";
 }) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
@@ -47,7 +52,9 @@ export function CountryTrendChart({
 		const byKey = new Map(rows.map((row) => [`${row.bucket}:${row.countryCode}`, row.sessions]));
 		return buckets.map((time) => ({
 			bucket: time,
-			byCountry: Object.fromEntries(countries.map((country) => [country, byKey.get(`${time}:${country}`) ?? 0])),
+			byCountry: Object.fromEntries(
+				countries.map((country) => [country, byKey.get(`${time}:${country}`) ?? 0]),
+			),
 		}));
 	}, [buckets, countries, rows]);
 
@@ -75,7 +82,10 @@ export function CountryTrendChart({
 
 	function pathFor(country: string): string {
 		return values
-			.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point.byCountry[country] ?? 0).toFixed(2)}`)
+			.map(
+				(point, index) =>
+					`${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point.byCountry[country] ?? 0).toFixed(2)}`,
+			)
 			.join(" ");
 	}
 
@@ -130,7 +140,11 @@ export function CountryTrendChart({
 	}
 
 	if (countries.length === 0) {
-		return <div className="mt-5 grid h-56 place-items-center rounded-lg border border-border/70 text-sm text-muted-foreground">No country data yet.</div>;
+		return (
+			<div className="mt-5 grid h-56 place-items-center rounded-lg border border-border/70 text-sm text-muted-foreground">
+				No country data yet.
+			</div>
+		);
 	}
 
 	return (
@@ -143,7 +157,9 @@ export function CountryTrendChart({
 						onClick={() => toggleCountry(country)}
 						aria-pressed={enabled[country]}
 						className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-							enabled[country] ? "border-foreground/20 bg-secondary text-foreground" : "border-border bg-background text-muted-foreground opacity-60"
+							enabled[country]
+								? "border-foreground/20 bg-secondary text-foreground"
+								: "border-border bg-background text-muted-foreground opacity-60"
 						}`}
 					>
 						<span className={SERIES_CLASSES[index % SERIES_CLASSES.length]}>●</span> {country}
@@ -169,7 +185,9 @@ export function CountryTrendChart({
 						return (
 							<g key={ratio}>
 								<line x1={PAD_X} y1={y} x2={WIDTH - PAD_X} y2={y} className="stroke-border" />
-								<text x={PAD_X - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">{value.toLocaleString()}</text>
+								<text x={PAD_X - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+									{value.toLocaleString()}
+								</text>
 							</g>
 						);
 					})}
@@ -191,7 +209,14 @@ export function CountryTrendChart({
 
 					{activeIndex !== null && selected ? (
 						<>
-							<line x1={xAt(activeIndex)} y1={PAD_TOP} x2={xAt(activeIndex)} y2={PAD_TOP + PLOT_HEIGHT} className="stroke-muted-foreground/50" strokeDasharray="4 4" />
+							<line
+								x1={xAt(activeIndex)}
+								y1={PAD_TOP}
+								x2={xAt(activeIndex)}
+								y2={PAD_TOP + PLOT_HEIGHT}
+								className="stroke-muted-foreground/50"
+								strokeDasharray="4 4"
+							/>
 							{countries.map((country, index) =>
 								enabled[country] ? (
 									<circle
@@ -207,8 +232,19 @@ export function CountryTrendChart({
 						</>
 					) : null}
 
-					{xLabels(values.map((item) => item.bucket), bucket).map(({ index, label }) => (
-						<text key={index} x={xAt(index)} y={HEIGHT - 12} textAnchor="middle" className="fill-muted-foreground text-[11px]">{label}</text>
+					{xLabels(
+						values.map((item) => item.bucket),
+						bucket,
+					).map(({ index, label }) => (
+						<text
+							key={index}
+							x={xAt(index)}
+							y={HEIGHT - 12}
+							textAnchor="middle"
+							className="fill-muted-foreground text-[11px]"
+						>
+							{label}
+						</text>
 					))}
 				</svg>
 
@@ -221,15 +257,21 @@ export function CountryTrendChart({
 						}}
 					>
 						<div className="mb-2 flex items-center justify-between gap-4">
-							<strong>{formatBucket(selected.bucket, bucket)}</strong>
-							<span className="text-[10px] text-muted-foreground">{pinnedIndex !== null ? "Pinned" : "Click to pin"}</span>
+							<strong>{formatBucket(selected.bucket, bucket, i18n)}</strong>
+							<span className="text-[10px] text-muted-foreground">
+								{pinnedIndex !== null ? t("已固定") : t("点击固定")}
+							</span>
 						</div>
 						<div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums">
 							{countries.map((country, index) =>
 								enabled[country] ? (
 									<div key={country} className="contents">
-										<span><span className={SERIES_CLASSES[index % SERIES_CLASSES.length]}>●</span> {country}</span>
-										<span className="text-right font-medium">{(selected.byCountry[country] ?? 0).toLocaleString()}</span>
+										<span>
+											<span className={SERIES_CLASSES[index % SERIES_CLASSES.length]}>●</span> {country}
+										</span>
+										<span className="text-right font-medium">
+											{(selected.byCountry[country] ?? 0).toLocaleString()}
+										</span>
 									</div>
 								) : null,
 							)}
@@ -237,7 +279,9 @@ export function CountryTrendChart({
 					</div>
 				) : null}
 			</div>
-			<p className="mt-2 text-xs text-muted-foreground">Click a country chip to show or hide it. Move across the chart or tap to inspect a period.</p>
+			<p className="mt-2 text-xs text-muted-foreground">
+				Click a country chip to show or hide it. Move across the chart or tap to inspect a period.
+			</p>
 		</div>
 	);
 }
@@ -253,15 +297,31 @@ function tooltipTop(pointerY: number, height: number): string {
 	return `${Math.max(12, Math.min(height - 130, preferred))}px`;
 }
 
-function formatBucket(value: string, bucket: "hour" | "day"): string {
+function formatBucket(value: string, bucket: "hour" | "day", i18n: OpsI18n): string {
+	const { locale } = i18n;
+
 	if (bucket === "hour") {
 		const date = new Date(`${value}:00.000Z`);
 		if (!Number.isNaN(date.getTime())) {
-			return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" }).format(date);
+			return new Intl.DateTimeFormat(locale, {
+				month: "short",
+				day: "numeric",
+				hour: "2-digit",
+				minute: "2-digit",
+				hour12: false,
+				timeZone: "UTC",
+			}).format(date);
 		}
 	}
 	const date = new Date(`${value}T00:00:00.000Z`);
-	return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(date);
+	return Number.isNaN(date.getTime())
+		? value
+		: new Intl.DateTimeFormat(locale, {
+				month: "short",
+				day: "numeric",
+				year: "numeric",
+				timeZone: "UTC",
+			}).format(date);
 }
 
 function xLabels(values: string[], bucket: "hour" | "day"): Array<{ index: number; label: string }> {
@@ -269,8 +329,10 @@ function xLabels(values: string[], bucket: "hour" | "day"): Array<{ index: numbe
 	const step = Math.max(1, Math.ceil((values.length - 1) / 6));
 	const indices = new Set<number>([0, values.length - 1]);
 	for (let index = 0; index < values.length; index += step) indices.add(index);
-	return [...indices].sort((a, b) => a - b).map((index) => ({
-		index,
-		label: bucket === "hour" ? (values[index] ?? "").slice(11, 16) : (values[index] ?? "").slice(5),
-	}));
+	return [...indices]
+		.sort((a, b) => a - b)
+		.map((index) => ({
+			index,
+			label: bucket === "hour" ? (values[index] ?? "").slice(11, 16) : (values[index] ?? "").slice(5),
+		}));
 }

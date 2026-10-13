@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
+import { isSaleorOpsRequestAllowed } from "@/lib/ops/authorization";
 import { opsPublicRequestUrl } from "@/lib/ops/request-url";
 import { isTrustedAgentMutation } from "@/plugins/customer-support/agent-request-security";
 import {
@@ -12,8 +13,11 @@ const response = (data: unknown, status = 200) => NextResponse.json(data, {
   headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
 });
 
-async function isPlatformOperator(): Promise<boolean> {
-  try { return (await currentOpsViewer())?.role === "platform_admin"; }
+async function isPlatformOperator(method: "GET" | "POST"): Promise<boolean> {
+  try {
+    const viewer = await currentOpsViewer();
+    return viewer?.role === "platform_admin" && isSaleorOpsRequestAllowed(viewer, "/ops/support", method);
+  }
   catch { return false; }
 }
 function errorResponse(error: unknown) {
@@ -29,7 +33,7 @@ function validParams(url: URL) {
 }
 
 export async function GET(request: Request) {
-  if (!(await isPlatformOperator())) return response({ error: "没有客服会话访问权限" }, 403);
+  if (!(await isPlatformOperator("GET"))) return response({ error: "没有客服会话访问权限" }, 403);
   const url = new URL(request.url);
   const { site, id } = validParams(url);
   if (!site) return response({ error: "请选择有效品牌" }, 400);
@@ -45,7 +49,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await isPlatformOperator())) return response({ error: "没有客服回复权限" }, 403);
+  if (!(await isPlatformOperator("POST"))) return response({ error: "没有客服回复权限" }, 403);
   // Basic Auth and signed cookies are ambient credentials. Require a same-origin
   // programmatic request, and reject cross-site form posts (CSRF).
   const publicUrl = opsPublicRequestUrl(request.url, request.headers.get("host"));

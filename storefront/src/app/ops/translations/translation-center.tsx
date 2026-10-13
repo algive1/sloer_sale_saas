@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useCallback, useEffect, useState } from "react";
 import type { TranslationItem, TranslationJob } from "@/plugins/ai-translations/store";
@@ -16,12 +18,15 @@ type Props = {
 	saleorReady: boolean;
 };
 type JobDetails = { job: TranslationJob; items: TranslationItem[] };
-const FIELDS = [
-	{ key: "name", label: "商品名" },
-	{ key: "description", label: "商品描述" },
-	{ key: "seoTitle", label: "SEO 标题" },
-	{ key: "seoDescription", label: "SEO 描述" },
-] as const;
+const FIELDS = (i18n: OpsI18n) => {
+	const { t } = i18n;
+	return [
+		{ key: "name", label: t("商品名") },
+		{ key: "description", label: t("商品描述") },
+		{ key: "seoTitle", label: t("SEO 标题") },
+		{ key: "seoDescription", label: t("SEO 描述") },
+	] as const;
+};
 const API = "/ops/translations/api";
 
 export function TranslationCenter({
@@ -33,6 +38,9 @@ export function TranslationCenter({
 	publisherReady,
 	saleorReady,
 }: Props) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const [siteId, setSiteId] = useState(brands[0]?.id ?? "");
 	const brand = brands.find((b) => b.id === siteId);
 	const [channel, setChannel] = useState(brands[0]?.channels[0] ?? "");
@@ -61,7 +69,7 @@ export function TranslationCenter({
 						error?: string;
 						jobs?: TranslationJob[];
 					} & Partial<JobDetails>;
-					if (!response.ok) throw new Error(body.error ?? "无法读取翻译任务");
+					if (!response.ok) throw new Error(body.error ?? t("无法读取翻译任务"));
 					return body;
 				})
 				.then((body) => {
@@ -72,13 +80,13 @@ export function TranslationCenter({
 					} else setJobs(body.jobs ?? []);
 				})
 				.catch((error) => {
-					if (!signal?.aborted) setMessage(error instanceof Error ? error.message : "读取失败");
+					if (!signal?.aborted) setMessage(error instanceof Error ? t(error.message) : t("读取失败"));
 				})
 				.finally(() => {
 					if (!signal?.aborted) setLoading(false);
 				});
 		},
-		[storageReady, siteId, setDrafts],
+		[storageReady, siteId, setDrafts, t],
 	);
 
 	const [loadedSiteId, setLoadedSiteId] = useState(siteId);
@@ -102,7 +110,10 @@ export function TranslationCenter({
 	}
 
 	async function mutate(body: Record<string, unknown>, reloadId?: string) {
-		if (paused) { setMessage("系统已暂停，翻译任务暂不可修改或发布。"); return; }
+		if (paused) {
+			setMessage(t("系统已暂停，翻译任务暂不可修改或发布。"));
+			return;
+		}
 		setBusy(true);
 		setMessage("");
 		try {
@@ -113,7 +124,7 @@ export function TranslationCenter({
 				body: JSON.stringify({ siteId, channel: currentChannel, locale: currentLocale, ...body }),
 			});
 			const result = (await response.json()) as { error?: string; job?: TranslationJob };
-			if (!response.ok) throw new Error(result.error ?? "操作失败");
+			if (!response.ok) throw new Error(result.error ?? t("操作失败"));
 			if (result.job?.id) {
 				setSelected(result.job.id);
 				await Promise.all([load(), load(result.job.id)]);
@@ -122,13 +133,13 @@ export function TranslationCenter({
 			}
 			setMessage(
 				body.action === "create"
-					? "任务已排队，等待独立 Worker 处理。"
+					? t("任务已排队，等待独立 Worker 处理。")
 					: body.action === "publish"
-						? "已写入 Saleor；请打开对应店铺核对商品内容。"
-						: "审核修改已保存。",
+						? t("已写入 Saleor；请打开对应店铺核对商品内容。")
+						: t("审核修改已保存。"),
 			);
 		} catch (error) {
-			setMessage(error instanceof Error ? error.message : "操作失败");
+			setMessage(error instanceof Error ? t(error.message) : t("操作失败"));
 		} finally {
 			setBusy(false);
 		}
@@ -150,10 +161,10 @@ export function TranslationCenter({
 		<div className="space-y-5">
 			<section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				{[
-					{ label: "已定义 UI 语言", value: coverage.length },
-					{ label: "UI 文案完整", value: coverage.filter((c) => c.present === c.total).length },
-					{ label: "UI 文案待补", value: coverage.filter((c) => c.present < c.total).length },
-					{ label: "翻译任务", value: jobs.length },
+					{ label: t("已定义 UI 语言"), value: coverage.length },
+					{ label: t("UI 文案完整"), value: coverage.filter((c) => c.present === c.total).length },
+					{ label: t("UI 文案待补"), value: coverage.filter((c) => c.present < c.total).length },
+					{ label: t("翻译任务"), value: jobs.length },
 				].map((card) => (
 					<article key={card.label} className="rounded-xl border border-stone-200 bg-white p-5">
 						<p className="text-xs text-stone-500">{card.label}</p>
@@ -164,12 +175,14 @@ export function TranslationCenter({
 			<section className="rounded-xl border border-stone-200 bg-white p-5">
 				<div className="flex flex-wrap items-center justify-between gap-3">
 					<div>
-						<h2 className="font-semibold">网站语言覆盖率</h2>
+						<h2 className="font-semibold">{t("网站语言覆盖率")}</h2>
 						<p className="mt-1 text-xs text-stone-500">
-							这里只计算前台 UI 文案，不代表商品、装修页面、邮件与政策已完成翻译。
+							{t("这里只计算前台 UI 文案，不代表商品、装修页面、邮件与政策已完成翻译。")}
 						</p>
 					</div>
-					<span className="text-xs text-stone-500">{coverage[0]?.total ?? 0} 个英文基准字段</span>
+					<span className="text-xs text-stone-500">
+						{coverage[0]?.total ?? 0} {t("个英文基准字段")}
+					</span>
 				</div>
 				<div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{coverage.map((item) => (
@@ -193,9 +206,9 @@ export function TranslationCenter({
 			<section className="rounded-xl border border-stone-200 bg-white p-5">
 				<div className="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<h2 className="font-semibold">商品翻译任务</h2>
+						<h2 className="font-semibold">{t("商品翻译任务")}</h2>
 						<p className="mt-1 text-xs text-stone-500">
-							每批最多 10 件商品。AI 后台处理后，逐条审核；未获批准不会发布。
+							{t("每批最多 10 件商品。AI 后台处理后，逐条审核；未获批准不会发布。")}
 						</p>
 					</div>
 					<button
@@ -204,14 +217,14 @@ export function TranslationCenter({
 						onClick={() => refresh()}
 						className="rounded-lg border border-stone-200 px-3 py-2 text-sm disabled:opacity-40"
 					>
-						刷新任务
+						{t("刷新任务")}
 					</button>
 				</div>
 				<div className="mt-4 grid gap-3 sm:grid-cols-3">
 					<label className="text-sm text-stone-600">
-						品牌
+						{t("品牌")}
 						<select
-							aria-label="选择品牌"
+							aria-label={t("选择品牌")}
 							className="mt-1 block w-full rounded-lg border p-2 text-stone-900"
 							value={siteId}
 							onChange={(e) => chooseBrand(e.target.value)}
@@ -224,9 +237,9 @@ export function TranslationCenter({
 						</select>
 					</label>
 					<label className="text-sm text-stone-600">
-						销售市场
+						{t("销售市场")}
 						<select
-							aria-label="选择市场"
+							aria-label={t("选择市场")}
 							className="mt-1 block w-full rounded-lg border p-2 text-stone-900"
 							value={currentChannel}
 							onChange={(e) => chooseChannel(e.target.value)}
@@ -239,9 +252,9 @@ export function TranslationCenter({
 						</select>
 					</label>
 					<label className="text-sm text-stone-600">
-						目标语言
+						{t("目标语言")}
 						<select
-							aria-label="目标语言"
+							aria-label={t("目标语言")}
 							className="mt-1 block w-full rounded-lg border p-2 text-stone-900"
 							value={currentLocale}
 							onChange={(e) => setLocale(e.target.value)}
@@ -262,19 +275,19 @@ export function TranslationCenter({
 						className="rounded-lg bg-stone-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
 					>
 						{busy
-							? "处理中…"
+							? t("处理中…")
 							: allPagesQueued
-								? "本市场商品已全部进入任务"
-								: "创建或继续下一批（最多 10 件）"}
+								? t("本市场商品已全部进入任务")
+								: t("创建或继续下一批（最多 10 件）")}
 					</button>
 					<span className="self-center text-xs text-stone-500">
 						{!storageReady
-							? "需配置 libSQL 数据库"
+							? t("需配置 libSQL 数据库")
 							: !saleorReady
-								? "需配置 Saleor 专用 Token"
+								? t("需配置 Saleor 专用 Token")
 								: !workerReady
-									? "需配置 AI Worker 与服务"
-									: "已配置后台任务，需部署定时 Worker 轮询"}
+									? t("需配置 AI Worker 与服务")
+									: t("已配置后台任务，需部署定时 Worker 轮询")}
 					</span>
 				</div>
 				{message && (
@@ -300,14 +313,17 @@ export function TranslationCenter({
 								{job.channel} · {job.locale.toUpperCase()}
 							</span>
 							<span className="text-stone-500">
-								{job.total} 件 · 待处理 {job.queued} · 待审 {job.draft} · 已批准 {job.approved} · 已发布{" "}
-								{job.published} · 异常 {job.failed}
+								{job.total} {t("件 · 待处理")}
+								{job.queued} {t("· 待审")}
+								{job.draft} {t("· 已批准")}
+								{job.approved} {t("· 已发布")} {job.published} {t("· 异常")}
+								{job.failed}
 							</span>
 						</button>
 					))}
 					{jobs.length === 0 && (
 						<p className="rounded-lg border border-dashed p-5 text-sm text-stone-500">
-							尚无该品牌的翻译任务。
+							{t("尚无该品牌的翻译任务。")}
 						</p>
 					)}
 				</div>
@@ -315,13 +331,16 @@ export function TranslationCenter({
 			{details && details.job.id === selected && (
 				<section className="rounded-xl border border-stone-200 bg-white p-5">
 					<div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-						<h2 className="font-semibold">逐条审核译文 · {details.job.locale.toUpperCase()}</h2>
+						<h2 className="font-semibold">
+							{t("逐条审核译文 ·")}
+							{details.job.locale.toUpperCase()}
+						</h2>
 						<button
 							type="button"
 							className="rounded-lg border px-3 py-2 text-sm"
 							onClick={() => refresh(details.job.id)}
 						>
-							刷新生成结果
+							{t("刷新生成结果")}
 						</button>
 					</div>
 					<div className="space-y-5">
@@ -331,7 +350,9 @@ export function TranslationCenter({
 									<div>
 										<h3 className="font-semibold">{item.slug}</h3>
 										<p className="mt-1 text-xs text-stone-500">
-											状态：{item.status} · 版本 {item.revision}
+											{t("状态：")}
+											{item.status} {t("· 版本")}
+											{item.revision}
 										</p>
 									</div>
 									<div className="flex flex-wrap gap-2">
@@ -355,7 +376,7 @@ export function TranslationCenter({
 													}
 													className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40"
 												>
-													退回
+													{t("退回")}
 												</button>
 												<button
 													disabled={paused || busy}
@@ -374,7 +395,7 @@ export function TranslationCenter({
 													}
 													className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40"
 												>
-													保存修改
+													{t("保存修改")}
 												</button>
 												<button
 													disabled={paused || busy}
@@ -393,7 +414,7 @@ export function TranslationCenter({
 													}
 													className="rounded-lg bg-stone-900 px-3 py-1.5 text-sm text-white disabled:opacity-40"
 												>
-													批准
+													{t("批准")}
 												</button>
 											</>
 										)}
@@ -414,7 +435,7 @@ export function TranslationCenter({
 												}
 												className="rounded-lg border px-3 py-1.5 text-sm disabled:opacity-40"
 											>
-												重新排队
+												{t("重新排队")}
 											</button>
 										)}
 										{item.status === "approved" && publisherReady && (
@@ -424,7 +445,7 @@ export function TranslationCenter({
 												onClick={() => {
 													if (
 														window.confirm(
-															"确认将本条审核译文发布至 Saleor 吗？写入后影响该商品的所有 Channel。",
+															t("确认将本条审核译文发布至 Saleor 吗？写入后影响该商品的所有 Channel。"),
 														)
 													)
 														void mutate(
@@ -439,46 +460,50 @@ export function TranslationCenter({
 												}}
 												className="rounded-lg bg-indigo-700 px-3 py-1.5 text-sm text-white disabled:opacity-40"
 											>
-												发布到 Saleor
+												{t("发布到 Saleor")}
 											</button>
 										)}
 									</div>
 								</header>
 								<div className="mt-4 grid gap-3 md:grid-cols-2">
-									{FIELDS.filter((f) => item.source[f.key]).map((field) => (
-										<div key={field.key} className="grid gap-1">
-											<label className="text-xs font-medium text-stone-500">{field.label} · 原文</label>
-											<p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-stone-50 p-3 text-sm">
-												{item.source[field.key]}
-											</p>
-											<label
-												htmlFor={item.itemId + "-" + field.key}
-												className="text-xs font-medium text-stone-500"
-											>
-												{field.label} · 译文
-											</label>
-											<textarea
-												id={item.itemId + "-" + field.key}
-												rows={field.key === "description" ? 4 : 2}
-												disabled={!["draft", "approved", "rejected"].includes(item.status)}
-												className="w-full rounded-lg border border-stone-200 p-3 text-sm disabled:bg-stone-50"
-												value={drafts[item.itemId]?.[field.key] ?? ""}
-												onChange={(e) =>
-													setDrafts((prev) => ({
-														...prev,
-														[item.itemId]: { ...prev[item.itemId], [field.key]: e.target.value },
-													}))
-												}
-											/>
-										</div>
-									))}
+									{FIELDS(i18n)
+										.filter((f) => item.source[f.key])
+										.map((field) => (
+											<div key={field.key} className="grid gap-1">
+												<label className="text-xs font-medium text-stone-500">
+													{field.label} {t("· 原文")}
+												</label>
+												<p className="max-h-32 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-stone-50 p-3 text-sm">
+													{item.source[field.key]}
+												</p>
+												<label
+													htmlFor={item.itemId + "-" + field.key}
+													className="text-xs font-medium text-stone-500"
+												>
+													{field.label} {t("· 译文")}
+												</label>
+												<textarea
+													id={item.itemId + "-" + field.key}
+													rows={field.key === "description" ? 4 : 2}
+													disabled={!["draft", "approved", "rejected"].includes(item.status)}
+													className="w-full rounded-lg border border-stone-200 p-3 text-sm disabled:bg-stone-50"
+													value={drafts[item.itemId]?.[field.key] ?? ""}
+													onChange={(e) =>
+														setDrafts((prev) => ({
+															...prev,
+															[item.itemId]: { ...prev[item.itemId], [field.key]: e.target.value },
+														}))
+													}
+												/>
+											</div>
+										))}
 								</div>
 							</article>
 						))}
 					</div>
 					{!publisherReady && (
 						<p className="mt-4 text-xs text-stone-500">
-							当前发布不可用：需专用 Saleor Token、显式开启写入；多品牌共享商品须先完成独立翻译验证。
+							{t("当前发布不可用：需专用 Saleor Token、显式开启写入；多品牌共享商品须先完成独立翻译验证。")}
 						</p>
 					)}
 				</section>

@@ -5,6 +5,8 @@
 		"types": ["node"]
 	},
 	"include": [
+		"e2e/storefront-hydration-live.spec.ts",
+		"e2e/ops-language-live.spec.ts",
 		"e2e/fulfillment-ops-live.spec.ts",
 		"e2e/tracking-ops-live.spec.ts",
 		"e2e/sitemap-integrity-live.spec.ts",

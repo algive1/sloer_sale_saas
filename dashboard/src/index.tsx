@@ -93,6 +93,11 @@ const TaxesSection = lazy(() => import("./taxes"));
 const TranslationsSection = lazy(() => import("./translations"));
 const WarehouseSection = lazy(() => import("./warehouses"));
 const ConfigurationSection = lazy(() => import("./configuration"));
+const CommerceOpsPage = lazy(() =>
+  import("./components/CommerceOpsPage/CommerceOpsPage").then(m => ({
+    default: m.CommerceOpsPage,
+  })),
+);
 const HomePage = lazy(() => import("./home/HomePage").then(m => ({ default: m.HomePage })));
 const RefundsSettingsRoute = lazy(() =>
   import("./refundsSettings/route").then(m => ({ default: m.RefundsSettingsRoute })),
@@ -215,6 +220,21 @@ const Routes = () => {
                         exact
                         path={["/home", "/home/widget/:extensionId", "/home/widgets"]}
                         component={HomePage}
+                      />
+                      <SectionRoute
+                        exact
+                        matchPermission="any"
+                        permissions={[
+                          PermissionEnum.MANAGE_ORDERS,
+                          PermissionEnum.MANAGE_PRODUCTS,
+                          PermissionEnum.MANAGE_SETTINGS,
+                          PermissionEnum.MANAGE_PAGES,
+                          PermissionEnum.MANAGE_TRANSLATIONS,
+                          PermissionEnum.MANAGE_APPS,
+                          PermissionEnum.MANAGE_USERS,
+                        ]}
+                        path="/commerce-ops"
+                        component={CommerceOpsPage}
                       />
                       <SectionRoute
                         permissions={[

@@ -12,9 +12,14 @@ export function createOpsHref(base: string | undefined, path: `/ops${string}`): 
     const url = new URL(base);
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
 
-    if ((url.protocol !== "https:" && !(url.protocol === "http:" && local)) ||
-        url.username || url.password || url.search || url.hash ||
-        url.pathname !== "/") {
+    if (
+      (url.protocol !== "https:" && !(url.protocol === "http:" && local)) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.pathname !== "/"
+    ) {
       return null;
     }
 
@@ -22,4 +27,14 @@ export function createOpsHref(base: string | undefined, path: `/ops${string}`): 
   } catch {
     return null;
   }
+}
+
+/** Keep Commerce Ops pages inside the authenticated Dashboard shell. */
+export function createDashboardOpsPath(
+  base: string | undefined,
+  path: `/ops${string}`,
+): string | null {
+  if (!createOpsHref(base, path)) return null;
+
+  return `/commerce-ops?path=${encodeURIComponent(path)}`;
 }

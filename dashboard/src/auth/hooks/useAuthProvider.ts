@@ -111,6 +111,12 @@ export function useAuthProvider({ intl, notify, apolloClient }: UseAuthProviderO
       : "";
 
     if (!errors.length) {
+      try {
+        await fetch("/api/admin-sso/exchange", { method: "DELETE", credentials: "same-origin" });
+      } catch {
+        // The short-lived Ops session will expire if the optional proxy is unavailable.
+      }
+
       if (externalLogoutUrl) {
         window.location.href = externalLogoutUrl;
       } else {

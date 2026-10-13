@@ -4,6 +4,7 @@ import { ExtensionsUrls } from "@dashboard/extensions/urls";
 import { orderDraftListUrl, orderDraftPath, orderListUrl, orderPath } from "@dashboard/orders/urls";
 import { matchPath } from "react-router";
 
+import { commerceOpsExtensionLabel } from "./commerceOpsExtensionLabel";
 import { getQueryListFilterValues, isCustomerTypeNavItem } from "./createCustomerTypeMenuItems";
 import { type SidebarMenuItem } from "./types";
 
@@ -53,10 +54,22 @@ const resolveExtensionMenuUrl = (extension: Extension): string | undefined => {
   );
 };
 
-export const mapToExtensionsItems = (extensions: Extension[], header: SidebarMenuItem) => {
+export const mapToExtensionsItems = (
+  extensions: Extension[],
+  header: SidebarMenuItem,
+  locale?: string,
+) => {
   const items: SidebarMenuItem[] = extensions.map(extension => ({
     id: `extension-${extension.id}`,
-    label: extension.label,
+    label:
+      (locale
+        ? commerceOpsExtensionLabel({
+            appUrl: extension.app.appUrl,
+            extensionUrl: extension.url,
+            dashboardOrigin: window.location.origin,
+            locale,
+          })
+        : null) ?? extension.label,
     url: resolveExtensionMenuUrl(extension),
     permissions: extension.permissions,
     onClick: extension.open,

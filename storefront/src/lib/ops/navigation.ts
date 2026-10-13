@@ -1,4 +1,4 @@
-import type { OpsRole } from "./authorization";
+import type { OpsPermissionCode, OpsRole, OpsViewer } from "./authorization";
 
 export type OpsNavigationItem = Readonly<{
   id: string;
@@ -56,6 +56,7 @@ const PLATFORM_GROUPS: readonly OpsNavigationGroup[] = [
     label: "应用",
     children: [
       { id: "plugins", label: "系统插件", href: "/ops/plugins" },
+      { id: "merchant", label: "SEO 与 Merchant", href: "/ops/merchant" },
     ],
   },
 ];
@@ -68,6 +69,34 @@ const ANALYST_GROUPS: readonly OpsNavigationGroup[] = [{
 
 export function opsNavigationForRole(role: OpsRole): readonly OpsNavigationGroup[] {
   return role === "platform_admin" ? PLATFORM_GROUPS : ANALYST_GROUPS;
+}
+
+function permissionsForPage(path: string): readonly OpsPermissionCode[] {
+  if (path.startsWith("/ops/analytics/destinations")) return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/analytics/reminders")) return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/analytics")) return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/sites")) return ["MANAGE_ORDERS", "MANAGE_PRODUCTS", "MANAGE_SETTINGS", "MANAGE_PAGES"];
+  if (path.startsWith("/ops/themes")) return ["MANAGE_PAGES", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/translations")) return ["MANAGE_TRANSLATIONS"];
+  if (path.startsWith("/ops/support/settings")) return ["MANAGE_USERS", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/support")) return ["MANAGE_USERS", "MANAGE_ORDERS"];
+  if (path.startsWith("/ops/plugins")) return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+  if (path.startsWith("/ops/merchant")) return ["MANAGE_PRODUCTS", "MANAGE_SETTINGS"];
+  return [];
+}
+
+/** Filter Saleor-authenticated navigation with the same permissions as the request boundary. */
+export function opsNavigationForViewer(viewer: OpsViewer): readonly OpsNavigationGroup[] {
+  if (viewer.authSource !== "saleor") return opsNavigationForRole(viewer.role);
+  if (viewer.restrictedAccessToChannels) return ANALYST_GROUPS;
+  return PLATFORM_GROUPS
+    .map(group => ({
+      ...group,
+      children: group.children.filter(item =>
+        permissionsForPage(item.href.split("?")[0] ?? "").some(permission => viewer.permissions?.includes(permission)),
+      ),
+    }))
+    .filter(group => group.children.length > 0);
 }
 
 /**

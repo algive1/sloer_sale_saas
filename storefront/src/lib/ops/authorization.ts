@@ -7,6 +7,14 @@
  * supplements, the legacy shared analytics Basic password.
  */
 export type OpsRole = "platform_admin" | "brand_analyst";
+export type OpsPermissionCode =
+  | "MANAGE_ORDERS"
+  | "MANAGE_PRODUCTS"
+  | "MANAGE_SETTINGS"
+  | "MANAGE_PAGES"
+  | "MANAGE_TRANSLATIONS"
+  | "MANAGE_APPS"
+  | "MANAGE_USERS";
 
 type Operator = Readonly<{
   username: string;
@@ -16,14 +24,28 @@ type Operator = Readonly<{
 }>;
 
 export type OpsAuthorization = "allowed" | "unauthenticated" | "forbidden" | "disabled";
-export type OpsViewer = Readonly<{ username: string; role: OpsRole; siteIds: readonly string[] }>;
+export type OpsViewer = Readonly<{
+  username: string;
+  role: OpsRole;
+  siteIds: readonly string[];
+  authSource?: "basic" | "saleor";
+  permissions?: readonly OpsPermissionCode[];
+  restrictedAccessToChannels?: boolean;
+}>;
 
 export type OpsIdentityInput = {
   authorization: string | null;
   operatorsJson: string | undefined;
   legacySecret: string | undefined;
   trustedSiteIds: readonly string[];
+  saleorSsoEnabled?: boolean;
 };
+
+type SaleorOpsViewer = OpsViewer & Readonly<{
+  authSource: "saleor";
+  permissions: readonly OpsPermissionCode[];
+  restrictedAccessToChannels: boolean;
+}>;
 
 const USERNAME = /^[a-z][a-z0-9_-]{2,63}$/;
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -110,13 +132,65 @@ export function resolveOpsViewer(input: OpsIdentityInput): OpsViewer | null {
 export function authorizeOpsRequest(input: OpsIdentityInput & {
   pathname: string;
   method: string;
+  saleorViewer?: SaleorOpsViewer | null;
 }): OpsAuthorization {
-  if (!input.operatorsJson?.trim() && !input.legacySecret?.trim()) return "disabled";
-  const viewer = resolveOpsViewer(input);
+  if (!input.operatorsJson?.trim() && !input.legacySecret?.trim() && !input.saleorSsoEnabled) return "disabled";
+  const viewer = input.saleorViewer ?? resolveOpsViewer(input);
   if (!viewer) return "unauthenticated";
+
+  if (viewer.authSource === "saleor") {
+    return isSaleorOpsRequestAllowed(viewer, input.pathname, input.method) ? "allowed" : "forbidden";
+  }
+
   if (viewer.role === "platform_admin") return "allowed";
   if (input.method !== "GET" && input.method !== "HEAD") return "forbidden";
   if (input.pathname === "/ops/sites" || input.pathname === "/ops/sites/") return "allowed";
   const match = BRAND_READ_ROUTE.exec(input.pathname);
   return match && viewer.siteIds.includes(match[1] ?? "") ? "allowed" : "forbidden";
+}
+
+/** Share the Saleor permission and restricted-channel rules with protected APIs outside /ops. */
+export function isSaleorOpsRequestAllowed(
+  viewer: OpsViewer,
+  pathname: string,
+  method: string,
+): boolean {
+  if (viewer.authSource !== "saleor") return true;
+  const requiredPermissions = getSaleorOpsPermissions(pathname);
+  if (!requiredPermissions.some(permission => viewer.permissions?.includes(permission))) return false;
+  if (!viewer.restrictedAccessToChannels) return true;
+  if (method !== "GET" && method !== "HEAD") return false;
+  if (pathname === "/ops/sites" || pathname === "/ops/sites/") return true;
+  const match = BRAND_READ_ROUTE.exec(pathname);
+  return Boolean(match && viewer.siteIds.includes(match[1] ?? ""));
+}
+
+function getSaleorOpsPermissions(pathname: string): readonly OpsPermissionCode[] {
+  if (/^\/ops\/analytics\/destinations(?:\/|$)/.test(pathname)) {
+    return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+  }
+  if (/^\/ops\/analytics\/reminders(?:\/|$)|^\/ops\/api\/analytics\/reminders(?:\/|$)/.test(pathname)) {
+    return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+  }
+  if (/^\/ops\/analytics(?:\/|$)/.test(pathname)) {
+    return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+  }
+  if (/^\/ops\/sites(?:\/|$)/.test(pathname)) {
+    if (/^\/ops\/sites\/[^/]+\/catalog(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS"];
+    if (/^\/ops\/sites\/[^/]+\/(?:fulfillment|tracking)(?:\/|$)/.test(pathname)) {
+      return ["MANAGE_ORDERS"];
+    }
+    if (/^\/ops\/sites\/[^/]+\/readiness(?:\/|$)/.test(pathname)) return ["MANAGE_SETTINGS"];
+    if (/^\/ops\/sites\/[^/]+(?:\/|$)/.test(pathname)) {
+      return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+    }
+    return ["MANAGE_ORDERS", "MANAGE_PRODUCTS", "MANAGE_SETTINGS", "MANAGE_PAGES"];
+  }
+  if (/^\/ops\/themes(?:\/|$)/.test(pathname)) return ["MANAGE_PAGES", "MANAGE_SETTINGS"];
+  if (/^\/ops\/translations(?:\/|$)/.test(pathname)) return ["MANAGE_TRANSLATIONS"];
+  if (/^\/ops\/support\/settings(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_SETTINGS"];
+  if (/^\/ops\/support(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_ORDERS"];
+  if (/^\/ops\/plugins(?:\/|$)/.test(pathname)) return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+  if (/^\/ops\/merchant(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS", "MANAGE_SETTINGS"];
+  return [];
 }

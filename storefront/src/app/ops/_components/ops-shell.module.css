@@ -18,6 +18,12 @@
   transition: grid-template-columns 160ms ease;
 }
 
+.embedded { display: block; min-height: 100dvh; }
+.embedded .sidebar,
+.embedded .topbar { display: none; }
+.embedded .contentColumn { min-height: 100dvh; }
+.embedded .pageContent { min-height: 100dvh; }
+
 .shell.compact { grid-template-columns: 72px minmax(0, 1fr); }
 
 .sidebar {

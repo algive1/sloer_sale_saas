@@ -3,6 +3,8 @@ import useLocalStorage from "@dashboard/hooks/useLocalStorage";
 import { createContext, type ReactNode, useEffect, useState } from "react";
 import { IntlProvider, ReactIntlErrorCode } from "react-intl";
 
+import { getBrowserLocale, shouldAutoDetectLocale } from "./localeDetection";
+
 export enum Locale {
   AR = "ar",
   AZ = "az",
@@ -116,6 +118,24 @@ function getKeyValueJson(messages: LocaleMessages): Record<string, string> {
 
 const localeCode = window.__SALEOR_CONFIG__?.LOCALE_CODE || process.env.LOCALE_CODE || "EN";
 const defaultLocale = Locale[localeCode] || Locale.EN;
+const localeStorageKey = "locale";
+const localeModeStorageKey = "locale-mode";
+
+const supportedLocales = Object.values(Locale);
+
+const detectBrowserLocale = (): Locale =>
+  (getBrowserLocale(navigator.languages?.length ? navigator.languages : [navigator.language], supportedLocales) as
+    | Locale
+    | undefined) ?? defaultLocale;
+
+const normalizeStoredLocale = (): void => {
+  const storedLocale = localStorage.getItem(localeStorageKey);
+
+  if (storedLocale && !supportedLocales.includes(storedLocale as Locale)) {
+    localStorage.removeItem(localeStorageKey);
+    localStorage.removeItem(localeModeStorageKey);
+  }
+};
 
 interface LocaleContextType {
   locale: Locale;
@@ -128,8 +148,34 @@ export const LocaleContext = createContext<LocaleContextType>({
 
 const { Consumer: LocaleConsumer, Provider: RawLocaleProvider } = LocaleContext;
 const LocaleProvider = ({ children }: { children: ReactNode }) => {
-  const [locale, setLocale] = useLocalStorage("locale", defaultLocale);
+  normalizeStoredLocale();
+
+  const [automaticLocale, setAutomaticLocale] = useState(() => {
+    const mode = localStorage.getItem(localeModeStorageKey);
+    const auto = shouldAutoDetectLocale(mode, localStorage.getItem(localeStorageKey), defaultLocale);
+
+    localStorage.setItem(localeModeStorageKey, auto ? "auto" : "manual");
+
+    return auto;
+  });
+  const [locale, setStoredLocale] = useLocalStorage(localeStorageKey, detectBrowserLocale());
   const [messages, setMessages] = useState(undefined);
+
+  const setLocale = (nextLocale: Locale) => {
+    localStorage.setItem(localeModeStorageKey, "manual");
+    setAutomaticLocale(false);
+    setStoredLocale(nextLocale);
+  };
+
+  useEffect(() => {
+    if (!automaticLocale) return;
+
+    const syncBrowserLocale = () => setStoredLocale(detectBrowserLocale());
+
+    window.addEventListener("languagechange", syncBrowserLocale);
+
+    return () => window.removeEventListener("languagechange", syncBrowserLocale);
+  }, [automaticLocale, setStoredLocale]);
 
   useEffect(
     function syncLocaleMessages() {

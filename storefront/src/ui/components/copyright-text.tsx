@@ -1,8 +1,9 @@
-"use client";
-
+import { io } from "next/cache";
 import { getCopyrightText } from "@/config/brand";
 
-/** Client component for copyright text (needs current year) */
-export function CopyrightText({ holder }: { holder?: string }) {
-	return <>{holder ? `© ${new Date().getFullYear()} ${holder}. All rights reserved.` : getCopyrightText()}</>;
+/** Resolve the year once on the server, outside the prerendered shell. */
+export async function CopyrightText({ holder }: { holder?: string }) {
+	await io();
+	const year = new Date().getFullYear();
+	return <>{holder ? `© ${year} ${holder}. All rights reserved.` : getCopyrightText(year)}</>;
 }

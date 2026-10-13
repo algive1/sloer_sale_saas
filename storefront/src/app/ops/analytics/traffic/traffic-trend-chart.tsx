@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -14,13 +16,18 @@ export type TrafficTrendPoint = {
 
 type SeriesKey = "total" | "paid" | "organic" | "direct" | "referral";
 
-const SERIES: Array<{ key: SeriesKey; label: string; className: string; dash?: string }> = [
-	{ key: "total", label: "Total", className: "text-foreground" },
-	{ key: "paid", label: "Paid", className: "text-blue-600 dark:text-blue-400" },
-	{ key: "organic", label: "Organic", className: "text-emerald-600 dark:text-emerald-400" },
-	{ key: "direct", label: "Direct", className: "text-amber-600 dark:text-amber-400", dash: "7 5" },
-	{ key: "referral", label: "Referral", className: "text-violet-600 dark:text-violet-400", dash: "3 5" },
-];
+const SERIES = (
+	i18n: OpsI18n,
+): Array<{ key: SeriesKey; label: string; className: string; dash?: string }> => {
+	const { t } = i18n;
+	return [
+		{ key: "total", label: t("总计"), className: "text-foreground" },
+		{ key: "paid", label: t("付费"), className: "text-blue-600 dark:text-blue-400" },
+		{ key: "organic", label: t("自然"), className: "text-emerald-600 dark:text-emerald-400" },
+		{ key: "direct", label: t("直接访问"), className: "text-amber-600 dark:text-amber-400", dash: "7 5" },
+		{ key: "referral", label: t("引荐"), className: "text-violet-600 dark:text-violet-400", dash: "3 5" },
+	];
+};
 
 const WIDTH = 1000;
 const HEIGHT = 320;
@@ -37,6 +44,9 @@ export function TrafficTrendChart({
 	points: TrafficTrendPoint[];
 	bucket: "hour" | "day";
 }) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
@@ -53,12 +63,12 @@ export function TrafficTrendChart({
 	const maxValue = useMemo(() => {
 		let max = 1;
 		for (const point of points) {
-			for (const series of SERIES) {
+			for (const series of SERIES(i18n)) {
 				if (visible[series.key]) max = Math.max(max, point[series.key]);
 			}
 		}
 		return max;
-	}, [points, visible]);
+	}, [points, visible, i18n]);
 
 	const ticks = useMemo(() => {
 		return [0, 0.25, 0.5, 0.75, 1].map((ratio) => Math.round(maxValue * ratio));
@@ -75,7 +85,9 @@ export function TrafficTrendChart({
 
 	function pathFor(key: SeriesKey): string {
 		return points
-			.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`)
+			.map(
+				(point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`,
+			)
 			.join(" ");
 	}
 
@@ -134,7 +146,7 @@ export function TrafficTrendChart({
 	return (
 		<div className="mt-5">
 			<div className="flex flex-wrap gap-2">
-				{SERIES.map((series) => (
+				{SERIES(i18n).map((series) => (
 					<button
 						key={series.key}
 						type="button"
@@ -171,15 +183,27 @@ export function TrafficTrendChart({
 								const y = PAD_TOP + PLOT_HEIGHT - (index / (ticks.length - 1)) * PLOT_HEIGHT;
 								return (
 									<g key={`${tick}:${index}`}>
-										<line x1={PAD_X} y1={y} x2={WIDTH - PAD_X} y2={y} className="stroke-border" strokeWidth="1" />
-										<text x={PAD_X - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+										<line
+											x1={PAD_X}
+											y1={y}
+											x2={WIDTH - PAD_X}
+											y2={y}
+											className="stroke-border"
+											strokeWidth="1"
+										/>
+										<text
+											x={PAD_X - 8}
+											y={y + 4}
+											textAnchor="end"
+											className="fill-muted-foreground text-[11px]"
+										>
 											{tick.toLocaleString()}
 										</text>
 									</g>
 								);
 							})}
 
-							{SERIES.map((series) =>
+							{SERIES(i18n).map((series) =>
 								visible[series.key] ? (
 									<path
 										key={series.key}
@@ -205,7 +229,7 @@ export function TrafficTrendChart({
 										className="stroke-muted-foreground/50"
 										strokeDasharray="4 4"
 									/>
-									{SERIES.map((series) =>
+									{SERIES(i18n).map((series) =>
 										visible[series.key] ? (
 											<circle
 												key={series.key}
@@ -242,16 +266,18 @@ export function TrafficTrendChart({
 								}}
 							>
 								<div className="mb-2 flex items-center justify-between gap-4">
-									<strong>{formatBucket(selected.bucket, bucket)}</strong>
-									<span className="text-[10px] text-muted-foreground">{pinnedIndex !== null ? "Pinned" : "Click to pin"}</span>
+									<strong>{formatBucket(selected.bucket, bucket, i18n)}</strong>
+									<span className="text-[10px] text-muted-foreground">
+										{pinnedIndex !== null ? t("已固定") : t("点击固定")}
+									</span>
 								</div>
 								<div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums">
-									<TooltipRow label="Total" value={selected.total} />
-									<TooltipRow label="Paid" value={selected.paid} />
-									<TooltipRow label="Organic" value={selected.organic} />
-									<TooltipRow label="Direct" value={selected.direct} />
-									<TooltipRow label="Referral" value={selected.referral} />
-									{selected.other > 0 ? <TooltipRow label="Other" value={selected.other} /> : null}
+									<TooltipRow label={t("总计")} value={selected.total} />
+									<TooltipRow label={t("付费")} value={selected.paid} />
+									<TooltipRow label={t("自然")} value={selected.organic} />
+									<TooltipRow label={t("直接访问")} value={selected.direct} />
+									<TooltipRow label={t("引荐")} value={selected.referral} />
+									{selected.other > 0 ? <TooltipRow label={t("其他")} value={selected.other} /> : null}
 								</div>
 							</div>
 						) : null}
@@ -286,11 +312,13 @@ function tooltipTop(pointerY: number, height: number): string {
 	return `${Math.max(12, Math.min(height - 130, preferred))}px`;
 }
 
-function formatBucket(value: string, bucket: "hour" | "day"): string {
+function formatBucket(value: string, bucket: "hour" | "day", i18n: OpsI18n): string {
+	const { locale } = i18n;
+
 	if (bucket === "hour") {
 		const date = new Date(`${value}:00.000Z`);
 		if (!Number.isNaN(date.getTime())) {
-			return new Intl.DateTimeFormat("en", {
+			return new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				hour: "2-digit",
@@ -303,7 +331,7 @@ function formatBucket(value: string, bucket: "hour" | "day"): string {
 	const date = new Date(`${value}T00:00:00.000Z`);
 	return Number.isNaN(date.getTime())
 		? value
-		: new Intl.DateTimeFormat("en", {
+		: new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				year: "numeric",
@@ -311,7 +339,10 @@ function formatBucket(value: string, bucket: "hour" | "day"): string {
 			}).format(date);
 }
 
-function xLabels(points: TrafficTrendPoint[], bucket: "hour" | "day"): Array<{ index: number; label: string }> {
+function xLabels(
+	points: TrafficTrendPoint[],
+	bucket: "hour" | "day",
+): Array<{ index: number; label: string }> {
 	if (points.length === 0) return [];
 	const target = 7;
 	const step = Math.max(1, Math.ceil((points.length - 1) / (target - 1)));

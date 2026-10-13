@@ -1,4 +1,4 @@
-import { createOpsHref } from "./commerceOpsLinks";
+import { createDashboardOpsPath, createOpsHref } from "./commerceOpsLinks";
 
 describe("Commerce Ops navigation URL", () => {
   it("builds links for a configured HTTPS origin", () => {
@@ -8,7 +8,9 @@ describe("Commerce Ops navigation URL", () => {
   });
 
   it("allows local HTTP development", () => {
-    expect(createOpsHref("http://localhost:3000", "/ops/sites")).toBe("http://localhost:3000/ops/sites");
+    expect(createOpsHref("http://localhost:3000", "/ops/sites")).toBe(
+      "http://localhost:3000/ops/sites",
+    );
   });
 
   it.each([
@@ -20,5 +22,12 @@ describe("Commerce Ops navigation URL", () => {
     "https://example.com/?next=evil",
   ])("rejects unsafe or invalid origin %s", origin => {
     expect(createOpsHref(origin, "/ops/plugins")).toBeNull();
+  });
+
+  it("routes configured Commerce Ops pages through the Dashboard shell", () => {
+    expect(createDashboardOpsPath("http://localhost:3000", "/ops/themes?pageType=product")).toBe(
+      "/commerce-ops?path=%2Fops%2Fthemes%3FpageType%3Dproduct",
+    );
+    expect(createDashboardOpsPath(undefined, "/ops/plugins")).toBeNull();
   });
 });

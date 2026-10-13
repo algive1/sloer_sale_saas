@@ -17,4 +17,14 @@ describe("Commerce Ops navigation registry", () => {
       ]),
     );
   });
+
+  it("links system-level plugin navigation directly to its feature pages", () => {
+    expect(commerceOpsNavigation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "commerce-ads-tracking", path: "/ops/analytics/destinations" }),
+        expect.objectContaining({ id: "commerce-merchant-feed", path: "/ops/merchant" }),
+      ]),
+    );
+    expect(commerceOpsNavigation.some(entry => entry.path === "/ops/plugins")).toBe(false);
+  });
 });

@@ -1,4 +1,6 @@
-FROM node:24-alpine AS builder
+ARG NODE_IMAGE=node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
+ARG NGINX_IMAGE=nginx:stable-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94
+FROM ${NODE_IMAGE} AS builder
 RUN apk --no-cache add bash
 RUN corepack enable && corepack prepare pnpm@11.13.1 --activate
 WORKDIR /app
@@ -38,7 +40,7 @@ ENV LOCALE_CODE="${LOCALE_CODE:-EN}"
 RUN pnpm run generate:main
 RUN pnpm exec cross-env NODE_OPTIONS=--max-old-space-size=8192 vite build
 
-FROM nginx:stable-alpine AS runner
+FROM ${NGINX_IMAGE} AS runner
 WORKDIR /app
 
 ARG COMMIT_ID

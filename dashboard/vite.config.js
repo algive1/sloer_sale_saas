@@ -138,6 +138,13 @@ export default defineConfig(({ command, mode }) => {
       fs: {
         allow: [searchForWorkspaceRoot(process.cwd()), "../.."],
       },
+      proxy: Object.fromEntries(
+        ["/ops", "/commerce-admin", "/api/manifest", "/api/admin-sso", "/api/ops", "/_next"].map(path => [path, {
+          target: COMMERCE_OPS_URL || "http://localhost:3000",
+          changeOrigin: false,
+          ws: path === "/_next",
+        }]),
+      ),
     },
     define: {
       ...globals,

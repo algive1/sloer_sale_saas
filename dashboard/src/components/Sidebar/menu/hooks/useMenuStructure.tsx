@@ -1,6 +1,6 @@
 import { useUser } from "@dashboard/auth/useUser";
-import { channelsListUrl } from "@dashboard/channels/urls";
 import { categoryListUrl } from "@dashboard/categories/urls";
+import { channelsListUrl } from "@dashboard/channels/urls";
 import { collectionListUrl } from "@dashboard/collections/urls";
 import { navigationLucideIconProps } from "@dashboard/components/icons";
 import { useAnalytics } from "@dashboard/components/ProductAnalytics/useAnalytics";
@@ -43,15 +43,15 @@ import { useResolvedNavigationPins } from "@dashboard/navigationPins/hooks/useRe
 import { injectNavigationPins } from "@dashboard/navigationPins/injectNavigationPins";
 import { orderDraftListUrl, orderListUrl, orderSettingsPath } from "@dashboard/orders/urls";
 import { permissionGroupListUrl } from "@dashboard/permissionGroups/urls";
-import { shippingZonesListUrl } from "@dashboard/shipping/urls";
-import { siteSettingsUrl } from "@dashboard/siteSettings/urls";
-import { staffListUrl } from "@dashboard/staff/urls";
-import { taxConfigurationListUrl } from "@dashboard/taxes/urls";
 import { productListUrl } from "@dashboard/products/urls";
 import { productTypeListUrl } from "@dashboard/productTypes/urls";
 import { Ripple } from "@dashboard/ripples/components/Ripple";
 import { SearchShortcut } from "@dashboard/search/SearchShortcut";
+import { shippingZonesListUrl } from "@dashboard/shipping/urls";
+import { siteSettingsUrl } from "@dashboard/siteSettings/urls";
+import { staffListUrl } from "@dashboard/staff/urls";
 import { menuListUrl } from "@dashboard/structures/urls";
+import { taxConfigurationListUrl } from "@dashboard/taxes/urls";
 import { languageListUrl } from "@dashboard/translations/urls";
 import { Box, Text } from "@saleor/macaw-ui-next";
 import isEmpty from "lodash/isEmpty";
@@ -59,7 +59,7 @@ import { ChartNoAxesCombined, Globe2, Search, Star } from "lucide-react";
 import { useIntl } from "react-intl";
 
 import { SidebarIconSlot } from "../../SidebarIconSlot";
-import { createOpsHref } from "../commerceOpsLinks";
+import { createDashboardOpsPath } from "../commerceOpsLinks";
 import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
 import { filterSidebarMenu } from "../filterSidebarMenu";
 import { DASHBOARD_SEARCH_PERMISSIONS } from "../navigationAccess";
@@ -205,7 +205,11 @@ export function useMenuStructure() {
           permissions: [PermissionEnum.MANAGE_GIFT_CARD],
           type: "item",
         },
-        ...mapToExtensionsItems(extensions.NAVIGATION_CATALOG, appExtensionsHeaderItem),
+        ...mapToExtensionsItems(
+          extensions.NAVIGATION_CATALOG,
+          appExtensionsHeaderItem,
+          intl.locale,
+        ),
         createSettingsSubmenuItem({
           id: "product-types",
           label: intl.formatMessage(sectionNames.productTypes),
@@ -240,7 +244,7 @@ export function useMenuStructure() {
           url: orderDraftListUrl(),
           type: "item",
         },
-        ...mapToExtensionsItems(extensions.NAVIGATION_ORDERS, appExtensionsHeaderItem),
+        ...mapToExtensionsItems(extensions.NAVIGATION_ORDERS, appExtensionsHeaderItem, intl.locale),
       ],
       icon: renderIcon(<OrdersIcon />),
       label: intl.formatMessage(sectionNames.fulfillment),
@@ -252,7 +256,11 @@ export function useMenuStructure() {
     {
       children: [
         ...customerTypeMenuItems,
-        ...mapToExtensionsItems(extensions.NAVIGATION_CUSTOMERS, appExtensionsHeaderItem),
+        ...mapToExtensionsItems(
+          extensions.NAVIGATION_CUSTOMERS,
+          appExtensionsHeaderItem,
+          intl.locale,
+        ),
         createSettingsSubmenuItem({
           id: "customer-types",
           label: intl.formatMessage(sectionNames.customerTypes),
@@ -290,7 +298,11 @@ export function useMenuStructure() {
           url: voucherListUrl(),
           type: "item",
         },
-        ...mapToExtensionsItems(extensions.NAVIGATION_DISCOUNTS, appExtensionsHeaderItem),
+        ...mapToExtensionsItems(
+          extensions.NAVIGATION_DISCOUNTS,
+          appExtensionsHeaderItem,
+          intl.locale,
+        ),
       ],
       icon: renderIcon(<DiscountsIcon />),
       label: intl.formatMessage(commonMessages.discounts),
@@ -315,7 +327,7 @@ export function useMenuStructure() {
           permissions: [PermissionEnum.MANAGE_MENUS],
           type: "item",
         },
-        ...mapToExtensionsItems(extensions.NAVIGATION_PAGES, appExtensionsHeaderItem),
+        ...mapToExtensionsItems(extensions.NAVIGATION_PAGES, appExtensionsHeaderItem, intl.locale),
         createSettingsSubmenuItem({
           id: "model-types",
           label: intl.formatMessage(sectionNames.modelTypes),
@@ -336,7 +348,13 @@ export function useMenuStructure() {
     },
     {
       children: !isEmpty(extensions.NAVIGATION_TRANSLATIONS)
-        ? [...mapToExtensionsItems(extensions.NAVIGATION_TRANSLATIONS, appExtensionsHeaderItem)]
+        ? [
+            ...mapToExtensionsItems(
+              extensions.NAVIGATION_TRANSLATIONS,
+              appExtensionsHeaderItem,
+              intl.locale,
+            ),
+          ]
         : undefined,
       icon: renderIcon(<TranslationsIcon />),
       label: intl.formatMessage(sectionNames.translations),
@@ -356,8 +374,8 @@ export function useMenuStructure() {
     },
   ];
 
-  // Reuse Saleor's routes, permissions, extension slots and pins. Custom /ops
-  // pages remain separately authenticated and open in a distinct browser tab.
+  // Reuse Saleor's routes, permissions, extension slots and pins. Commerce Ops
+  // pages open in the Dashboard shell and keep their server authorization.
   const localized = (zh: string, en: string) =>
     intl.locale.toLowerCase().startsWith("zh") ? zh : en;
   const native = (id: string) => {
@@ -371,15 +389,19 @@ export function useMenuStructure() {
     commerceOpsNavigation
       .filter(entry => entry.section === section)
       .flatMap(entry => {
-        const externalUrl = createOpsHref(process.env.COMMERCE_OPS_URL, entry.path);
+        const url = createDashboardOpsPath(process.env.COMMERCE_OPS_URL, entry.path);
 
-        return externalUrl ? [{
-          id: entry.id,
-          label: localized(entry.zh, entry.en),
-          externalUrl,
-          permissions: entry.permissions,
-          type: "item" as const,
-        }] : [];
+        return url
+          ? [
+              {
+                id: entry.id,
+                label: localized(entry.zh, entry.en),
+                url,
+                permissions: entry.permissions,
+                type: "item" as const,
+              },
+            ]
+          : [];
       });
 
   const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
@@ -388,15 +410,21 @@ export function useMenuStructure() {
   const baseHome = native("home");
   // When home widgets are pinned, Home becomes an accordion in upstream Saleor.
   // Keep the actual /home destination visible now that group headings only toggle.
-  const home: SidebarMenuItem = baseHome.type === "itemGroup" ? {
-    ...baseHome,
-    children: [{
-      id: "commerce-dashboard-home",
-      label: localized("首页概览", "Home overview"),
-      url: "/home",
-      type: "item",
-    }, ...(baseHome.children ?? [])],
-  } : baseHome;
+  const home: SidebarMenuItem =
+    baseHome.type === "itemGroup"
+      ? {
+          ...baseHome,
+          children: [
+            {
+              id: "commerce-dashboard-home",
+              label: localized("首页概览", "Home overview"),
+              url: "/home",
+              type: "item",
+            },
+            ...(baseHome.children ?? []),
+          ],
+        }
+      : baseHome;
   const search = native("search");
   const baseOrders = native("orders");
   const baseCatalog = native("products");
@@ -411,26 +439,20 @@ export function useMenuStructure() {
     ...baseOrders,
     label: localized("订单", "Orders"),
     defaultExpanded: true,
-    children: [
-      ...(baseOrders.children ?? []),
-      ...opsSection("orders"),
-    ],
+    children: [...(baseOrders.children ?? []), ...opsSection("orders")],
   };
   const catalog: SidebarMenuItem = {
     ...baseCatalog,
     label: localized("商品", "Products"),
   };
-  const customerChatUrl = createOpsHref(process.env.COMMERCE_OPS_URL, "/ops/support");
+  const customerChatUrl = createDashboardOpsPath(process.env.COMMERCE_OPS_URL, "/ops/support");
   const customers: SidebarMenuItem = {
     ...baseCustomers,
     label: localized("客户", "Customers"),
     // The group label is a real chat entry. The separate chevron expands
     // native customer management and Chatwoot connection settings.
-    ...(customerChatUrl ? { primaryExternalUrl: customerChatUrl } : {}),
-    children: [
-      ...opsSection("customers"),
-      ...(baseCustomers.children ?? []),
-    ],
+    ...(customerChatUrl ? { primaryUrl: customerChatUrl } : {}),
+    children: [...opsSection("customers"), ...(baseCustomers.children ?? [])],
   };
   const marketing: SidebarMenuItem = {
     ...baseDiscounts,
@@ -438,15 +460,17 @@ export function useMenuStructure() {
   };
 
   const analyticsChildren = opsSection("analytics");
-  const analytics: SidebarMenuItem | null = analyticsChildren.length ? {
-    id: "commerce-analytics",
-    icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
-    label: localized("数据分析", "Analytics"),
-    type: "itemGroup",
-    defaultExpanded: true,
-    permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_PRODUCTS],
-    children: analyticsChildren,
-  } : null;
+  const analytics: SidebarMenuItem | null = analyticsChildren.length
+    ? {
+        id: "commerce-analytics",
+        icon: renderIcon(<ChartNoAxesCombined {...navigationLucideIconProps} />),
+        label: localized("数据分析", "Analytics"),
+        type: "itemGroup",
+        defaultExpanded: true,
+        permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_PRODUCTS],
+        children: analyticsChildren,
+      }
+    : null;
 
   const onlineStore: SidebarMenuItem = {
     ...baseModeling,
@@ -467,21 +491,20 @@ export function useMenuStructure() {
     type: "itemGroup",
     url: channelsListUrl(),
     permissions: [PermissionEnum.MANAGE_CHANNELS],
-    children: [{
-      id: "commerce-channel-management",
-      label: localized("渠道管理", "Manage channels"),
-      url: channelsListUrl(),
-      permissions: [PermissionEnum.MANAGE_CHANNELS],
-      type: "item",
-    }],
+    children: [
+      {
+        id: "commerce-channel-management",
+        label: localized("渠道管理", "Manage channels"),
+        url: channelsListUrl(),
+        permissions: [PermissionEnum.MANAGE_CHANNELS],
+        type: "item",
+      },
+    ],
   };
   const apps: SidebarMenuItem = {
     ...baseExtensions,
     label: localized("应用", "Apps"),
-    children: [
-      ...(baseExtensions.children ?? []),
-      ...opsSection("apps"),
-    ],
+    children: [...(baseExtensions.children ?? []), ...opsSection("apps")],
   };
 
   // Surface common Saleor settings as actual child routes, not fake settings pages.
@@ -491,25 +514,54 @@ export function useMenuStructure() {
     label: localized("设置", "Settings"),
     type: "itemGroup",
     children: [
-      { id: "commerce-settings-home", label: localized("设置总览", "All settings"),
-        url: configurationMenuUrl, type: "item", exactMatch: true },
-      { id: "commerce-settings-store", label: localized("店铺信息", "Store details"),
-        url: siteSettingsUrl(), type: "item",
-        permissions: [PermissionEnum.MANAGE_SETTINGS] },
-      { id: "commerce-settings-shipping", label: localized("配送运费", "Shipping"),
-        url: shippingZonesListUrl(), type: "item",
-        permissions: [PermissionEnum.MANAGE_SHIPPING] },
-      { id: "commerce-settings-order", label: localized("订单设置", "Order settings"),
-        url: orderSettingsPath, type: "item",
-        permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_SETTINGS] },
-      { id: "commerce-settings-tax", label: localized("税费设置", "Taxes"),
-        url: taxConfigurationListUrl(), type: "item" },
-      { id: "commerce-settings-staff", label: localized("员工管理", "Staff"),
-        url: staffListUrl(), type: "item",
-        permissions: [PermissionEnum.MANAGE_STAFF] },
-      { id: "commerce-settings-permissions", label: localized("权限组", "Permission groups"),
-        url: permissionGroupListUrl(), type: "item",
-        permissions: [PermissionEnum.MANAGE_STAFF] },
+      {
+        id: "commerce-settings-home",
+        label: localized("设置总览", "All settings"),
+        url: configurationMenuUrl,
+        type: "item",
+        exactMatch: true,
+      },
+      {
+        id: "commerce-settings-store",
+        label: localized("店铺信息", "Store details"),
+        url: siteSettingsUrl(),
+        type: "item",
+        permissions: [PermissionEnum.MANAGE_SETTINGS],
+      },
+      {
+        id: "commerce-settings-shipping",
+        label: localized("配送运费", "Shipping"),
+        url: shippingZonesListUrl(),
+        type: "item",
+        permissions: [PermissionEnum.MANAGE_SHIPPING],
+      },
+      {
+        id: "commerce-settings-order",
+        label: localized("订单设置", "Order settings"),
+        url: orderSettingsPath,
+        type: "item",
+        permissions: [PermissionEnum.MANAGE_ORDERS, PermissionEnum.MANAGE_SETTINGS],
+      },
+      {
+        id: "commerce-settings-tax",
+        label: localized("税费设置", "Taxes"),
+        url: taxConfigurationListUrl(),
+        type: "item",
+      },
+      {
+        id: "commerce-settings-staff",
+        label: localized("员工管理", "Staff"),
+        url: staffListUrl(),
+        type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF],
+      },
+      {
+        id: "commerce-settings-permissions",
+        label: localized("权限组", "Permission groups"),
+        url: permissionGroupListUrl(),
+        type: "item",
+        permissions: [PermissionEnum.MANAGE_STAFF],
+      },
     ],
   };
 
@@ -541,6 +593,7 @@ export function useMenuStructure() {
 
     return menuItem.permissions.some(permission => userPermissions.includes(permission));
   };
+
   return filterSidebarMenu(menuItemsWithPins, isMenuItemPermitted);
 }
 

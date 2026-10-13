@@ -10,6 +10,8 @@ export interface SidebarMenuItem {
   externalUrl?: string;
   /** Direct destination for main group label; chevron remains expandable. */
   primaryExternalUrl?: string;
+  /** Internal destination for a primary group label. */
+  primaryUrl?: string;
   /** Use exact pathname matching only for summary routes with child pages. */
   exactMatch?: boolean;
   matchUrls?: string[];

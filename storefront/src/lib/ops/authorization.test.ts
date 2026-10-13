@@ -58,6 +58,7 @@ describe("operations operator accounts", () => {
       "/ops/sites/jewelry/fulfillment/api",
       "/ops/sites/fashion/tracking", "/ops/sites/fashion/tracking/api",
       "/ops/analytics/products", "/ops/plugins", "/ops/themes",
+      "/ops/merchant",
       "/ops/themes/api", "/ops/translations", "/ops/translations/api",
       "/ops/support", "/ops/sites/fashion/insights/export",
       "/ops/sites/fashion%2F..%2Fjewelry", "/ops/sites/fashion.json",
@@ -84,6 +85,62 @@ describe("operations operator accounts", () => {
     expect(resolveOpsViewer({...args, operatorsJson:"", authorization:basic("analytics",shared)})).toEqual({
       username:"analytics",role:"platform_admin",siteIds:[],
     });
+  });
+
+  it("uses Saleor permissions and channel scope for the embedded Ops session", () => {
+    const saleorViewer = {
+      username: "staff@example.com",
+      role: "brand_analyst" as const,
+      siteIds: ["fashion"],
+      authSource: "saleor" as const,
+      permissions: ["MANAGE_ORDERS", "MANAGE_PRODUCTS"] as const,
+      restrictedAccessToChannels: true,
+    };
+    const input = {
+      authorization: null,
+      operatorsJson: undefined,
+      legacySecret: undefined,
+      trustedSiteIds: sites,
+      saleorSsoEnabled: true,
+      saleorViewer,
+    };
+
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/analytics", method: "GET" })).toBe("forbidden");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/sites", method: "GET" })).toBe("allowed");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/sites/fashion/catalog", method: "GET" })).toBe("allowed");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/sites/jewelry/catalog", method: "GET" })).toBe("forbidden");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/sites/fashion/catalog/api", method: "POST" })).toBe("forbidden");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/themes", method: "GET" })).toBe("forbidden");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops", method: "GET" })).toBe("forbidden");
+  });
+
+  it("requires a Saleor permission for each privileged Ops feature", () => {
+    const saleorViewer = {
+      username: "staff@example.com",
+      role: "platform_admin" as const,
+      siteIds: [],
+      authSource: "saleor" as const,
+      permissions: ["MANAGE_TRANSLATIONS"] as const,
+      restrictedAccessToChannels: false,
+    };
+    const input = {
+      authorization: null,
+      operatorsJson: undefined,
+      legacySecret: undefined,
+      trustedSiteIds: sites,
+      saleorSsoEnabled: true,
+      saleorViewer,
+    };
+
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/translations/api", method: "POST" })).toBe("allowed");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/plugins", method: "GET" })).toBe("forbidden");
+    expect(authorizeOpsRequest({ ...input, pathname: "/ops/merchant", method: "GET" })).toBe("forbidden");
+    expect(authorizeOpsRequest({
+      ...input,
+      saleorViewer: { ...saleorViewer, permissions: ["MANAGE_PRODUCTS", "MANAGE_SETTINGS"] },
+      pathname: "/ops/merchant",
+      method: "GET",
+    })).toBe("allowed");
   });
 
   it("rejects partial, weak and duplicate operator configs without legacy fallback", () => {

@@ -1,11 +1,11 @@
 import { Box, List } from "@saleor/macaw-ui-next";
 import { CircleDot, Search } from "lucide-react";
+import { useIntl } from "react-intl";
 import { useLocation } from "react-router";
 import { Link } from "react-router-dom";
-import { useIntl } from "react-intl";
 
-import { useSidebarBreakpointContext } from "../SidebarContext";
 import { Shortcusts } from "../shortcuts/Shortcuts";
+import { useSidebarBreakpointContext } from "../SidebarContext";
 import styles from "./CommerceSidebar.module.css";
 import { useMenuStructure } from "./hooks/useMenuStructure";
 import { MenuItem } from "./Item";
@@ -21,11 +21,16 @@ const MenuRailItem = ({
 }) => {
   const { expandGroup } = useSidebarBreakpointContext();
   const label = typeof item.label === "string" ? item.label : item.id;
-  const active = isMenuActive(activeLocation, item) ||
+  const active =
+    isMenuActive(activeLocation, item) ||
     Boolean(item.children?.some(child => isMenuActive(activeLocation, child)));
   const className = `${styles.railItem} ${active ? styles.selected : ""}`;
   // Some registered extensions do not have an icon. Never show a blank hit target.
-  const content = <span className={styles.railIcon} aria-hidden="true">{item.icon ?? <CircleDot size={17} />}</span>;
+  const content = (
+    <span className={styles.railIcon} aria-hidden="true">
+      {item.icon ?? <CircleDot size={17} />}
+    </span>
+  );
 
   if (item.type === "itemGroup" && item.primaryExternalUrl) {
     return (
@@ -41,6 +46,22 @@ const MenuRailItem = ({
         >
           {content}
         </a>
+      </li>
+    );
+  }
+
+  if (item.type === "itemGroup" && item.primaryUrl) {
+    return (
+      <li>
+        <Link
+          to={item.primaryUrl}
+          className={className}
+          aria-label={label}
+          title={label}
+          data-test-id={`commerce-rail-${item.id}`}
+        >
+          {content}
+        </Link>
       </li>
     );
   }
@@ -65,8 +86,14 @@ const MenuRailItem = ({
   if (item.externalUrl) {
     return (
       <li>
-        <a className={className} title={label} aria-label={label}
-          href={item.externalUrl} target="_blank" rel="noopener noreferrer">
+        <a
+          className={className}
+          title={label}
+          aria-label={label}
+          href={item.externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           {content}
         </a>
       </li>
@@ -98,9 +125,7 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
   const isZh = intl.locale.toLowerCase().startsWith("zh");
   const search = menuStructure.find(item => item.id === "search");
   const settings = menuStructure.find(item => item.id === "configure");
-  const mainItems = menuStructure.filter(item =>
-    item.id !== "search" && item.id !== "configure",
-  );
+  const mainItems = menuStructure.filter(item => item.id !== "search" && item.id !== "configure");
 
   if (compact) {
     return (
@@ -108,9 +133,11 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
         <nav className={styles.railScroll} aria-label={isZh ? "后台主导航" : "Admin navigation"}>
           <ul className={styles.railList}>
             {search && <MenuRailItem item={search} activeLocation={activeLocation} />}
-            {mainItems.filter(item => item.type !== "divider").map(item => (
-              <MenuRailItem key={item.id} item={item} activeLocation={activeLocation} />
-            ))}
+            {mainItems
+              .filter(item => item.type !== "divider")
+              .map(item => (
+                <MenuRailItem key={item.id} item={item} activeLocation={activeLocation} />
+              ))}
           </ul>
         </nav>
         {settings && (
@@ -148,13 +175,20 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
       )}
       <div className={`hide-scrollbar ${styles.menuScroll}`}>
         <List as="ol" display="grid" gap={1} data-test-id="menu-list">
-          {mainItems.map(item => <MenuItem menuItem={item} key={item.id} />)}
+          {mainItems.map(item => (
+            <MenuItem menuItem={item} key={item.id} />
+          ))}
         </List>
         <Shortcusts />
       </div>
       {settings && (
-        <List as="ol" display="grid" gap={1} className={styles.settingsFooter}
-          data-test-id="commerce-settings-footer">
+        <List
+          as="ol"
+          display="grid"
+          gap={1}
+          className={styles.settingsFooter}
+          data-test-id="commerce-settings-footer"
+        >
           <MenuItem menuItem={settings} />
         </List>
       )}

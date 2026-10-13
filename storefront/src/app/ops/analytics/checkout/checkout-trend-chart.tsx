@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -12,12 +14,22 @@ export type CheckoutTrendPoint = {
 
 type SeriesKey = "started" | "payment" | "purchases" | "paymentFailures";
 
-const SERIES: Array<{ key: SeriesKey; label: string; className: string; dash?: string }> = [
-	{ key: "started", label: "Checkout started", className: "text-foreground" },
-	{ key: "payment", label: "Reached payment", className: "text-blue-600 dark:text-blue-400" },
-	{ key: "purchases", label: "Purchases", className: "text-emerald-600 dark:text-emerald-400" },
-	{ key: "paymentFailures", label: "Payment failures", className: "text-rose-600 dark:text-rose-400", dash: "5 4" },
-];
+const SERIES = (
+	i18n: OpsI18n,
+): Array<{ key: SeriesKey; label: string; className: string; dash?: string }> => {
+	const { t } = i18n;
+	return [
+		{ key: "started", label: t("已开始结账"), className: "text-foreground" },
+		{ key: "payment", label: t("已进入支付"), className: "text-blue-600 dark:text-blue-400" },
+		{ key: "purchases", label: t("已购买"), className: "text-emerald-600 dark:text-emerald-400" },
+		{
+			key: "paymentFailures",
+			label: t("支付失败"),
+			className: "text-rose-600 dark:text-rose-400",
+			dash: "5 4",
+		},
+	];
+};
 
 const WIDTH = 1000;
 const HEIGHT = 320;
@@ -34,6 +46,9 @@ export function CheckoutTrendChart({
 	points: CheckoutTrendPoint[];
 	bucket: "hour" | "day";
 }) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 	const [pinnedIndex, setPinnedIndex] = useState<number | null>(null);
@@ -51,12 +66,12 @@ export function CheckoutTrendChart({
 	const maxValue = useMemo(() => {
 		let max = 1;
 		for (const point of points) {
-			for (const series of SERIES) {
+			for (const series of SERIES(i18n)) {
 				if (visible[series.key]) max = Math.max(max, point[series.key]);
 			}
 		}
 		return max;
-	}, [points, visible]);
+	}, [points, visible, i18n]);
 
 	const ticks = useMemo(
 		() => [0, 0.25, 0.5, 0.75, 1].map((ratio) => Math.round(maxValue * ratio)),
@@ -74,7 +89,9 @@ export function CheckoutTrendChart({
 
 	function pathFor(key: SeriesKey): string {
 		return points
-			.map((point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`)
+			.map(
+				(point, index) => `${index === 0 ? "M" : "L"} ${xAt(index).toFixed(2)} ${yAt(point[key]).toFixed(2)}`,
+			)
 			.join(" ");
 	}
 
@@ -114,7 +131,7 @@ export function CheckoutTrendChart({
 	return (
 		<div className="mt-5">
 			<div className="flex flex-wrap gap-2">
-				{SERIES.map((series) => (
+				{SERIES(i18n).map((series) => (
 					<button
 						key={series.key}
 						type="button"
@@ -143,7 +160,9 @@ export function CheckoutTrendChart({
 				aria-label="Interactive checkout trend. Move over the chart or tap to inspect the corresponding period."
 			>
 				{points.length === 0 ? (
-					<div className="grid h-72 place-items-center text-sm text-muted-foreground">No checkout data yet.</div>
+					<div className="grid h-72 place-items-center text-sm text-muted-foreground">
+						No checkout data yet.
+					</div>
 				) : (
 					<>
 						<svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="block h-auto w-full" aria-hidden="true">
@@ -152,14 +171,19 @@ export function CheckoutTrendChart({
 								return (
 									<g key={`${tick}:${index}`}>
 										<line x1={PAD_X} y1={y} x2={WIDTH - PAD_X} y2={y} className="stroke-border" />
-										<text x={PAD_X - 8} y={y + 4} textAnchor="end" className="fill-muted-foreground text-[11px]">
+										<text
+											x={PAD_X - 8}
+											y={y + 4}
+											textAnchor="end"
+											className="fill-muted-foreground text-[11px]"
+										>
 											{tick.toLocaleString()}
 										</text>
 									</g>
 								);
 							})}
 
-							{SERIES.map((series) =>
+							{SERIES(i18n).map((series) =>
 								visible[series.key] ? (
 									<path
 										key={series.key}
@@ -185,7 +209,7 @@ export function CheckoutTrendChart({
 										className="stroke-muted-foreground/50"
 										strokeDasharray="4 4"
 									/>
-									{SERIES.map((series) =>
+									{SERIES(i18n).map((series) =>
 										visible[series.key] ? (
 											<circle
 												key={series.key}
@@ -222,16 +246,16 @@ export function CheckoutTrendChart({
 								}}
 							>
 								<div className="mb-2 flex items-center justify-between gap-4">
-									<strong>{formatBucket(selected.bucket, bucket)}</strong>
+									<strong>{formatBucket(selected.bucket, bucket, i18n)}</strong>
 									<span className="text-[10px] text-muted-foreground">
-										{pinnedIndex !== null ? "Pinned" : "Click to pin"}
+										{pinnedIndex !== null ? t("已固定") : t("点击固定")}
 									</span>
 								</div>
 								<div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums">
-									<TooltipRow label="Checkout started" value={selected.started} />
-									<TooltipRow label="Reached payment" value={selected.payment} />
-									<TooltipRow label="Purchases" value={selected.purchases} />
-									<TooltipRow label="Payment failures" value={selected.paymentFailures} />
+									<TooltipRow label={t("已开始结账")} value={selected.started} />
+									<TooltipRow label={t("已进入支付")} value={selected.payment} />
+									<TooltipRow label={t("已购买")} value={selected.purchases} />
+									<TooltipRow label={t("支付失败")} value={selected.paymentFailures} />
 								</div>
 							</div>
 						) : null}
@@ -265,11 +289,13 @@ function tooltipTop(pointerY: number, height: number): string {
 	return `${Math.max(12, Math.min(height - 125, preferred))}px`;
 }
 
-function formatBucket(value: string, bucket: "hour" | "day"): string {
+function formatBucket(value: string, bucket: "hour" | "day", i18n: OpsI18n): string {
+	const { locale } = i18n;
+
 	if (bucket === "hour") {
 		const date = new Date(`${value}:00.000Z`);
 		if (!Number.isNaN(date.getTime())) {
-			return new Intl.DateTimeFormat("en", {
+			return new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				hour: "2-digit",
@@ -282,7 +308,7 @@ function formatBucket(value: string, bucket: "hour" | "day"): string {
 	const date = new Date(`${value}T00:00:00.000Z`);
 	return Number.isNaN(date.getTime())
 		? value
-		: new Intl.DateTimeFormat("en", {
+		: new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				year: "numeric",
@@ -290,7 +316,10 @@ function formatBucket(value: string, bucket: "hour" | "day"): string {
 			}).format(date);
 }
 
-function xLabels(points: CheckoutTrendPoint[], bucket: "hour" | "day"): Array<{ index: number; label: string }> {
+function xLabels(
+	points: CheckoutTrendPoint[],
+	bucket: "hour" | "day",
+): Array<{ index: number; label: string }> {
 	if (points.length === 0) return [];
 	const step = Math.max(1, Math.ceil((points.length - 1) / 6));
 	const indices = new Set<number>([0, points.length - 1]);
@@ -299,6 +328,9 @@ function xLabels(points: CheckoutTrendPoint[], bucket: "hour" | "day"): Array<{ 
 		.sort((a, b) => a - b)
 		.map((index) => ({
 			index,
-			label: bucket === "hour" ? (points[index]?.bucket ?? "").slice(11, 16) : (points[index]?.bucket ?? "").slice(5),
+			label:
+				bucket === "hour"
+					? (points[index]?.bucket ?? "").slice(11, 16)
+					: (points[index]?.bucket ?? "").slice(5),
 		}));
 }

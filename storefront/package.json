@@ -61,13 +61,14 @@
 		"typecheck:ops-e2e": "tsc --project tsconfig.ops-e2e.json --noEmit"
 	},
 	"dependencies": {
-		"@puckeditor/core": "0.23.0",
 		"@graphql-typed-document-node/core": "3.2.0",
+		"@puckeditor/core": "0.23.0",
 		"@radix-ui/react-dialog": "1.1.17",
 		"@radix-ui/react-dropdown-menu": "2.1.18",
 		"@radix-ui/react-navigation-menu": "1.2.16",
 		"@radix-ui/react-popover": "1.1.15",
 		"@radix-ui/react-select": "2.2.6",
+		"@saleor/app-sdk": "1.15.0",
 		"@saleor/auth-sdk": "1.0.3",
 		"@stripe/react-stripe-js": "6.6.0",
 		"@stripe/stripe-js": "9.8.0",
@@ -100,9 +101,9 @@
 	"devDependencies": {
 		"@graphql-codegen/cli": "6.1.1",
 		"@graphql-codegen/client-preset": "5.2.2",
+		"@graphql-codegen/typed-document-node": "6.1.5",
 		"@graphql-codegen/typescript": "5.0.7",
 		"@graphql-codegen/typescript-operations": "5.0.7",
-		"@graphql-codegen/typed-document-node": "6.1.5",
 		"@graphql-eslint/eslint-plugin": "4.4.0",
 		"@next/env": "16.3.8",
 		"@next/playwright": "16.3.8",

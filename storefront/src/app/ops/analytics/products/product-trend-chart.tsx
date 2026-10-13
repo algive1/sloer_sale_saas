@@ -1,4 +1,6 @@
 "use client";
+import { useOpsI18n } from "@/lib/ops/i18n.client";
+import type { OpsI18n } from "@/lib/ops/i18n";
 
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
@@ -17,11 +19,14 @@ type ProductLegend = {
 
 type MetricKey = "views" | "carts" | "purchases";
 
-const METRICS: Array<{ key: MetricKey; label: string }> = [
-	{ key: "views", label: "Views" },
-	{ key: "carts", label: "Add to cart" },
-	{ key: "purchases", label: "Purchases" },
-];
+const METRICS = (i18n: OpsI18n): Array<{ key: MetricKey; label: string }> => {
+	const { t } = i18n;
+	return [
+		{ key: "views", label: t("浏览") },
+		{ key: "carts", label: t("加购") },
+		{ key: "purchases", label: t("购买") },
+	];
+};
 
 const SERIES_CLASSES = [
 	"text-blue-600 dark:text-blue-400",
@@ -48,6 +53,9 @@ export function ProductTrendChart({
 	products: ProductLegend[];
 	bucket: "hour" | "day";
 }) {
+	const i18n = useOpsI18n();
+	const { t } = i18n;
+
 	const wrapRef = useRef<HTMLDivElement>(null);
 	const [metric, setMetric] = useState<MetricKey>("views");
 	const [hoverIndex, setHoverIndex] = useState<number | null>(null);
@@ -57,10 +65,7 @@ export function ProductTrendChart({
 		Object.fromEntries(products.map((product) => [product.itemKey, true])),
 	);
 
-	const buckets = useMemo(
-		() => [...new Set(rows.map((row) => row.bucket))].sort(),
-		[rows],
-	);
+	const buckets = useMemo(() => [...new Set(rows.map((row) => row.bucket))].sort(), [rows]);
 	const values = useMemo(() => {
 		const byKey = new Map(rows.map((row) => [`${row.bucket}:${row.itemKey}`, row]));
 		return buckets.map((time) => ({
@@ -149,7 +154,7 @@ export function ProductTrendChart({
 	if (products.length === 0) {
 		return (
 			<div className="mt-5 grid h-56 place-items-center rounded-lg border border-border/70 text-sm text-muted-foreground">
-				No product trend data yet.
+				{t("暂无商品趋势数据。")}
 			</div>
 		);
 	}
@@ -158,7 +163,7 @@ export function ProductTrendChart({
 		<div className="mt-5">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex flex-wrap gap-2">
-					{METRICS.map((option) => (
+					{METRICS(i18n).map((option) => (
 						<button
 							key={option.key}
 							type="button"
@@ -266,7 +271,13 @@ export function ProductTrendChart({
 					) : null}
 
 					{xLabels(buckets, bucket).map(({ index, label }) => (
-						<text key={index} x={xAt(index)} y={HEIGHT - 12} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+						<text
+							key={index}
+							x={xAt(index)}
+							y={HEIGHT - 12}
+							textAnchor="middle"
+							className="fill-muted-foreground text-[11px]"
+						>
 							{label}
 						</text>
 					))}
@@ -281,9 +292,9 @@ export function ProductTrendChart({
 						}}
 					>
 						<div className="mb-2 flex items-center justify-between gap-4">
-							<strong>{formatBucket(selected.bucket, bucket)}</strong>
+							<strong>{formatBucket(selected.bucket, bucket, i18n)}</strong>
 							<span className="text-[10px] text-muted-foreground">
-								{pinnedIndex !== null ? "Pinned" : "Click to pin"}
+								{pinnedIndex !== null ? t("已固定") : t("点击固定")}
 							</span>
 						</div>
 						<div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1.5 tabular-nums">
@@ -304,7 +315,8 @@ export function ProductTrendChart({
 				) : null}
 			</div>
 			<p className="mt-2 text-xs text-muted-foreground">
-				Choose a metric, hide or show products, then move across the chart. Click or tap to pin the data bubble.
+				Choose a metric, hide or show products, then move across the chart. Click or tap to pin the data
+				bubble.
 			</p>
 		</div>
 	);
@@ -321,11 +333,13 @@ function tooltipTop(pointerY: number, height: number): string {
 	return `${Math.max(12, Math.min(height - 130, preferred))}px`;
 }
 
-function formatBucket(value: string, bucket: "hour" | "day"): string {
+function formatBucket(value: string, bucket: "hour" | "day", i18n: OpsI18n): string {
+	const { locale } = i18n;
+
 	if (bucket === "hour") {
 		const date = new Date(`${value}:00.000Z`);
 		if (!Number.isNaN(date.getTime())) {
-			return new Intl.DateTimeFormat("en", {
+			return new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				hour: "2-digit",
@@ -338,7 +352,7 @@ function formatBucket(value: string, bucket: "hour" | "day"): string {
 	const date = new Date(`${value}T00:00:00.000Z`);
 	return Number.isNaN(date.getTime())
 		? value
-		: new Intl.DateTimeFormat("en", {
+		: new Intl.DateTimeFormat(locale, {
 				month: "short",
 				day: "numeric",
 				year: "numeric",
@@ -351,8 +365,10 @@ function xLabels(values: string[], bucket: "hour" | "day"): Array<{ index: numbe
 	const step = Math.max(1, Math.ceil((values.length - 1) / 6));
 	const indices = new Set<number>([0, values.length - 1]);
 	for (let index = 0; index < values.length; index += step) indices.add(index);
-	return [...indices].sort((a, b) => a - b).map((index) => ({
-		index,
-		label: bucket === "hour" ? (values[index] ?? "").slice(11, 16) : (values[index] ?? "").slice(5),
-	}));
+	return [...indices]
+		.sort((a, b) => a - b)
+		.map((index) => ({
+			index,
+			label: bucket === "hour" ? (values[index] ?? "").slice(11, 16) : (values[index] ?? "").slice(5),
+		}));
 }
