@@ -66,7 +66,13 @@ function formatTime(stamp: number, i18n: OpsI18n) {
 	}).format(new Date(stamp * 1000));
 }
 
-export function ChatWorkbench({ brands }: { brands: readonly BrandOption[] }) {
+export function ChatWorkbench({
+	brands,
+	canViewSettings,
+}: {
+	brands: readonly BrandOption[];
+	canViewSettings: boolean;
+}) {
 	const i18n = useOpsI18n();
 	const { t } = i18n;
 
@@ -208,12 +214,14 @@ export function ChatWorkbench({ brands }: { brands: readonly BrandOption[] }) {
 							"尚未连接 Chatwoot Agent API。请先配置自托管 Chatwoot、每个品牌独立的 Account 和服务器专用 API Token，然后才能查看并回复真实访客消息。本页不会展示模拟对话。",
 						)}
 					</p>
-					<Link
-						href="/ops/support/settings"
-						className="mt-5 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-secondary"
-					>
-						<Settings2 size={16} /> {t("查看 Chatwoot 设置")}
-					</Link>
+					{canViewSettings && (
+						<Link
+							href="/ops/support/settings"
+							className="mt-5 inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm hover:bg-secondary"
+						>
+							<Settings2 size={16} /> {t("查看 Chatwoot 设置")}
+						</Link>
+					)}
 				</div>
 			</div>
 		);
@@ -242,12 +250,14 @@ export function ChatWorkbench({ brands }: { brands: readonly BrandOption[] }) {
 					>
 						<RefreshCw size={15} /> {t("刷新")}
 					</button>
-					<Link
-						href="/ops/support/settings"
-						className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs hover:bg-secondary"
-					>
-						<Settings2 size={15} /> {t("Chatwoot 设置")}
-					</Link>
+					{canViewSettings && (
+						<Link
+							href="/ops/support/settings"
+							className="inline-flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs hover:bg-secondary"
+						>
+							<Settings2 size={15} /> {t("Chatwoot 设置")}
+						</Link>
+					)}
 				</div>
 			</header>
 

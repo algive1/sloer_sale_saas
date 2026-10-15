@@ -1,3 +1,5 @@
+import { isCommerceOpsPagePath } from "@dashboard/components/CommerceOpsPage/commerceOpsPath";
+
 /**
  * Browser-visible Commerce Ops links. This is navigation only: it does not grant
  * access to the independently authenticated /ops application.
@@ -37,4 +39,26 @@ export function createDashboardOpsPath(
   if (!createOpsHref(base, path)) return null;
 
   return `/commerce-ops?path=${encodeURIComponent(path)}`;
+}
+/** Match the same embedded destination resolved by CommerceOpsPage. */
+export function isDashboardOpsMenuActive(location: string, menuUrl: string): boolean {
+  const requestedPath = new URLSearchParams(location.split("?")[1]).get("path");
+  const currentPath = isCommerceOpsPagePath(requestedPath) ? requestedPath : "/ops/analytics";
+  const targetPath = new URLSearchParams(menuUrl.split("?")[1]).get("path");
+
+  if (!isCommerceOpsPagePath(targetPath)) return false;
+
+  const [currentPage, currentQuery] = currentPath.split("?");
+  const [targetPage, targetQuery] = targetPath.split("?");
+  const currentPagePath = currentPage.replace(/\/$/, "");
+  const targetPagePath = targetPage.replace(/\/$/, "");
+  const samePage =
+    currentPagePath === targetPagePath ||
+    (targetPagePath === "/ops/sites" && currentPagePath.startsWith("/ops/sites/"));
+
+  return (
+    samePage &&
+    new URLSearchParams(currentQuery).get("pageType") ===
+      new URLSearchParams(targetQuery).get("pageType")
+  );
 }

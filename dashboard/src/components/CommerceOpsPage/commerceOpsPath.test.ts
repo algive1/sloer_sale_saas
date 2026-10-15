@@ -22,6 +22,7 @@ describe("isCommerceOpsPagePath", () => {
     "/ops/support",
     "/ops/support/settings",
     "/ops/plugins",
+    "/ops/settings",
     "/ops/merchant",
     "/ops/translations",
   ])("accepts an existing management page: %s", path => {

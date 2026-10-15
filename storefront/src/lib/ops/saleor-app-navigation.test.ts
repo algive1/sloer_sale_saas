@@ -4,6 +4,7 @@ import { isSaleorOpsAppPath } from "./saleor-app-navigation";
 describe("isSaleorOpsAppPath", () => {
 	it.each([
 		"/ops/plugins",
+		"/ops/settings",
 		"/ops/analytics",
 		"/ops/analytics/destinations",
 		"/ops/analytics/reminders",
@@ -11,12 +12,12 @@ describe("isSaleorOpsAppPath", () => {
 		"/ops/themes",
 		"/ops/translations",
 		"/ops/merchant",
-	])("allows an existing system operations page: %s", path => {
+	])("allows an existing system operations page: %s", (path) => {
 		expect(isSaleorOpsAppPath(path)).toBe(true);
 	});
 
 	it.each([null, "https://evil.example/ops/analytics", "/ops/login", "/ops/api/analytics/reminders/run"])(
 		"rejects non-page and unsafe paths: %s",
-		path => expect(isSaleorOpsAppPath(path)).toBe(false),
+		(path) => expect(isSaleorOpsAppPath(path)).toBe(false),
 	);
 });

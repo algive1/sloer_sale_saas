@@ -5,6 +5,7 @@ const opsPagePathPatterns = [
   /^\/ops\/support(?:\/settings)?\/?$/,
   /^\/ops\/merchant\/?$/,
   /^\/ops\/plugins\/?$/,
+  /^\/ops\/settings\/?$/,
   /^\/ops\/translations\/?$/,
 ];
 

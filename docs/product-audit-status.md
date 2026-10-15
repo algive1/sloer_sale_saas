@@ -35,3 +35,9 @@
 官方Apps应分开登记为“源码可部署”“已安装到某个环境”“已配置某个真实品牌账户”“真实交易/投递验收”四种状态。已vendored源码不等于所有服务已经启用；Dummy沙盒已测，不代替正式收单，Chatwoot/广告/邮件真实账户仍需部署资料。
 
 详细证据与边界见 [逐批整改记录](product-audit-remediation.md)、[开发协作记录](development-coordination.md) 和对应PR。每批合并后更新本表；不得把外部验收项替换成自动通过。
+
+## 2026-10-14 本地源码审查修复（尚未生产上线）
+
+用户已确认先修六项根因：多品牌 transactionProcess 所属校验与支付前查询能力、Checkout/订单品牌标识、翻译过期任务失败/手动重试及原子批次/CAS、SSO 实时 API 权限、逐链接权限；同时修客服页面自身 PPR 边界。完整 verify 使用真实本机 Saleor schema：222 文件 / 1,321 项通过（2 项可选 Chrome 跳过）、12 品牌检查通过，Lint 0 errors / 21 既有 warnings；优化生产构建通过。隔离生产 `:3105` 的 Basic 账号浏览器 4 项通过（两语言各 22 路由、iframe 客服往返、语言持久性），独立组件 Chrome 套件另有 6 项通过，不能替代实际支付。
+
+当前实际 Core 只有启用的 USD default-channel，旧容器缺品牌 registry 及所需持久化/provider 凭证；旧 :3000/:9000 未部署本批源码。真实员工 SSO、Stripe、Chatwoot、Resend、广告未联调，品牌 CRUD/新 SKU 导入/RMA 等能力仍缺，不能通过配齐变量宣称完成。多品牌翻译正式发布仍刻意关闭，WhatsApp 仍是跳转入口。翻译本批无迁移；旧半写任务须人工来源核对。详见 [本批审查与续接](product-readiness-audit-2026-10-14.md)，不修改上表历史合并口径。

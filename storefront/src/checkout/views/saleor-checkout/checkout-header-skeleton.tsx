@@ -1,6 +1,8 @@
+"use client";
+
 import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/ui/components/shared/logo";
+import { CheckoutBrandLogo } from "@/checkout/providers/checkout-brand";
 
 const Bone = ({ className }: { className?: string }) => (
 	<div className={cn("animate-pulse rounded bg-muted", className)} />
@@ -19,7 +21,7 @@ export function CheckoutHeaderSkeleton({ step = 1, totalSteps = 3 }: CheckoutHea
 		<header className="bg-background md:border-b md:border-border">
 			<div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6 md:pb-4 md:pt-4 lg:px-8">
 				<div className="flex items-center justify-between">
-					<Logo className="h-7 w-auto" />
+					<CheckoutBrandLogo className="h-7 w-auto" />
 
 					<nav className="hidden items-center gap-2 md:flex" aria-hidden="true">
 						{Array.from({ length: totalSteps }, (_, i) => (
@@ -46,7 +48,7 @@ export function CheckoutHeaderSkeleton({ step = 1, totalSteps = 3 }: CheckoutHea
 					</div>
 					<div className="h-1 overflow-hidden rounded-full bg-muted">
 						<div
-							className="bg-foreground/30 h-full transition-all duration-300"
+							className="h-full bg-foreground/30 transition-all duration-300"
 							style={{ width: `${progressPercentage}%` }}
 						/>
 					</div>

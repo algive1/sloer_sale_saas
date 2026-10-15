@@ -109,3 +109,9 @@
 - 2026-10-12：PR #68最终ef63b31五项适用CI全部通过，已合并b0d0c0c；真实生产Dashboard完成101规格两页读取、原生精度错误导致部分保存但保持未发布、手动重试及全部价格/发布状态重读。中文预览字体补齐后，品牌入口375px无横向溢出/空目录/停用/分析员验证再次通过；下一批仅提交品牌入口及其原生跳转验收。
 
 - 2026-10-12：PR #69最终d97c4d3五项适用CI全部通过并合并97c1679，包含真实品牌入口/新窗口/101规格/分析员/手机及恢复闸门。继续目录缓存：现有Webhook列表刷新缺市场时只用默认市场，分片的generic标签未接事件；本批按可信市场解析范围，Sitemap清单/游标页接统一manifest并立即失效，Compose注入已有服务器密钥字段。CI新增真实签名ProductUpdated投递和预热Jewelry目录后的刷新/原生回执验收。无新数据库、无Core源码改动、不改AI图片/导航/Ops外壳；生产配置及分布式/规模验收仍单列。说明docs/native-catalog-cache.md。
+
+- 2026-10-13：按 `scripts/bootstrap-local.sh` 链路重新部署本机全栈。定位到本机 Docker 客户端配置中的旧代理 `192.168.5.2:7897` 导致构建阶段 Debian/Docker Hub 请求超时；本次未修改全局 Docker 配置或项目代码，仅对本次构建临时清空代理参数并预拉取锁定基础镜像。API/Worker/Migration 构建、PostgreSQL/Valkey/Mailpit、Saleor 全量迁移、GraphQL 查询、Dashboard/Storefront 生产构建及四个 HTTP 端点验收通过；生产 provider/外部服务未联调。
+
+- 2026-10-13：按本机开发请求创建 Saleor 管理员账号 `admin@example.com`，并通过真实 `tokenCreate` GraphQL 登录验证 `isStaff=true`；密码未写入仓库文档，仅存在于本机数据库，生产环境必须立即更换强密码。
+
+- 2026-10-14：用户批准先完成本批六项产品审查缺陷与客服 PPR。源码修复已通过真实本机 Saleor schema 的完整 verify（222 文件/1321 单元，2 可选 Chrome 跳过、12 品牌检查；0 lint 错误/21 既有警告）和优化生产构建；独立 Chrome 组件 6 项及隔离生产 Basic 账号 4 项两语言/iframe/语言浏览器回归通过。保留全部原侧栏、Ops iframe、设计稿和其他未提交改动，无生产部署/商品订单写入；旧 3000/9000 未更新。真实员工 SSO/Stripe/客服/Resend/广告未联调；当前只有 default-channel USD，品牌 registry/provider/持久化缺配置，不能据此宣布上线完成。翻译过期 processing 转 failed 手动 Retry、发布不自动重试、原子批次/CAS 无迁移，旧半写任务人工来源核对。隔离 3105 已停、Colima VM 恢复测试前停止状态。下一窗口沿 docs/product-readiness-audit-2026-10-14.md 继续真实配置与验收，不重复询问已批准修复范围。

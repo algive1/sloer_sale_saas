@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { type ReactNode } from "react";
 
 import { useCheckoutBrowseLocale } from "@/checkout/providers/checkout-browse";
-import { Logo } from "@/ui/components/shared/logo";
+import { CheckoutBrandLogo } from "@/checkout/providers/checkout-brand";
 import { StorefrontHomeLink } from "@/ui/components/shared/storefront-home-link";
 
 type OrderConfirmationPageShellProps = {
@@ -28,7 +28,7 @@ export function OrderConfirmationPageShell({ children, storefrontChannel }: Orde
 							channel={storefrontChannel}
 							className="flex items-center"
 						>
-							<Logo className="h-7 w-auto" />
+							<CheckoutBrandLogo className="h-7 w-auto" />
 						</StorefrontHomeLink>
 
 						<div className="flex items-center gap-1.5 text-muted-foreground">

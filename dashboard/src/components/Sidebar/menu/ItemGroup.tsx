@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import { Box, List, Text } from "@saleor/macaw-ui-next";
 import { Fragment } from "react";
 import { useLocation } from "react-router";
@@ -46,9 +45,8 @@ export const ItemGroup = ({ menuItem }: Props) => {
       data-test-id={`menu-list-item`}
     >
       <List.ItemGroup.Trigger
-        paddingX={2}
-        paddingRight={1}
-        borderRadius={3}
+        paddingX={0}
+        borderRadius={2}
         size="small"
         active={isActive}
         justifyContent="space-between"
@@ -70,7 +68,7 @@ export const ItemGroup = ({ menuItem }: Props) => {
               data-test-id="customers-chat-primary"
             >
               {menuItem.icon}
-              <Text size={3} fontWeight="medium">
+              <Text size={3} fontWeight="medium" className={styles.primaryLabel}>
                 {menuItem.label}
               </Text>
             </a>
@@ -86,16 +84,16 @@ export const ItemGroup = ({ menuItem }: Props) => {
               data-test-id="customers-chat-primary"
             >
               {menuItem.icon}
-              <Text size={3} fontWeight="medium">
+              <Text size={3} fontWeight="medium" className={styles.primaryLabel}>
                 {menuItem.label}
               </Text>
             </Link>
             {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
           </>
         ) : (
-          <Box display="flex" alignItems="center" gap={3} paddingY={2} borderRadius={3}>
+          <Box className={styles.groupLabel}>
             {menuItem.icon}
-            <Text size={3} fontWeight="medium">
+            <Text size={3} fontWeight="medium" className={styles.primaryLabel}>
               {menuItem.label}
             </Text>
             {menuItem.endAdornment && <Box>{menuItem.endAdornment}</Box>}
@@ -103,19 +101,7 @@ export const ItemGroup = ({ menuItem }: Props) => {
         )}
       </List.ItemGroup.Trigger>
       <List.ItemGroup.Content>
-        <Box
-          borderLeftWidth={1}
-          borderLeftStyle="solid"
-          borderColor="default1"
-          paddingLeft={4}
-          marginLeft={3}
-          className={styles.subMenu}
-          display="flex"
-          flexDirection="column"
-          marginBottom={2}
-          marginTop={1}
-          gap="px"
-        >
+        <Box className={styles.subMenu} display="flex" flexDirection="column">
           {menuItem.children?.map((child, index) => (
             <Fragment key={child.id}>
               {showSubmenuSeparator(child, index) && <SubmenuSeparator />}

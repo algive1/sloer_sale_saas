@@ -8,189 +8,217 @@
  */
 export type OpsRole = "platform_admin" | "brand_analyst";
 export type OpsPermissionCode =
-  | "MANAGE_ORDERS"
-  | "MANAGE_PRODUCTS"
-  | "MANAGE_SETTINGS"
-  | "MANAGE_PAGES"
-  | "MANAGE_TRANSLATIONS"
-  | "MANAGE_APPS"
-  | "MANAGE_USERS";
+	| "MANAGE_ORDERS"
+	| "MANAGE_PRODUCTS"
+	| "MANAGE_SETTINGS"
+	| "MANAGE_PAGES"
+	| "MANAGE_TRANSLATIONS"
+	| "MANAGE_APPS"
+	| "MANAGE_USERS";
+
+export const OPS_SETTINGS_PERMISSIONS: readonly OpsPermissionCode[] = [
+	"MANAGE_ORDERS",
+	"MANAGE_PRODUCTS",
+	"MANAGE_SETTINGS",
+	"MANAGE_PAGES",
+	"MANAGE_TRANSLATIONS",
+	"MANAGE_APPS",
+	"MANAGE_USERS",
+];
 
 type Operator = Readonly<{
-  username: string;
-  password: string;
-  role: OpsRole;
-  siteIds: readonly string[];
+	username: string;
+	password: string;
+	role: OpsRole;
+	siteIds: readonly string[];
 }>;
 
 export type OpsAuthorization = "allowed" | "unauthenticated" | "forbidden" | "disabled";
 export type OpsViewer = Readonly<{
-  username: string;
-  role: OpsRole;
-  siteIds: readonly string[];
-  authSource?: "basic" | "saleor";
-  permissions?: readonly OpsPermissionCode[];
-  restrictedAccessToChannels?: boolean;
+	username: string;
+	role: OpsRole;
+	siteIds: readonly string[];
+	authSource?: "basic" | "saleor";
+	permissions?: readonly OpsPermissionCode[];
+	restrictedAccessToChannels?: boolean;
 }>;
 
 export type OpsIdentityInput = {
-  authorization: string | null;
-  operatorsJson: string | undefined;
-  legacySecret: string | undefined;
-  trustedSiteIds: readonly string[];
-  saleorSsoEnabled?: boolean;
+	authorization: string | null;
+	operatorsJson: string | undefined;
+	legacySecret: string | undefined;
+	trustedSiteIds: readonly string[];
+	saleorSsoEnabled?: boolean;
 };
 
-type SaleorOpsViewer = OpsViewer & Readonly<{
-  authSource: "saleor";
-  permissions: readonly OpsPermissionCode[];
-  restrictedAccessToChannels: boolean;
-}>;
+type SaleorOpsViewer = OpsViewer &
+	Readonly<{
+		authSource: "saleor";
+		permissions: readonly OpsPermissionCode[];
+		restrictedAccessToChannels: boolean;
+	}>;
 
 const USERNAME = /^[a-z][a-z0-9_-]{2,63}$/;
 const SITE_ID = /^[a-zA-Z0-9_-]{1,64}$/;
 const PASSWORD = /^[\x21-\x7e]{32,256}$/;
-const BRAND_READ_ROUTE = /^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|catalog(?:\/api)?|fulfillment(?:\/api)?|realtime(?:\/api)?|readiness(?:\/api)?))?\/?$/;
+const BRAND_READ_ROUTE =
+	/^\/ops\/sites\/([a-zA-Z0-9_-]{1,64})(?:\/(?:insights|catalog(?:\/api)?|fulfillment(?:\/api)?|realtime(?:\/api)?|readiness(?:\/api)?))?\/?$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+	return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** Fail closed on malformed/duplicate credentials or invalid brand IDs. */
-export function parseOpsOperators(raw: string | undefined, trustedSiteIds: readonly string[]): readonly Operator[] | null {
-  if (!raw?.trim()) return null;
-  const parsed: unknown = JSON.parse(raw);
-  if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 100) {
-    throw new Error("OPS_OPERATORS_JSON must contain 1–100 operator accounts");
-  }
-  const usernames = new Set<string>();
-  const trusted = new Set(trustedSiteIds);
-  return parsed.map((item: unknown) => {
-    if (!isRecord(item) || typeof item.username !== "string" ||
-      !USERNAME.test(item.username) || item.username === "analytics" ||
-      typeof item.password !== "string" || !PASSWORD.test(item.password) ||
-      (item.role !== "platform_admin" && item.role !== "brand_analyst")) {
-      throw new Error("Invalid OPS_OPERATORS_JSON operator identity, role or password");
-    }
-    const username = item.username as string;
-    const password = item.password as string;
-    const role = item.role as OpsRole;
-    if (usernames.has(username)) throw new Error("Duplicate OPS_OPERATORS_JSON username");
-    usernames.add(username);
-    const sites = item.siteIds;
-    if (role === "platform_admin") {
-      if (sites !== undefined && (!Array.isArray(sites) || sites.length !== 0)) {
-        throw new Error("Platform admin must not declare brand restrictions");
-      }
-      return { username, password, role, siteIds:[] };
-    }
-    if (!Array.isArray(sites) || sites.length === 0 || sites.length > trusted.size ||
-      sites.some((value) => typeof value !== "string" || !SITE_ID.test(value) || !trusted.has(value)) ||
-      new Set(sites).size !== sites.length) {
-      throw new Error("Brand analyst must have unique, configured site IDs");
-    }
-    return { username, password, role, siteIds:[...(sites as string[])] };
-  });
+export function parseOpsOperators(
+	raw: string | undefined,
+	trustedSiteIds: readonly string[],
+): readonly Operator[] | null {
+	if (!raw?.trim()) return null;
+	const parsed: unknown = JSON.parse(raw);
+	if (!Array.isArray(parsed) || parsed.length < 1 || parsed.length > 100) {
+		throw new Error("OPS_OPERATORS_JSON must contain 1–100 operator accounts");
+	}
+	const usernames = new Set<string>();
+	const trusted = new Set(trustedSiteIds);
+	return parsed.map((item: unknown) => {
+		if (
+			!isRecord(item) ||
+			typeof item.username !== "string" ||
+			!USERNAME.test(item.username) ||
+			item.username === "analytics" ||
+			typeof item.password !== "string" ||
+			!PASSWORD.test(item.password) ||
+			(item.role !== "platform_admin" && item.role !== "brand_analyst")
+		) {
+			throw new Error("Invalid OPS_OPERATORS_JSON operator identity, role or password");
+		}
+		const username = item.username as string;
+		const password = item.password as string;
+		const role = item.role as OpsRole;
+		if (usernames.has(username)) throw new Error("Duplicate OPS_OPERATORS_JSON username");
+		usernames.add(username);
+		const sites = item.siteIds;
+		if (role === "platform_admin") {
+			if (sites !== undefined && (!Array.isArray(sites) || sites.length !== 0)) {
+				throw new Error("Platform admin must not declare brand restrictions");
+			}
+			return { username, password, role, siteIds: [] };
+		}
+		if (
+			!Array.isArray(sites) ||
+			sites.length === 0 ||
+			sites.length > trusted.size ||
+			sites.some((value) => typeof value !== "string" || !SITE_ID.test(value) || !trusted.has(value)) ||
+			new Set(sites).size !== sites.length
+		) {
+			throw new Error("Brand analyst must have unique, configured site IDs");
+		}
+		return { username, password, role, siteIds: [...(sites as string[])] };
+	});
 }
 
 function credentials(header: string | null): { username: string; password: string } | null {
-  if (!header?.startsWith("Basic ") || header.length > 1024) return null;
-  try {
-    const decoded = atob(header.slice(6));
-    const colon = decoded.indexOf(":");
-    if (colon < 1) return null;
-    return { username:decoded.slice(0, colon), password:decoded.slice(colon + 1) };
-  } catch {
-    return null;
-  }
+	if (!header?.startsWith("Basic ") || header.length > 1024) return null;
+	try {
+		const decoded = atob(header.slice(6));
+		const colon = decoded.indexOf(":");
+		if (colon < 1) return null;
+		return { username: decoded.slice(0, colon), password: decoded.slice(colon + 1) };
+	} catch {
+		return null;
+	}
 }
 
 function equalConstantTime(left: string, right: string): boolean {
-  let mismatch = left.length ^ right.length;
-  for (let i = 0; i < Math.max(left.length, right.length); i++) {
-    mismatch |= (left.charCodeAt(i) || 0) ^ (right.charCodeAt(i) || 0);
-  }
-  return mismatch === 0;
+	let mismatch = left.length ^ right.length;
+	for (let i = 0; i < Math.max(left.length, right.length); i++) {
+		mismatch |= (left.charCodeAt(i) || 0) ^ (right.charCodeAt(i) || 0);
+	}
+	return mismatch === 0;
 }
 
 /** Derive the logged-in role exclusively from server-held accounts and Basic auth. */
 export function resolveOpsViewer(input: OpsIdentityInput): OpsViewer | null {
-  const operators = parseOpsOperators(input.operatorsJson, input.trustedSiteIds);
-  const creds = credentials(input.authorization);
-  if (operators) {
-    if (!creds) return null;
-    const account = operators.find((entry) => entry.username === creds.username);
-    if (!account || !equalConstantTime(creds.password, account.password)) return null;
-    return { username: account.username, role: account.role, siteIds: account.siteIds };
-  }
-  if (!input.legacySecret?.trim()) return null;
-  if (!creds || creds.username !== "analytics" ||
-    !equalConstantTime(creds.password, input.legacySecret.trim())) return null;
-  return { username: "analytics", role: "platform_admin", siteIds: [] };
+	const operators = parseOpsOperators(input.operatorsJson, input.trustedSiteIds);
+	const creds = credentials(input.authorization);
+	if (operators) {
+		if (!creds) return null;
+		const account = operators.find((entry) => entry.username === creds.username);
+		if (!account || !equalConstantTime(creds.password, account.password)) return null;
+		return { username: account.username, role: account.role, siteIds: account.siteIds };
+	}
+	if (!input.legacySecret?.trim()) return null;
+	if (
+		!creds ||
+		creds.username !== "analytics" ||
+		!equalConstantTime(creds.password, input.legacySecret.trim())
+	)
+		return null;
+	return { username: "analytics", role: "platform_admin", siteIds: [] };
 }
 
-export function authorizeOpsRequest(input: OpsIdentityInput & {
-  pathname: string;
-  method: string;
-  saleorViewer?: SaleorOpsViewer | null;
-}): OpsAuthorization {
-  if (!input.operatorsJson?.trim() && !input.legacySecret?.trim() && !input.saleorSsoEnabled) return "disabled";
-  const viewer = input.saleorViewer ?? resolveOpsViewer(input);
-  if (!viewer) return "unauthenticated";
+export function authorizeOpsRequest(
+	input: OpsIdentityInput & {
+		pathname: string;
+		method: string;
+		saleorViewer?: SaleorOpsViewer | null;
+	},
+): OpsAuthorization {
+	if (!input.operatorsJson?.trim() && !input.legacySecret?.trim() && !input.saleorSsoEnabled)
+		return "disabled";
+	const viewer = input.saleorViewer ?? resolveOpsViewer(input);
+	if (!viewer) return "unauthenticated";
 
-  if (viewer.authSource === "saleor") {
-    return isSaleorOpsRequestAllowed(viewer, input.pathname, input.method) ? "allowed" : "forbidden";
-  }
+	if (viewer.authSource === "saleor") {
+		return isSaleorOpsRequestAllowed(viewer, input.pathname, input.method) ? "allowed" : "forbidden";
+	}
 
-  if (viewer.role === "platform_admin") return "allowed";
-  if (input.method !== "GET" && input.method !== "HEAD") return "forbidden";
-  if (input.pathname === "/ops/sites" || input.pathname === "/ops/sites/") return "allowed";
-  const match = BRAND_READ_ROUTE.exec(input.pathname);
-  return match && viewer.siteIds.includes(match[1] ?? "") ? "allowed" : "forbidden";
+	if (viewer.role === "platform_admin") return "allowed";
+	if (input.method !== "GET" && input.method !== "HEAD") return "forbidden";
+	if (input.pathname === "/ops/sites" || input.pathname === "/ops/sites/") return "allowed";
+	const match = BRAND_READ_ROUTE.exec(input.pathname);
+	return match && viewer.siteIds.includes(match[1] ?? "") ? "allowed" : "forbidden";
 }
 
 /** Share the Saleor permission and restricted-channel rules with protected APIs outside /ops. */
-export function isSaleorOpsRequestAllowed(
-  viewer: OpsViewer,
-  pathname: string,
-  method: string,
-): boolean {
-  if (viewer.authSource !== "saleor") return true;
-  const requiredPermissions = getSaleorOpsPermissions(pathname);
-  if (!requiredPermissions.some(permission => viewer.permissions?.includes(permission))) return false;
-  if (!viewer.restrictedAccessToChannels) return true;
-  if (method !== "GET" && method !== "HEAD") return false;
-  if (pathname === "/ops/sites" || pathname === "/ops/sites/") return true;
-  const match = BRAND_READ_ROUTE.exec(pathname);
-  return Boolean(match && viewer.siteIds.includes(match[1] ?? ""));
+export function isSaleorOpsRequestAllowed(viewer: OpsViewer, pathname: string, method: string): boolean {
+	if (viewer.authSource !== "saleor") return true;
+	const requiredPermissions = getSaleorOpsPermissions(pathname);
+	if (!requiredPermissions.some((permission) => viewer.permissions?.includes(permission))) return false;
+	if (!viewer.restrictedAccessToChannels) return true;
+	if (method !== "GET" && method !== "HEAD") return false;
+	if (pathname === "/ops/sites" || pathname === "/ops/sites/") return true;
+	const match = BRAND_READ_ROUTE.exec(pathname);
+	return Boolean(match && viewer.siteIds.includes(match[1] ?? ""));
 }
 
 function getSaleorOpsPermissions(pathname: string): readonly OpsPermissionCode[] {
-  if (/^\/ops\/analytics\/destinations(?:\/|$)/.test(pathname)) {
-    return ["MANAGE_APPS", "MANAGE_SETTINGS"];
-  }
-  if (/^\/ops\/analytics\/reminders(?:\/|$)|^\/ops\/api\/analytics\/reminders(?:\/|$)/.test(pathname)) {
-    return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
-  }
-  if (/^\/ops\/analytics(?:\/|$)/.test(pathname)) {
-    return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
-  }
-  if (/^\/ops\/sites(?:\/|$)/.test(pathname)) {
-    if (/^\/ops\/sites\/[^/]+\/catalog(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS"];
-    if (/^\/ops\/sites\/[^/]+\/(?:fulfillment|tracking)(?:\/|$)/.test(pathname)) {
-      return ["MANAGE_ORDERS"];
-    }
-    if (/^\/ops\/sites\/[^/]+\/readiness(?:\/|$)/.test(pathname)) return ["MANAGE_SETTINGS"];
-    if (/^\/ops\/sites\/[^/]+(?:\/|$)/.test(pathname)) {
-      return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
-    }
-    return ["MANAGE_ORDERS", "MANAGE_PRODUCTS", "MANAGE_SETTINGS", "MANAGE_PAGES"];
-  }
-  if (/^\/ops\/themes(?:\/|$)/.test(pathname)) return ["MANAGE_PAGES", "MANAGE_SETTINGS"];
-  if (/^\/ops\/translations(?:\/|$)/.test(pathname)) return ["MANAGE_TRANSLATIONS"];
-  if (/^\/ops\/support\/settings(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_SETTINGS"];
-  if (/^\/ops\/support(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_ORDERS"];
-  if (/^\/ops\/plugins(?:\/|$)/.test(pathname)) return ["MANAGE_APPS", "MANAGE_SETTINGS"];
-  if (/^\/ops\/merchant(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS", "MANAGE_SETTINGS"];
-  return [];
+	if (/^\/ops\/settings\/?$/.test(pathname)) return OPS_SETTINGS_PERMISSIONS;
+	if (/^\/ops\/analytics\/destinations(?:\/|$)/.test(pathname)) {
+		return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+	}
+	if (/^\/ops\/analytics\/reminders(?:\/|$)|^\/ops\/api\/analytics\/reminders(?:\/|$)/.test(pathname)) {
+		return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+	}
+	if (/^\/ops\/analytics(?:\/|$)/.test(pathname) || pathname === "/ops/api/analytics/realtime") {
+		return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+	}
+	if (/^\/ops\/sites(?:\/|$)/.test(pathname)) {
+		if (/^\/ops\/sites\/[^/]+\/catalog(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS"];
+		if (/^\/ops\/sites\/[^/]+\/(?:fulfillment|tracking)(?:\/|$)/.test(pathname)) {
+			return ["MANAGE_ORDERS"];
+		}
+		if (/^\/ops\/sites\/[^/]+\/readiness(?:\/|$)/.test(pathname)) return ["MANAGE_SETTINGS"];
+		if (/^\/ops\/sites\/[^/]+(?:\/|$)/.test(pathname)) {
+			return ["MANAGE_ORDERS", "MANAGE_SETTINGS"];
+		}
+		return ["MANAGE_ORDERS", "MANAGE_PRODUCTS", "MANAGE_SETTINGS", "MANAGE_PAGES"];
+	}
+	if (/^\/ops\/themes(?:\/|$)/.test(pathname)) return ["MANAGE_PAGES", "MANAGE_SETTINGS"];
+	if (/^\/ops\/translations(?:\/|$)/.test(pathname)) return ["MANAGE_TRANSLATIONS"];
+	if (/^\/ops\/support\/settings(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_SETTINGS"];
+	if (/^\/ops\/support(?:\/|$)/.test(pathname)) return ["MANAGE_USERS", "MANAGE_ORDERS"];
+	if (/^\/ops\/plugins(?:\/|$)/.test(pathname)) return ["MANAGE_APPS", "MANAGE_SETTINGS"];
+	if (/^\/ops\/merchant(?:\/|$)/.test(pathname)) return ["MANAGE_PRODUCTS", "MANAGE_SETTINGS"];
+	return [];
 }

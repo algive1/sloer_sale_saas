@@ -55,10 +55,14 @@ export const SALEOR_OPS_APP_LINKS = [
 	permissions: readonly AppPermission[];
 }[];
 
-export type SaleorOpsAppPath = (typeof SALEOR_OPS_APP_LINKS)[number]["path"] | "/ops/plugins";
+export type SaleorOpsAppPath =
+	| (typeof SALEOR_OPS_APP_LINKS)[number]["path"]
+	| "/ops/plugins"
+	| "/ops/settings";
 const allowedPaths: ReadonlySet<string> = new Set([
 	...SALEOR_OPS_APP_LINKS.map((link) => link.path),
 	"/ops/plugins",
+	"/ops/settings",
 ]);
 
 export function isSaleorOpsAppPath(path: string | null): path is SaleorOpsAppPath {

@@ -3,13 +3,12 @@ import { createContext, type ReactNode, useContext, useEffect, useState } from "
 type SidebarBreakpoint = "default" | "wide";
 
 export const ADMIN_ACCENTS = {
-  blue: "#2563eb",
+  blue: "#496786",
   slate: "#475569",
   teal: "#0f766e",
 } as const;
 
 export type AdminAccent = keyof typeof ADMIN_ACCENTS;
-
 
 interface SidebarContextValue {
   breakpoint: SidebarBreakpoint;
@@ -84,7 +83,16 @@ export const SidebarProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <SidebarContext.Provider
-      value={{ breakpoint, setBreakpoint, collapsed, setCollapsed, expandedGroup, expandGroup, accent, setAccent }}
+      value={{
+        breakpoint,
+        setBreakpoint,
+        collapsed,
+        setCollapsed,
+        expandedGroup,
+        expandGroup,
+        accent,
+        setAccent,
+      }}
     >
       {children}
     </SidebarContext.Provider>

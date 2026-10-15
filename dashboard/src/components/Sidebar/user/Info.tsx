@@ -1,5 +1,4 @@
 import { useUser } from "@dashboard/auth/useUser";
-import { savebarHeight } from "@dashboard/components/AppLayout/consts";
 import { UserAvatar } from "@dashboard/components/UserAvatar/UserAvatar";
 import { getUserInitials, getUserName } from "@dashboard/misc";
 import { Box, Text } from "@saleor/macaw-ui-next";
@@ -20,16 +19,20 @@ export const UserInfo = ({ compact = false }: { compact?: boolean }) => {
       borderColor="default1"
       borderTopStyle="solid"
       justifyContent="space-between"
-      __height={compact ? "104px" : savebarHeight}
-      className={compact ? styles.compactUser : undefined}
+      className={`${styles.userInfo} ${compact ? styles.compactUser : ""}`}
     >
       <Box display="flex" gap={3} alignItems="center" minWidth={0} flexGrow="1">
         <Box flexShrink="0" title={getUserName(user!, true)}>
-          <UserAvatar initials={getUserInitials(user!)} url={user?.avatar?.url} />
+          <UserAvatar
+            initials={getUserInitials(user!)}
+            url={user?.avatar?.url}
+            className={styles.userAvatar}
+            style={userAvatarStyle}
+          />
         </Box>
         {!compact && (
           <Box minWidth={0} className="ellipsis">
-            <Text size={3} fontWeight="bold">
+            <Text size={3} fontWeight="bold" className={styles.userName}>
               {getUserName(user!, true)}
             </Text>
           </Box>
@@ -38,4 +41,9 @@ export const UserInfo = ({ compact = false }: { compact?: boolean }) => {
       <UserControls compact={compact} />
     </Box>
   );
+};
+
+const userAvatarStyle = {
+  backgroundColor: "var(--commerce-admin-nav-border)",
+  color: "var(--commerce-admin-nav-muted)",
 };

@@ -5,6 +5,7 @@ import { orderDraftListUrl, orderDraftPath, orderListUrl, orderPath } from "@das
 import { matchPath } from "react-router";
 
 import { commerceOpsExtensionLabel } from "./commerceOpsExtensionLabel";
+import { isDashboardOpsMenuActive } from "./commerceOpsLinks";
 import { getQueryListFilterValues, isCustomerTypeNavItem } from "./createCustomerTypeMenuItems";
 import { type SidebarMenuItem } from "./types";
 
@@ -96,6 +97,11 @@ export function isMenuActive(location: string, menuItem: SidebarMenuItem) {
 
   if (isMenuItemExtension(menuItem)) {
     return false;
+  }
+
+  // Ops pages share the Dashboard pathname; their actual destination is in `path`.
+  if (menuItem.url?.split("?")[0] === "/commerce-ops") {
+    return activeUrl === "/commerce-ops" && isDashboardOpsMenuActive(location, menuItem.url);
   }
 
   // Filter shortcuts share a list path and differ only by query (pageTypes / customerTypes),

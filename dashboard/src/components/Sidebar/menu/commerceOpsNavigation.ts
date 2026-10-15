@@ -7,7 +7,23 @@ import { PermissionEnum } from "@dashboard/graphql";
  * authorization. No new upstream Saleor menu component is needed.
  * Visibility in Dashboard is merely a convenience, never authorization.
  */
-export type CommerceOpsSection = "orders" | "customers" | "analytics" | "store" | "apps";
+export type CommerceOpsSection =
+  | "orders"
+  | "customers"
+  | "analytics"
+  | "store"
+  | "apps"
+  | "settings";
+
+export const COMMERCE_OPS_SETTINGS_PERMISSIONS: PermissionEnum[] = [
+  PermissionEnum.MANAGE_ORDERS,
+  PermissionEnum.MANAGE_PRODUCTS,
+  PermissionEnum.MANAGE_SETTINGS,
+  PermissionEnum.MANAGE_PAGES,
+  PermissionEnum.MANAGE_TRANSLATIONS,
+  PermissionEnum.MANAGE_APPS,
+  PermissionEnum.MANAGE_USERS,
+];
 
 interface CommerceOpsEntry {
   id: string;
@@ -19,6 +35,14 @@ interface CommerceOpsEntry {
 }
 
 export const commerceOpsNavigation: readonly CommerceOpsEntry[] = [
+  {
+    id: "commerce-configuration",
+    section: "settings",
+    zh: "运营配置中心",
+    en: "Operations configuration",
+    path: "/ops/settings",
+    permissions: COMMERCE_OPS_SETTINGS_PERMISSIONS,
+  },
   {
     id: "commerce-payment-reminders",
     section: "orders",

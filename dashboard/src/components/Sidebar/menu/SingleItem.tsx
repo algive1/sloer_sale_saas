@@ -1,10 +1,10 @@
 import { Box, List, sprinkles } from "@saleor/macaw-ui-next";
 import { ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useIntl } from "react-intl";
+import { Link } from "react-router-dom";
 
-import { useIsMenuActive } from "./hooks/useIsMenuActive";
 import styles from "./CommerceSidebar.module.css";
+import { useIsMenuActive } from "./hooks/useIsMenuActive";
 import { MenuItemLabel } from "./MenuItemLabel";
 import { type SidebarMenuItem } from "./types";
 
@@ -26,10 +26,10 @@ export const SingleItem = ({ menuItem }: Props) => {
 
   const content = (
     <Box
-      paddingY={2}
       gap={menuItem.labelStyle === "settings" ? 1.5 : 3}
       display="flex"
       alignItems="center"
+      className={styles.itemContent}
     >
       {menuItem.icon}
       <MenuItemLabel menuItem={menuItem} />
@@ -39,7 +39,7 @@ export const SingleItem = ({ menuItem }: Props) => {
 
   return (
     <List.Item
-      borderRadius={3}
+      borderRadius={2}
       paddingX={0}
       active={active}
       onClick={handleMenuItemClick}

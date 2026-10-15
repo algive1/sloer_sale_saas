@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type { OpsRole } from "@/lib/ops/authorization";
 import type { OpsNavigationGroup, OpsNavigationItem } from "@/lib/ops/navigation";
+import { configurationForPath } from "@/lib/ops/configuration";
 import styles from "./ops-shell.module.css";
 
 const COLLAPSED_KEY = "commerce-ops-sidebar-collapsed";
@@ -47,8 +48,17 @@ export function OpsShell({ children, groups, username, role, authSource, dashboa
 
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
-	const embedded = searchParams.get("embedded") === "1";
+	const [insideFrame, setInsideFrame] = useState(false);
+	const embedded = searchParams.get("embedded") === "1" || insideFrame;
 	const pageType = searchParams.get("pageType");
+	const canViewConfiguration = groups.some((group) =>
+		group.children.some((item) => item.href === "/ops/settings"),
+	);
+	const configuration = configurationForPath(pathname);
+	const configurationHref =
+		configuration && groups.some((group) => group.children.some((item) => item.href === configuration.href))
+			? `/ops/settings#${configuration.id}`
+			: "/ops/settings";
 	const [collapsed, setCollapsed] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
 	const [mobileViewport, setMobileViewport] = useState(false);
@@ -60,9 +70,10 @@ export function OpsShell({ children, groups, username, role, authSource, dashboa
 	const [accent, setAccent] = useState<Accent>("blue");
 
 	useEffect(() => {
-		// Browser-local preferences are outside React. Apply them after hydration
-		// without synchronously cascading a render in the mounting effect.
+		// Next Link can drop the embedded query while this iframe stays mounted.
+		// Read browser context and local preferences after hydration.
 		const frame = window.requestAnimationFrame(() => {
+			setInsideFrame(window.parent !== window);
 			try {
 				setCollapsed(window.localStorage.getItem(COLLAPSED_KEY) === "true");
 				const value = window.localStorage.getItem(ACCENT_KEY);
@@ -297,7 +308,21 @@ export function OpsShell({ children, groups, username, role, authSource, dashboa
 						</a>
 					)}
 				</header>
-				<div className={styles.pageContent}>{children}</div>
+				<div className={styles.pageContent}>
+					{canViewConfiguration && pathname !== "/ops/settings" && (
+						<div className="flex justify-end px-5 pt-4">
+							<a
+								href={configurationHref}
+								className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold hover:bg-muted"
+								data-testid="ops-configuration-link"
+							>
+								{t(configurationHref === "/ops/settings" ? "配置中心" : "配置与接入")}
+								<ExternalLink size={15} aria-hidden="true" />
+							</a>
+						</div>
+					)}
+					{children}
+				</div>
 			</div>
 		</div>
 	);

@@ -1,5 +1,6 @@
 import { Text } from "@saleor/macaw-ui-next";
 
+import styles from "./CommerceSidebar.module.css";
 import { type SidebarMenuItem } from "./types";
 
 interface MenuItemLabelProps {
@@ -14,14 +15,14 @@ export const MenuItemLabel = ({ menuItem }: MenuItemLabelProps) => {
 
   if (menuItem.labelStyle === "settings") {
     return (
-      <Text size={2} fontWeight="regular" color="default2">
+      <Text size={2} fontWeight="regular" className={`${styles.itemLabel} ${styles.settingsLabel}`}>
         {menuItem.label}
       </Text>
     );
   }
 
   return (
-    <Text size={3} fontWeight="medium">
+    <Text size={3} fontWeight="medium" className={styles.itemLabel}>
       {menuItem.label}
     </Text>
   );

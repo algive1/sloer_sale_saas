@@ -59,3 +59,22 @@ mutation transactionProcess($id: ID!, $data: JSON) {
 		}
 	}
 }
+
+query TransactionCheckoutForAuthorization($id: ID!) {
+	transaction(id: $id) {
+		id
+		checkout {
+			id
+		}
+	}
+}
+
+query TransactionAuthorizationCapability {
+	transactions(first: 1) {
+		edges {
+			node {
+				id
+			}
+		}
+	}
+}

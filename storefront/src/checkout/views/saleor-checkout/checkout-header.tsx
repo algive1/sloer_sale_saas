@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { useCheckoutBrowseLocale } from "@/checkout/providers/checkout-browse";
 import { useTranslations } from "next-intl";
 import { useCheckoutSteps } from "@/checkout/hooks/use-checkout-steps";
-import { Logo } from "@/ui/components/shared/logo";
+import { CheckoutBrandLogo } from "@/checkout/providers/checkout-brand";
 import { StorefrontHomeLink } from "@/ui/components/shared/storefront-home-link";
 
 interface CheckoutHeaderProps {
@@ -43,7 +43,7 @@ export function CheckoutHeader({
 						channel={storefrontChannel}
 						className="flex items-center"
 					>
-						<Logo className="h-7 w-auto" />
+						<CheckoutBrandLogo className="h-7 w-auto" />
 					</StorefrontHomeLink>
 
 					{/* Progress Steps - Desktop */}

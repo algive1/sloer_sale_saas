@@ -1,6 +1,6 @@
 import { useCloud } from "@dashboard/auth/hooks/useCloud";
 import { Box, Text, Tooltip } from "@saleor/macaw-ui-next";
-import { CloudIcon, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, CloudIcon } from "lucide-react";
 import { FormattedMessage, useIntl } from "react-intl";
 
 import styles from "./menu/CommerceSidebar.module.css";
@@ -20,16 +20,22 @@ export const MountingPoint = ({
   const intl = useIntl();
   const isZh = intl.locale.toLowerCase().startsWith("zh");
   const toggleLabel = compact
-    ? (isZh ? "展开侧边导航" : "Expand sidebar")
-    : (isZh ? "收起侧边导航" : "Collapse sidebar");
+    ? isZh
+      ? "展开侧边导航"
+      : "Expand sidebar"
+    : isZh
+      ? "收起侧边导航"
+      : "Collapse sidebar";
 
   return (
     <div className={`${styles.brandHeader} ${compact ? styles.brandHeaderCompact : ""}`}>
       <div className={styles.brandIdentity}>
-        <span className={styles.brandMonogram} aria-hidden="true">S</span>
+        <span className={styles.brandMonogram} aria-hidden="true">
+          S
+        </span>
         {!compact && (
           <div className={styles.brandText}>
-            <Text size={3} fontWeight="bold">
+            <Text size={3} fontWeight="bold" className={styles.brandName}>
               SLOER Commerce
             </Text>
             <span className={styles.adminTag}>Admin</span>
@@ -72,8 +78,11 @@ export const MountingPoint = ({
             onClick={() => setCollapsed(!compact)}
             data-test-id="commerce-sidebar-toggle"
           >
-            {compact ? <PanelLeftOpen size={17} aria-hidden="true" /> :
-              <PanelLeftClose size={17} aria-hidden="true" />}
+            {compact ? (
+              <ChevronsRight size={16} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <ChevronsLeft size={16} strokeWidth={1.5} aria-hidden="true" />
+            )}
           </button>
         )}
       </div>

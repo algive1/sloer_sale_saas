@@ -85,7 +85,14 @@ import { getStripePaymentGuardError, isStripePaymentEnabled } from "@/checkout/l
 import { buildMarketingConsentMetadata } from "@/checkout/lib/marketing-consent";
 import { enrichCheckoutCommerceContext } from "@/checkout/lib/server/enrich-commerce-context";
 import { fetchCheckoutOnServer } from "@/checkout/lib/server/fetch-checkout";
-import { requireCheckoutForCurrentHost, requireCheckoutVariablesForCurrentHost } from "@/checkout/lib/server/require-checkout-site";
+import {
+	requireCheckoutForCurrentHost,
+	requireCheckoutVariablesForCurrentHost,
+} from "@/checkout/lib/server/require-checkout-site";
+import {
+	requireTransactionForCurrentHost,
+	requireTransactionAuthorizationCapability,
+} from "@/checkout/lib/server/require-transaction-site";
 import { requireChannelForCurrentHost } from "@/lib/brand/request-scope";
 import { brandSitesConfigured } from "@/config/brand-sites";
 import { getCheckoutServerTranslations } from "@/checkout/lib/server/get-checkout-server-translations";
@@ -273,7 +280,8 @@ export async function updateCheckoutShippingAddress(
 }
 
 export async function attachCustomerToCheckout(checkoutId: string): Promise<CheckoutActionResult> {
-	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Customer account attachment is disabled for multi-brand checkouts" };
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON))
+		return { ok: false, error: "Customer account attachment is disabled for multi-brand checkouts" };
 	await requireCheckoutForCurrentHost(checkoutId);
 	const result = await executeAuthenticatedGraphQL(checkoutCustomerAttachDocument, {
 		variables: {
@@ -296,7 +304,8 @@ export async function registerCheckoutAccount(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
-	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Customer account registration is unavailable on multi-brand storefronts" };
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON))
+		return { ok: false, error: "Customer account registration is unavailable on multi-brand storefronts" };
 	await requireChannelForCurrentHost(input.channel);
 	// Confirmation emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
@@ -466,7 +475,9 @@ export async function updateCheckoutBillingAddress(input: {
 		variables: {
 			checkoutId: input.checkoutId,
 			billingAddress: input.billingAddress,
-			saveAddress: sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON) ? input.saveAddress : false,
+			saveAddress: sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)
+				? input.saveAddress
+				: false,
 			languageCode: await checkoutGraphqlLanguageCode(),
 		},
 		cache: "no-cache",
@@ -510,6 +521,7 @@ export async function initializeCheckoutTransaction(
 	variables: TransactionInitializeMutationVariables,
 ): Promise<TransactionInitializeActionResult> {
 	await requireCheckoutVariablesForCurrentHost(variables);
+	await requireTransactionAuthorizationCapability();
 	const { server: t } = await getCheckoutServerTranslations();
 
 	const dummyGuardError = getDummyPaymentGuardError(variables.paymentGateway?.id);
@@ -563,7 +575,7 @@ export async function initializeCheckoutTransaction(
 export async function processCheckoutTransaction(
 	variables: TransactionProcessMutationVariables,
 ): Promise<TransactionProcessActionResult> {
-	await requireCheckoutVariablesForCurrentHost(variables);
+	await requireTransactionForCurrentHost(variables.id);
 	// Mirror the initialize guards: when every integrated gateway is disabled for this
 	// environment, a direct call to this action must not drive transactions either.
 	// Forks adding gateways should extend this check alongside the initialize guards.
@@ -599,10 +611,10 @@ export async function runCheckoutComplete(checkoutId: string): Promise<CheckoutC
 	// Snapshot lines before completion so server-side conversion delivery can include
 	// product ids even though the compact checkoutComplete mutation returns only totals.
 	const checkoutBeforeComplete = await fetchCheckoutOnServer(checkoutId);
-  // Never complete a checkout from another brand using its leaked/guessed ID.
-  if (brandSitesConfigured() && (!checkoutBeforeComplete.ok || !checkoutBeforeComplete.checkout)) {
-    return { ok: false, error: "Checkout not available for this storefront" };
-  }
+	// Never complete a checkout from another brand using its leaked/guessed ID.
+	if (brandSitesConfigured() && (!checkoutBeforeComplete.ok || !checkoutBeforeComplete.checkout)) {
+		return { ok: false, error: "Checkout not available for this storefront" };
+	}
 
 	// Before complete — Saleor copies checkout public metadata onto the order.
 	await enrichCheckoutCommerceContext(checkoutId);
@@ -756,7 +768,8 @@ export async function requestCheckoutPasswordReset(input: {
 	channel: string;
 	redirectUrl: string;
 }): Promise<SimpleActionResult> {
-	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Shared password reset is unavailable on multi-brand storefronts" };
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON))
+		return { ok: false, error: "Shared password reset is unavailable on multi-brand storefronts" };
 	await requireChannelForCurrentHost(input.channel);
 	// Reset emails embed this URL — reject foreign origins (phishing vector).
 	if (!isAllowedRedirectUrl(input.redirectUrl)) {
@@ -793,7 +806,8 @@ export async function setUserDefaultAddress(
 	addressId: string,
 	type: AddressTypeEnum,
 ): Promise<SimpleActionResult> {
-	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON)) return { ok: false, error: "Saved account addresses are unavailable on multi-brand storefronts" };
+	if (!sharedCustomerAccountsEnabled(process.env.STOREFRONT_SITES_JSON))
+		return { ok: false, error: "Saved account addresses are unavailable on multi-brand storefronts" };
 	const result = await executeAuthenticatedGraphQL(userSetDefaultAddressDocument, {
 		variables: { id: addressId, type },
 		cache: "no-cache",

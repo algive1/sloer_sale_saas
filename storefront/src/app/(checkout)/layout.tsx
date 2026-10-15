@@ -1,5 +1,5 @@
 import "../globals.css";
-import { type ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { GeistMono } from "geist/font/mono";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getDefaultLocaleSlug, resolveLocaleFromSlug } from "@/config/locale";
@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 import { speedInsightsSampleRate } from "@/lib/speed-insights";
 import { AnalyticsMount } from "@/ui/components/analytics-mount";
 import { brandSitesConfigured } from "@/config/brand-sites";
+
+import { CheckoutBrandBoundary } from "./checkout-brand-boundary";
+import { CheckoutRouteFallback } from "@/checkout/views/saleor-checkout/checkout-route-fallback";
 
 const defaultHtmlLang = resolveLocaleFromSlug(getDefaultLocaleSlug()).htmlLang;
 
@@ -22,9 +25,17 @@ export default function CheckoutLayout(props: { children: ReactNode }) {
 	const htmlProps = getRootHtmlFontProps(defaultHtmlLang);
 
 	return (
-		<html {...htmlProps} data-multibrand={brandSitesConfigured() ? "true" : undefined} className={cn(htmlProps.className, GeistMono.variable)}>
+		<html
+			{...htmlProps}
+			data-multibrand={brandSitesConfigured() ? "true" : undefined}
+			className={cn(htmlProps.className, GeistMono.variable)}
+		>
 			<body className="min-h-dvh font-sans">
-				<main className="min-h-dvh">{props.children}</main>
+				<main className="min-h-dvh">
+					<Suspense fallback={<CheckoutRouteFallback />}>
+						<CheckoutBrandBoundary>{props.children}</CheckoutBrandBoundary>
+					</Suspense>
+				</main>
 				{/* Sampled — unsampled Speed Insights dominates the Vercel bill at scale. */}
 				<SpeedInsights sampleRate={speedInsightsSampleRate()} />
 				{/* AnalyticsMount controls runtime tracking policy and redaction. */}

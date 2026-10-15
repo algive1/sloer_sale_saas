@@ -153,7 +153,6 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
 
   return (
     <Box
-      padding={2}
       className={`${styles.menuRoot} ${styles.menuColumn}`}
       display="flex"
       flexDirection="column"
@@ -174,7 +173,7 @@ export const Menu = ({ compact = false }: { compact?: boolean }) => {
         </Link>
       )}
       <div className={`hide-scrollbar ${styles.menuScroll}`}>
-        <List as="ol" display="grid" gap={1} data-test-id="menu-list">
+        <List as="ol" display="grid" gap={0} data-test-id="menu-list">
           {mainItems.map(item => (
             <MenuItem menuItem={item} key={item.id} />
           ))}

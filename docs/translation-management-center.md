@@ -13,17 +13,22 @@ NEXT_PUBLIC_STOREFRONT_LOCALES=en,de,fr
 NEXT_PUBLIC_STOREFRONT_LOCALE_CHANNELS=en:us,de:us,fr:us
 
 # 使用 ANALYTICS_LIBSQL_URL / ANALYTICS_LIBSQL_AUTH_TOKEN，
+
 # 或者指定一组独立凭证（不能只设置其中一项）。
+
 TRANSLATION_LIBSQL_URL=
 TRANSLATION_LIBSQL_AUTH_TOKEN=
 
 # 服务端 ONLY：需要 MANAGE_PRODUCTS 和 MANAGE_TRANSLATIONS 的专用服务 token。
+
 TRANSLATION_SALEOR_TOKEN=
 TRANSLATION_AI_BASE_URL=https://your-approved-model.example/v1
 TRANSLATION_AI_API_KEY=
 TRANSLATION_AI_MODEL=
 TRANSLATION_WORKER_SECRET=REPLACE_WITH_RANDOM_SECRET_LONGER_THAN_32_CHARS
+
 # 默认关闭 Saleor 正式写入
+
 TRANSLATION_PUBLISH_ENABLED=0
 \`\`\`
 
@@ -44,10 +49,11 @@ TRANSLATION_PUBLISH_ENABLED=0
 - 后台写操作要求同源 Origin + JSON；未知品牌、非法语言×Channel 组合都拒绝。
 - 原文哈希、编辑版本 CAS、队列 CAS、防重复活动任务以及按状态转换，避免重复支出与审核覆盖。
 - 存储表按任务的 site/channel/locale 关联；API 读取必须按当前 siteId 授权，Worker 仅凭服务器内部生成的作用域进行处理。
-- Worker 认领超时后可有限次数恢复；**发布阶段**失败或网络超时标为 \`needs_reconciliation\`，不得直接重复提交，必须人工到 Saleor 对账。
+- Worker 的 processing 超过 15 分钟后转为 failed，管理员核查后可明确手动 Retry；恢复不依赖编辑 revision。**发布阶段**及不确定结果绝不自动重试；失败或网络超时标为 \`needs_reconciliation\`，必须人工到 Saleor 对账。
+- 创建批次以数据库事务原子写入 job、全部 items 与分页游标，通过活动任务/最新任务 CAS 防止并发重复与跳页。本批无数据库迁移；旧版本已经部分写入的批次不能据此自动补齐，须对照原生商品来源人工核对后处理。
 - 只有单个商品在当前 Channel 的名称、描述、SEO 字段参与翻译。本期不处理分类/集合、富文本复杂块、CMS/Puck、政策、邮件、SKU 属性的后台可视化翻译；原 PR #35 的命令行导入仍可用于分类与集合。
 - AI 服务需返回严格 JSON；禁止额外字段、HTML、空译文和改变占位符；对运输、关税、材质或法律承诺仍需人工审核。
-- 目前 Basic Auth 为整个运营后台共享凭证：**没有逐管理员身份、审计签名与角色级审核授权**。上线多人员流程之前须增加独立运营登录与审核审计日志。不能把此 V1 误认为完整 Shopify Translate & Adapt/TMS 方案。
+- 当前运营边界已支持个人 Ops 账号、品牌只读角色和 Saleor 员工权限；生产撤权与完整审核审计仍需验收，不能把现有队列误认为完整 Shopify Translate & Adapt/TMS 方案。
 - AI 提供商会接收商品内容；必须先审核其隐私、数据存储与成本。
 - 不在顾客链路增加 SQL/AI 请求；可选 worker 单条串行，独立于 checkout。
 

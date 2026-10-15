@@ -3,6 +3,8 @@ import { type Extension } from "@dashboard/extensions/types";
 import { type PermissionEnum } from "@dashboard/graphql";
 import { orderDraftListUrl, orderListUrl } from "@dashboard/orders/urls";
 
+import { createDashboardOpsPath } from "./commerceOpsLinks";
+import { commerceOpsNavigation } from "./commerceOpsNavigation";
 import { type SidebarMenuItem } from "./types";
 import { getMenuItemExtension, isMenuActive, mapToExtensionsItems } from "./utils";
 
@@ -107,7 +109,12 @@ describe("mapToExtensionsItems", () => {
 });
 
 describe("exact-match navigation summaries", () => {
-  const section = { id: "settings-overview", type: "item", url: "/configuration", exactMatch: true } as const;
+  const section = {
+    id: "settings-overview",
+    type: "item",
+    url: "/configuration",
+    exactMatch: true,
+  } as const;
 
   it("selects summary only on the summary route", () => {
     expect(isMenuActive("/configuration", section)).toBe(true);
@@ -116,7 +123,9 @@ describe("exact-match navigation summaries", () => {
   });
 
   it("retains the original prefix behavior for ordinary catalog sections", () => {
-    expect(isMenuActive("/products/123", { id: "products", type: "item", url: "/products" })).toBe(true);
+    expect(isMenuActive("/products/123", { id: "products", type: "item", url: "/products" })).toBe(
+      true,
+    );
   });
 });
 
@@ -284,6 +293,47 @@ describe("isMenuActive", () => {
     const result = isMenuActive(orderListUrl(), orderMenuItem);
 
     expect(result).toBe(true);
+  });
+});
+
+describe("Commerce Ops selected menu", () => {
+  const opsItems: SidebarMenuItem[] = commerceOpsNavigation.map(entry => ({
+    id: entry.id,
+    type: "item",
+    url: createDashboardOpsPath("http://localhost:3000", entry.path) ?? undefined,
+  }));
+
+  it.each(commerceOpsNavigation)("selects only $id for its embedded destination", entry => {
+    // Arrange
+    const location = createDashboardOpsPath("http://localhost:3000", entry.path) ?? "";
+
+    // Act
+    const selected = opsItems.filter(item => isMenuActive(location, item));
+
+    // Assert
+    expect(selected.map(item => item.id)).toEqual([entry.id]);
+  });
+
+  it.each(["/commerce-ops", "/commerce-ops?path=invalid"])(
+    "selects the overview for the embedded page fallback at %s",
+    location => {
+      // Arrange & Act
+      const selected = opsItems.filter(item => isMenuActive(location, item));
+
+      // Assert
+      expect(selected.map(item => item.id)).toEqual(["commerce-analytics-overview"]);
+    },
+  );
+
+  it("keeps Brand sites selected for an embedded brand detail", () => {
+    // Arrange
+    const location = "/commerce-ops?path=%2Fops%2Fsites%2Fbrand-a%2Fcatalog";
+
+    // Act
+    const selected = opsItems.filter(item => isMenuActive(location, item));
+
+    // Assert
+    expect(selected.map(item => item.id)).toEqual(["commerce-brand-sites"]);
   });
 });
 

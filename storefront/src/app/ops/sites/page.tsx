@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { currentOpsViewer } from "@/lib/ops/current-viewer.server";
+import { isSaleorOpsRequestAllowed } from "@/lib/ops/authorization";
 import { brandConfig } from "@/config/brand";
 import { getBrandSites, siteIdForChannel } from "@/config/brand-sites";
 import { getStaticStorefrontChannelSlugs } from "@/config/channels";
@@ -45,6 +46,7 @@ async function BrandSitesContent() {
 	const viewer = await currentOpsViewer();
 	if (!viewer) notFound();
 	const isAnalyst = viewer.role === "brand_analyst";
+	const canVisit = (path: string) => isSaleorOpsRequestAllowed(viewer, path, "GET");
 	const configured = getBrandSites();
 	const channels = getStaticStorefrontChannelSlugs();
 	const locales = getStorefrontLocaleSlugs();
@@ -78,7 +80,7 @@ async function BrandSitesContent() {
 	return (
 		<main className="min-h-screen bg-[#f6f7f9] px-5 py-8 text-[#171717] md:px-10">
 			<div className="mx-auto max-w-6xl">
-				{!isAnalyst && (
+				{!isAnalyst && canVisit("/ops/analytics") && (
 					<Link href="/ops/analytics" className="text-sm text-stone-500 hover:text-stone-950">
 						{t("← 返回经营后台")}
 					</Link>
@@ -167,21 +169,34 @@ async function BrandSitesContent() {
 								<div className="mt-6 flex flex-wrap gap-4 border-t border-stone-100 pt-4 text-sm">
 									{configured && (
 										<>
-											<Link
-												href={`/ops/sites/${encodeURIComponent(site.id)}/readiness`}
-												className="font-semibold underline underline-offset-4"
-											>
-												{t("检查上线准备 →")}
-											</Link>
-											<Link
-												href={`/ops/sites/${encodeURIComponent(site.id)}`}
-												className="font-semibold underline underline-offset-4"
-											>
-												{t("查看品牌经营概况 →")}
-											</Link>
+											{canVisit(`/ops/sites/${encodeURIComponent(site.id)}/readiness`) && (
+												<Link
+													href={`/ops/sites/${encodeURIComponent(site.id)}/readiness`}
+													className="font-semibold underline underline-offset-4"
+												>
+													{t("检查上线准备 →")}
+												</Link>
+											)}
+											{canVisit(`/ops/sites/${encodeURIComponent(site.id)}`) && (
+												<Link
+													href={`/ops/sites/${encodeURIComponent(site.id)}`}
+													className="font-semibold underline underline-offset-4"
+												>
+													{t("查看品牌经营概况 →")}
+												</Link>
+											)}
+											{canVisit(`/ops/sites/${encodeURIComponent(site.id)}/catalog`) && (
+												<Link
+													href={`/ops/sites/${encodeURIComponent(site.id)}/catalog`}
+													className="font-semibold underline underline-offset-4"
+												>
+													{t("检查商品发布资料 →")}
+												</Link>
+											)}
 										</>
 									)}
 									{!isAnalyst &&
+										canVisit("/ops/themes") &&
 										(canEditHomepage ? (
 											<Link href={editUrl} className="font-semibold underline underline-offset-4">
 												{t("装修此品牌首页 →")}

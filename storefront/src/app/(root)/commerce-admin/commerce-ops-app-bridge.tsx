@@ -6,7 +6,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { isSaleorOpsAppPath } from "@/lib/ops/saleor-app-navigation";
 
 type Props = {
-	defaultPath: "/ops/plugins" | "/ops/analytics";
+	defaultPath: "/ops/plugins" | "/ops/settings" | "/ops/analytics";
 };
 
 type SaleorBridgeState = {
@@ -35,18 +35,15 @@ function CommerceOpsAppFrame({ defaultPath }: Props) {
 			setLocale(navigator.languages[0] ?? navigator.language ?? "en");
 		});
 		const handleMessage = (event: MessageEvent<unknown>) => {
-			if (
-				event.origin !== sameOrigin ||
-				!event.data ||
-				typeof event.data !== "object"
-			) {
+			if (event.origin !== sameOrigin || !event.data || typeof event.data !== "object") {
 				return;
 			}
 
 			const message = event.data as { type?: unknown; payload?: unknown };
-			const payload = message.payload && typeof message.payload === "object"
-				? message.payload as { token?: unknown; locale?: unknown }
-				: undefined;
+			const payload =
+				message.payload && typeof message.payload === "object"
+					? (message.payload as { token?: unknown; locale?: unknown })
+					: undefined;
 
 			if (event.source === window.parent) {
 				if (message.type === "handshake" && typeof payload?.token === "string") {
@@ -70,10 +67,7 @@ function CommerceOpsAppFrame({ defaultPath }: Props) {
 				return;
 			}
 
-			frameRef.current?.contentWindow?.postMessage(
-				{ type: "commerce-ops:saleor-token", token },
-				sameOrigin,
-			);
+			frameRef.current?.contentWindow?.postMessage({ type: "commerce-ops:saleor-token", token }, sameOrigin);
 		};
 
 		window.addEventListener("message", handleMessage);

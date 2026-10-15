@@ -55,12 +55,28 @@ import { taxConfigurationListUrl } from "@dashboard/taxes/urls";
 import { languageListUrl } from "@dashboard/translations/urls";
 import { Box, Text } from "@saleor/macaw-ui-next";
 import isEmpty from "lodash/isEmpty";
-import { ChartNoAxesCombined, Globe2, Search, Star } from "lucide-react";
+import {
+  BadgeCheck,
+  ChartNoAxesCombined,
+  ClipboardList,
+  House,
+  LayoutGrid,
+  Network,
+  Search,
+  ShoppingBag,
+  Star,
+  Store,
+  UserRound,
+} from "lucide-react";
 import { useIntl } from "react-intl";
 
 import { SidebarIconSlot } from "../../SidebarIconSlot";
 import { createDashboardOpsPath } from "../commerceOpsLinks";
-import { commerceOpsNavigation, type CommerceOpsSection } from "../commerceOpsNavigation";
+import {
+  COMMERCE_OPS_SETTINGS_PERMISSIONS,
+  commerceOpsNavigation,
+  type CommerceOpsSection,
+} from "../commerceOpsNavigation";
 import { filterSidebarMenu } from "../filterSidebarMenu";
 import { DASHBOARD_SEARCH_PERMISSIONS } from "../navigationAccess";
 import { createSettingsSubmenuItem } from "../settingsSubmenuItem";
@@ -407,7 +423,10 @@ export function useMenuStructure() {
   const available = (...items: (SidebarMenuItem | null)[]): SidebarMenuItem[] =>
     items.filter((item): item is SidebarMenuItem => item !== null);
 
-  const baseHome = native("home");
+  const baseHome = {
+    ...native("home"),
+    icon: renderIcon(<House {...navigationLucideIconProps} />),
+  };
   // When home widgets are pinned, Home becomes an accordion in upstream Saleor.
   // Keep the actual /home destination visible now that group headings only toggle.
   const home: SidebarMenuItem =
@@ -437,17 +456,20 @@ export function useMenuStructure() {
 
   const orders: SidebarMenuItem = {
     ...baseOrders,
+    icon: renderIcon(<ClipboardList {...navigationLucideIconProps} />),
     label: localized("订单", "Orders"),
     defaultExpanded: true,
     children: [...(baseOrders.children ?? []), ...opsSection("orders")],
   };
   const catalog: SidebarMenuItem = {
     ...baseCatalog,
+    icon: renderIcon(<ShoppingBag {...navigationLucideIconProps} />),
     label: localized("商品", "Products"),
   };
   const customerChatUrl = createDashboardOpsPath(process.env.COMMERCE_OPS_URL, "/ops/support");
   const customers: SidebarMenuItem = {
     ...baseCustomers,
+    icon: renderIcon(<UserRound {...navigationLucideIconProps} />),
     label: localized("客户", "Customers"),
     // The group label is a real chat entry. The separate chevron expands
     // native customer management and Chatwoot connection settings.
@@ -456,6 +478,7 @@ export function useMenuStructure() {
   };
   const marketing: SidebarMenuItem = {
     ...baseDiscounts,
+    icon: renderIcon(<BadgeCheck {...navigationLucideIconProps} />),
     label: localized("营销", "Marketing"),
   };
 
@@ -474,6 +497,7 @@ export function useMenuStructure() {
 
   const onlineStore: SidebarMenuItem = {
     ...baseModeling,
+    icon: renderIcon(<Store {...navigationLucideIconProps} />),
     label: localized("在线商店", "Online store"),
     defaultExpanded: true,
     // A translator should still see this section without page/model privileges.
@@ -486,7 +510,7 @@ export function useMenuStructure() {
   };
   const channels: SidebarMenuItem = {
     id: "commerce-sales-channels",
-    icon: renderIcon(<Globe2 {...navigationLucideIconProps} />),
+    icon: renderIcon(<Network {...navigationLucideIconProps} />),
     label: localized("销售渠道", "Sales channels"),
     type: "itemGroup",
     url: channelsListUrl(),
@@ -503,6 +527,7 @@ export function useMenuStructure() {
   };
   const apps: SidebarMenuItem = {
     ...baseExtensions,
+    icon: renderIcon(<LayoutGrid {...navigationLucideIconProps} />),
     label: localized("应用", "Apps"),
     children: [...(baseExtensions.children ?? []), ...opsSection("apps")],
   };
@@ -513,7 +538,9 @@ export function useMenuStructure() {
     ...baseSettings,
     label: localized("设置", "Settings"),
     type: "itemGroup",
+    permissions: [...(baseSettings.permissions ?? []), ...COMMERCE_OPS_SETTINGS_PERMISSIONS],
     children: [
+      ...opsSection("settings"),
       {
         id: "commerce-settings-home",
         label: localized("设置总览", "All settings"),
